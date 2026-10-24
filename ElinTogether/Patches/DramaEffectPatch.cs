@@ -30,6 +30,29 @@ internal static class DramaEffectPatch
 }
 
 /// <summary>
+///     The inn meal feeds the companions of the one who pays (DramaCustomSequence "_food"): in a client's game that was
+///     its copies only, the host's companions stayed hungry (hunt 2 row 22). Asked of the host
+/// </summary>
+[HarmonyPatch(typeof(FoodEffect), nameof(FoodEffect.Proc))]
+internal static class DramaMealPatch
+{
+    [HarmonyPrefix]
+    internal static void OnProc(Chara c, Thing food, bool consume)
+    {
+        if (consume || food.id is not ("dish_lunch" or "_dish_lunch") || ElinDelta.IsApplying || c.IsPC || !c.IsCompanionOf(EClass.pc) ||
+            NetSession.Instance.Connection is not ElinNetClient client) {
+            return;
+        }
+
+        client.Delta.AddRemote(new CharaEffectRequestDelta {
+            Target = c,
+            Id = EffectId.HealComplete,
+            Meal = true,
+        });
+    }
+}
+
+/// <summary>
 ///     A new alias and the return to the Void ask "the player" in a window: the scroll of another player read
 ///     here asked this game's player. Its own game asks it
 /// </summary>
