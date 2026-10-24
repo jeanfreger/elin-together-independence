@@ -25,6 +25,8 @@ internal static class DialogFlagSync
     // investor) was kept in its own game and never paid (hunt 3 row 50)
     private const string ExtraTax = "p:extraTax";
     private const string Guild = "g:";
+    // a town's influence (quests, bloom, rerolls): each game kept its own (hunt 4, 2026-10-25)
+    private const string Influence = "z:";
 
     /// <summary>
     ///     Flags about one player's screen or body, not about the story
@@ -168,6 +170,12 @@ internal static class DialogFlagSync
             player.debt = value;
         } else if (id == ExtraTax) {
             player.extraTax = value;
+        } else if (id.StartsWith(Influence)) {
+            if (!int.TryParse(id[Influence.Length..], out var uid) || EClass.game.spatials.Find(uid) is not Zone zone) {
+                return;
+            }
+
+            zone.influence = value;
         } else if (id.StartsWith(Guild)) {
             // g:<guild>:<t|r|e>
             var parts = id.Split(':');
@@ -232,6 +240,12 @@ internal static class DialogFlagSync
 
         values[Debt] = player.debt;
         values[ExtraTax] = player.extraTax;
+        foreach (var spatial in EClass.game.spatials.map.Values) {
+            // (back to 0 is still told, once it was)
+            if (spatial is Zone zone && (zone.influence != 0 || _shared.ContainsKey(Influence + zone.uid))) {
+                values[Influence + zone.uid] = zone.influence;
+            }
+        }
 
         // one membership for the group: who joined a guild, its rank and what it contributed
         foreach (var guild in Guilds()) {
