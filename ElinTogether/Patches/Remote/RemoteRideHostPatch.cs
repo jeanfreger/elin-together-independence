@@ -21,6 +21,23 @@ internal class RemoteRideHostPatch
         }
     }
 
+    /// <summary>
+    ///     The game draws a mount with the ride look its renderer got when made while it was already carried
+    ///     (Chara._CreateRenderer). A mount whose renderer was made before it was tied to its rider (a copy of it
+    ///     brought from another game) has none: drawing its rider threw every frame, the camera stuck and parts of the
+    ///     map were gone (issue #4). It is made again here, as mounting does
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CardRenderer), nameof(CardRenderer.Draw), [typeof(RenderParam), typeof(UnityEngine.Vector3), typeof(bool)],
+        [ArgumentType.Normal, ArgumentType.Ref, ArgumentType.Normal])]
+    internal static void OnDrawRider(CardRenderer __instance)
+    {
+        // (only one that says it is carried gets that look: another would be made again every frame)
+        if (__instance.owner is Chara { ride: { host: not null, renderer: CharaRenderer { pccData: null } or CharaRenderer { pccData.ride: null } } mount }) {
+            mount._CreateRenderer();
+        }
+    }
+
     [HarmonyTranspiler]
     [HarmonyPatch(typeof(BaseTileMap), nameof(BaseTileMap.DrawTile))]
     internal static IEnumerable<CodeInstruction> OnDrawTileIl(IEnumerable<CodeInstruction> instructions)
