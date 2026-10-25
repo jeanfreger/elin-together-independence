@@ -181,6 +181,14 @@ internal partial class EmpConfig
             "Off: they are let in and both are told; the same version of the mod is always required\n" +
             "拒绝游戏版本与主机不同的玩家");
 
+        Server.PublicGame = config.Bind(
+            "Server",
+            "PublicGame",
+            false,
+            "Anybody who finds the game in the list of games can join it, not only the host's Steam friends and invited players\n" +
+            "A game opened by itself (a depot, a shared world) still lets in only the players of its world\n" +
+            "任何在游戏列表中找到该游戏的人都可以加入，而不仅是主机的 Steam 好友和受邀玩家；自动开启的游戏（仓库、共享世界）仍只允许其世界的玩家加入");
+
         Server.PublishMods = config.Bind(
             "Server",
             "PublishMods",
@@ -691,6 +699,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> IndependentTravel { get; set; } = null!;
         internal static ConfigEntry<bool> SameGameVersion { get; set; } = null!;
         internal static ConfigEntry<bool> PublishMods { get; set; } = null!;
+        internal static ConfigEntry<bool> PublicGame { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerShipping { get; set; } = null!;
         internal static ConfigEntry<bool> GuestBuild { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerKill { get; set; } = null!;

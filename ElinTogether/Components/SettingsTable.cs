@@ -217,6 +217,7 @@ internal static class SettingsTable
         yield return new("guest_landing_portal", "together", false, EmpConfig.Server.GuestLandingPortal);
         yield return new("guest_sky_helm", "together", false, EmpConfig.Server.GuestSkyHelm);
         yield return new("shared_marriages", "together", false, EmpConfig.Server.SharedMarriages);
+        yield return new("public_game", "together", true, EmpConfig.Server.PublicGame);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);

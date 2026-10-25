@@ -427,12 +427,12 @@ public class SteamNetLobbyManager : EClass
             if (state == SteamNetLobbyMemberState.Entered) {
                 var friend = SteamFriends.GetFriendRelationship(user);
                 var known = IsKnownAccount(user);
-                if (friend == EFriendRelationship.k_EFriendRelationshipFriend || _invited.Contains(user) || known) {
+                if (friend == EFriendRelationship.k_EFriendRelationshipFriend || _invited.Contains(user) || known || OpenToAll) {
                     Current[$"connection_key_{user}"] =
                         SteamNetManager.ConnectionKeys[user] =
                             PlayerUidMaker.MakeConnectionKey(user);
                     EmpLog.Information("Connection ready for {RemoteIdentity} ({Why})",
-                        user, known ? "account known to this world" : "friend or invited");
+                        user, known ? "account known to this world" : OpenToAll ? "public game" : "friend or invited");
                 } else {
                     EmpLog.Information("Refused {RemoteIdentity}: not a friend, not invited, not known to this world",
                         user);
@@ -449,6 +449,12 @@ public class SteamNetLobbyManager : EClass
             }
         }
     }
+
+    /// <summary>
+    ///     The host ticked "Public game": anybody who finds the game in the list comes in. Not a session opened by
+    ///     itself (depot, shared world): those let only the accounts of their world in
+    /// </summary>
+    internal bool OpenToAll => EmpConfig.Server.PublicGame.Value && !_quiet;
 
     /// <summary>
     ///     A session opened by itself lets the accounts of its world in. A session opened by hand never does
