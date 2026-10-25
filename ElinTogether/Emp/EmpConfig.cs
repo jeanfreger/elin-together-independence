@@ -511,6 +511,14 @@ internal partial class EmpConfig
             "Otherwise a player joins a team at once\n" +
             "申请加入队伍的玩家需等待队长在玩家列表中接受或拒绝；关闭时玩家立即加入队伍");
 
+        Server.TeamPersonal = config.Bind(
+            "Server",
+            "TeamPersonal",
+            false,
+            "Inside a team, a chest, door or bed a player installs on the team's land is that player's: teammates open the chest and see inside but cannot take, cannot pass the door; \"Share with team\" in its menu gives it back to the team\n" +
+            "Otherwise what is on a team's land is the whole team's\n" +
+            "队伍内部，玩家在队伍土地上安装的箱子、门或床归该玩家所有：队友可以打开箱子查看但不能拿取，不能通过该门；在其菜单中选择“与队伍共享”即归还队伍；关闭时队伍土地上的东西属于整个队伍");
+
         Server.TeamDeed = config.Bind(
             "Server",
             "TeamDeed",
@@ -711,6 +719,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
         internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;
         internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;

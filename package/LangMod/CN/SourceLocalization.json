@@ -460,5 +460,8 @@
     "LangGeneral.emp_ui_sv_desc_spawn_zone.text": "启用队伍时，新玩家和其队伍没有据点的玩家加入时前往此处（需要允许独自旅行）",
     "LangGeneral.emp_ui_sv_opt_spawn_zone_start.text": "游戏开始的草原",
     "LangGeneral.emp_ui_sv_opt_spawn_zone_host.text": "主机所在的地图",
-    "LangGeneral.emp_team_deed_mail.text": "{0}的队伍证书"
+    "LangGeneral.emp_team_deed_mail.text": "{0}的队伍证书",
+    "LangGeneral.emp_ui_sv_cfg_team_personal.text": "队伍内的个人所有权",
+    "LangGeneral.emp_ui_sv_desc_team_personal.text": "玩家在队伍土地上安装的箱子、门或床归该玩家所有：队友可以打开箱子查看但不能拿取，也不能通过该门。在其菜单中选择“与队伍共享”即归还队伍。关闭时队伍土地上的东西属于整个队伍",
+    "LangGeneral.emp_team_share.text": "与队伍共享"
 }

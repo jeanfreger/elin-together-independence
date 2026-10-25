@@ -27,7 +27,7 @@ internal static class CharaPickThingEvent
     {
         // a thing of another team's land stays where it is, whatever picks it (a click, a step on it), see Teams
         if (__instance.IsPC && !ElinDelta.IsApplying && !Teams.CanTake(__instance, t)) {
-            Teams.SayBelongs();
+            Teams.SayBelongs(t);
             __result = t;
             return false;
         }

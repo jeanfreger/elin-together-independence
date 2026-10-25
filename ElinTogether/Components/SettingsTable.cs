@@ -221,6 +221,7 @@ internal static class SettingsTable
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
 
         // When the host leaves
@@ -374,6 +375,7 @@ internal static class SettingsTable
             [EmpConfig.Server.SharedMarriages] = r.SharedMarriages,
             [EmpConfig.Server.Teams] = r.UseTeams,
             [EmpConfig.Server.TeamBases] = r.TeamBases,
+            [EmpConfig.Server.TeamPersonal] = r.TeamPersonal,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,

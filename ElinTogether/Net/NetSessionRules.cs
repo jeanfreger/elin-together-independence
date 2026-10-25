@@ -262,6 +262,12 @@ public class NetSessionRules
     [Key(103)]
     public bool TeamBases { get; set; }
 
+    /// <summary>
+    ///     Inside a team, a container, door or bed a player installs is that player's until shared
+    /// </summary>
+    [Key(110)]
+    public bool TeamPersonal { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -278,6 +284,7 @@ public class NetSessionRules
         SharedMarriages = EmpConfig.Server.SharedMarriages.Value,
         UseTeams = EmpConfig.Server.Teams.Value,
         TeamBases = EmpConfig.Server.TeamBases.Value,
+        TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         // (a takeover is made from that copy: asking for one asks for the other, a host that ticked only
         // "another player takes over" got nothing)
         KeepWorldCopy = EmpConfig.Server.WorldCopy.Value || EmpConfig.Server.Takeover.Value,

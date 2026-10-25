@@ -148,6 +148,22 @@ internal static class Teams
 
     private static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
 
+    private static bool PersonalOwned => NetSession.Instance.Rules is { UseTeams: true, TeamPersonal: true };
+
+    /// <summary>
+    ///     The player other than that one who owns this card of the map, or the installed card it lies in (personal
+    ///     ownership inside a team); 0 when none. What a character carries is its own business
+    /// </summary>
+    private static int OtherOwner(Chara chara, Card card)
+    {
+        if (!PersonalOwned || !chara.IsPlayer || card.GetRootCard() is not { } root || root is Chara) {
+            return 0;
+        }
+
+        var owner = OwnerOf(card) is var own and not 0 ? own : OwnerOf(root);
+        return owner == chara.uid ? 0 : owner;
+    }
+
     /// <summary>
     ///     That character may use this land: a land of no team or of its team. Only players are asked, residents and
     ///     companions go on as before
@@ -168,20 +184,112 @@ internal static class Teams
     /// </summary>
     internal static bool CanTake(Chara chara, Card card)
     {
-        if (!BasesOwned || card.parent is null || OwnerOf(card) == chara.uid) {
+        if (card.parent is null || OwnerOf(card) == chara.uid) {
             return true;
         }
 
-        return card.GetRootCard() is Chara || CanTouch(chara, EClass._zone);
+        // a teammate's own chest, door or bed, and what lies in that chest
+        if (OtherOwner(chara, card) != 0) {
+            return false;
+        }
+
+        return !BasesOwned || card.GetRootCard() is Chara || CanTouch(chara, EClass._zone);
     }
 
     /// <summary>
-    ///     "This belongs to (team).", in the log
+    ///     That character may open this chest of the map: the land allows it. A teammate's own chest opens, what
+    ///     is inside stays (<see cref="CanTake" />)
     /// </summary>
-    internal static void SayBelongs()
+    internal static bool CanOpen(Chara chara, Card card)
+    {
+        return !BasesOwned || card.parent is null || OwnerOf(card) == chara.uid || card.GetRootCard() is Chara ||
+               CanTouch(chara, EClass._zone);
+    }
+
+    /// <summary>
+    ///     "This belongs to (team).", or "to (player)." for a card a player owns, in the log
+    /// </summary>
+    internal static void SayBelongs(Card? card = null)
     {
         SE.Beep();
-        Msg.Say("emp_team_belongs".Loc(NameOf(TeamOfZone(EClass._zone))));
+        var owner = card is null ? 0 : OtherOwner(EClass.pc, card);
+        Msg.Say("emp_team_belongs".Loc(owner != 0 ? PlayerName(owner) : NameOf(TeamOfZone(EClass._zone))));
+    }
+
+    /// <summary>
+    ///     A container, a door or a bed a player installs on its team's land is that player's (personal ownership):
+    ///     written in the game that keeps the book, asked of it by a player who builds on a map it holds
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(TaskBuild), nameof(TaskBuild.OnProgressComplete))]
+    private static void OnBuilt(TaskBuild __instance)
+    {
+        if (!PersonalOwned || !__instance.useHeld || __instance.owner is not { IsPlayer: true } builder ||
+            __instance.target is not Thing { IsInstalled: true } thing || thing.trait is not (TraitContainer or TraitDoor or TraitBed)) {
+            return;
+        }
+
+        if (KeepsBook) {
+            Own(builder, thing.uid, EClass._zone.uid);
+        } else if (builder.IsPC && NetSession.Instance.IsAway) {
+            // (on the host's map the host builds it and writes it itself)
+            Ask(TeamAsk.Own, thing.uid, EClass._zone.uid);
+        }
+    }
+
+    private static void Own(Chara chara, int cardUid, int zoneUid)
+    {
+        var team = TeamOf(chara.uid);
+        if (team == Wanderers || Zones.GetValueOrDefault(zoneUid) != team || Owners.ContainsKey(cardUid)) {
+            return;
+        }
+
+        Owners[cardUid] = chara.uid;
+        EmpLog.Information("Card {CardUid} on land {ZoneUid} is player {CharaUid}'s", cardUid, zoneUid, chara.uid);
+        Tell();
+    }
+
+    /// <summary>
+    ///     "Share with team" in the full menu of a card the local player owns: it is the team's again
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ActPlan), nameof(ActPlan._Update))]
+    private static void OnUpdatePlan(ActPlan __instance)
+    {
+        if (!PersonalOwned || __instance.input != ActInput.AllAction) {
+            return;
+        }
+
+        foreach (var card in __instance.list.Select(i => i.tc).OfType<Thing>().Where(t => t.IsInstalled && OwnerOf(t) == EClass.pc.uid)
+                     .Distinct().ToArray()) {
+            __instance.TrySetAct("emp_team_share", () => {
+                Ask(TeamAsk.Share, card.uid);
+                SE.Click();
+                return false;
+            }, card);
+        }
+    }
+
+    /// <summary>
+    ///     A door a teammate owns: the local player does not step through, the bump says whose it is
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.TryMove))]
+    private static bool OnTryMove(Chara __instance, Point newPoint, ref Card.MoveResult __result)
+    {
+        if (!PersonalOwned || !__instance.IsPC || !newPoint.IsValid || !newPoint.cell.hasDoor) {
+            return true;
+        }
+
+        foreach (var thing in newPoint.Things) {
+            if (thing.trait is TraitDoor && thing.IsInstalled && OtherOwner(__instance, thing) != 0) {
+                SayBelongs(thing);
+                __result = Card.MoveResult.Fail;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -192,12 +300,12 @@ internal static class Teams
     private static bool OnContainerAct(TraitContainer __instance, ActPlan p)
     {
         var owner = __instance.owner;
-        if (owner.parent is not Zone || CanTake(EClass.pc, owner)) {
+        if (owner.parent is not Zone || CanOpen(EClass.pc, owner)) {
             return true;
         }
 
         p.TrySetAct("actContainer", () => {
-            SayBelongs();
+            SayBelongs(owner);
             return false;
         }, owner, CursorSystem.Container);
         return false;
@@ -395,6 +503,14 @@ internal static class Teams
                 break;
             case TeamAsk.Leave:
                 Leave(chara);
+                break;
+            case TeamAsk.Own when PersonalOwned:
+                Own(chara, id, zoneUid);
+                break;
+            case TeamAsk.Share when Owners.TryGetValue(id, out var owner) && owner == chara.uid:
+                Owners.Remove(id);
+                EmpLog.Information("Card {CardUid} is shared with the team again", id);
+                Tell();
                 break;
             // only the leader of the team asked answers
             case TeamAsk.Accept or TeamAsk.Refuse when Requests.TryGetValue(id, out var to) && LeaderOf(to) == chara.uid:

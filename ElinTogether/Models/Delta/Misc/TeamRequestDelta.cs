@@ -27,6 +27,16 @@ public enum TeamAsk : byte
     ///     Id is the chara uid of the player who asked
     /// </summary>
     Refuse,
+
+    /// <summary>
+    ///     The container, door or bed the player installed on its team's land is its own. Id is the card's uid
+    /// </summary>
+    Own,
+
+    /// <summary>
+    ///     The player's own card is the team's again. Id is the card's uid
+    /// </summary>
+    Share,
 }
 
 /// <summary>
