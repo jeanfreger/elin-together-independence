@@ -1,0 +1,45 @@
+using ElinTogether.Helper;
+using ElinTogether.Net;
+
+namespace ElinTogether.Patches;
+
+/// <summary>
+///     Council 2026-10-25, host option "PvP between teams" (dev/PLAN_teams.md, step 8): two players of different
+///     real teams are enemies to each other, as two duellists are (<see cref="DuelFoePatch" /> asks
+///     <see cref="AreFoes" /> too). Every game agrees: each one asks the same shared book (<see cref="Teams" />)
+///     and the same host rules. <br />
+///     Never: a Wanderer (team 0), two of one team, in a civilized place (towns, Vernis, guilds...), on the world
+///     map, on the spawn zone. A death follows the host's PlayerKill rule (<see cref="RemotePlayerKillPatch" />):
+///     stopped at 0 hit points when off, the game's own death when on. Karma: none, as the game gives none for
+///     hitting or killing one of the player's faction; no guard is called, towns being safe
+/// </summary>
+internal static class TeamPvp
+{
+    private static bool Enabled => NetSession.Instance.Rules is { UseTeams: true, TeamPvp: true };
+
+    /// <summary>
+    ///     These two player characters fight each other where this game stands
+    /// </summary>
+    internal static bool AreFoes(Chara one, Chara? other)
+    {
+        // (asked by every hostility check of the game: the rule first)
+        if (!Enabled || other is null || one == other || !IsPlayer(one) || !IsPlayer(other) || !FightsHere()) {
+            return false;
+        }
+
+        var team = Teams.TeamOf(one.uid);
+        var otherTeam = Teams.TeamOf(other.uid);
+        return team != Teams.Wanderers && otherTeam != Teams.Wanderers && team != otherTeam;
+    }
+
+    private static bool IsPlayer(Chara chara)
+    {
+        return chara.IsPC || chara.IsRemotePlayer;
+    }
+
+    private static bool FightsHere()
+    {
+        // (the spawn zone of the teams plan, step 6, is the game's start zone until it exists)
+        return EClass._zone is { } zone && zone is not Zone_Civilized && !zone.IsRegion && zone != EClass.game.StartZone;
+    }
+}

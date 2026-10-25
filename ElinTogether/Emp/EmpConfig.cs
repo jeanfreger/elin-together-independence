@@ -503,6 +503,14 @@ internal partial class EmpConfig
             "Otherwise every player uses every base as before\n" +
             "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点；关闭时所有玩家如前使用所有据点");
 
+        Server.TeamPvp = config.Bind(
+            "Server",
+            "TeamPvp",
+            false,
+            "Two players of different teams are enemies to each other, outside towns and the spawn zone. Wanderers fight nobody\n" +
+            "A player killed by another dies only if \"Players can kill each other\" is on. Otherwise players of different teams cannot fight\n" +
+            "不同队伍的玩家在城镇和出生区域之外互为敌人，流浪者不参与；只有开启玩家可以互相击杀时才会真正死亡。关闭时不同队伍的玩家不能战斗");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -686,6 +694,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;
         internal static ConfigEntry<bool> Teams { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

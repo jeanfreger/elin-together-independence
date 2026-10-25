@@ -213,6 +213,7 @@ internal static class SettingsTable
         yield return new("shared_marriages", "together", false, EmpConfig.Server.SharedMarriages);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
@@ -364,6 +365,7 @@ internal static class SettingsTable
             [EmpConfig.Server.SharedMarriages] = r.SharedMarriages,
             [EmpConfig.Server.Teams] = r.UseTeams,
             [EmpConfig.Server.TeamBases] = r.TeamBases,
+            [EmpConfig.Server.TeamPvp] = r.TeamPvp,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,
