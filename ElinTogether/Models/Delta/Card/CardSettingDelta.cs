@@ -42,6 +42,7 @@ public class CardSettingDelta : ElinDelta
     public const byte Well = 19;
     public const byte AutoRefuel = 20;
     public const byte StockUse = 21;
+    public const byte CharaSkin = 22;
 
     [Key(0)]
     public required RemoteCard Card { get; init; }
@@ -105,6 +106,7 @@ public class CardSettingDelta : ElinDelta
                 Well => card.c_charges,
                 AutoRefuel => card.autoRefuel ? 1 : 0,
                 StockUse => card.c_isDisableStockUse ? 1 : 0,
+                CharaSkin => card.idSkin,
                 _ => 0,
             },
             Blob = kind == Painting ? card.c_textureData : null,
@@ -138,7 +140,7 @@ public class CardSettingDelta : ElinDelta
 
     /// <summary>
     ///     What a player sets on a resident or an ally: its name (list of the base, "change name"), freed from its
-    ///     shackle or put in one, its portrait and skin, the look of the horse it rides (hitching post). Not someone
+    ///     shackle or put in one, its portrait and skin, its look picked in a dialog (sister_change), the look of the horse it rides (hitching post). Not someone
     ///     else's companion (its owner's), not a stranger
     /// </summary>
     private void ApplyChara(ElinNetBase net)
@@ -178,6 +180,13 @@ public class CardSettingDelta : ElinDelta
                 var look = (Text ?? "").Split('\n');
                 chara.c_idPortrait = look[0].Length == 0 ? null : look[0];
                 chara.c_idSpriteReplacer = look.Length < 2 || look[1].Length == 0 ? null : look[1];
+                if (chara.ExistsOnMap) {
+                    chara._CreateRenderer();
+                }
+
+                break;
+            case CharaSkin:
+                chara.idSkin = Value;
                 if (chara.ExistsOnMap) {
                     chara._CreateRenderer();
                 }
@@ -224,7 +233,7 @@ public class CardSettingDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Kind is AltName or Restrain or Look or RideSkin) {
+        if (Kind is AltName or Restrain or Look or RideSkin or CharaSkin) {
             ApplyChara(net);
             return;
         }

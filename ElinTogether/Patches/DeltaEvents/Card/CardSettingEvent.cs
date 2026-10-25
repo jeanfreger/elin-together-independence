@@ -133,6 +133,16 @@ internal static class CardSettingEvent
         }
     }
 
+    /// <summary>
+    ///     The look a dialog gives (the sister's "change"; hunt 2 row 31): only the game of the player talking changed it
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(DramaOutcome), nameof(DramaOutcome.sister_change))]
+    internal static void OnSisterChange(DramaOutcome __instance)
+    {
+        Tell(__instance.cc, CardSettingDelta.CharaSkin);
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Card), nameof(Card.c_idRidePCC), MethodType.Setter)]
     internal static void OnRideSkin(Card __instance, out string? __state)
