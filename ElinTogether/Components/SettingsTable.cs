@@ -256,6 +256,7 @@ internal static class SettingsTable
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");
         yield return new("dump_spares_belt", "comfort", true, EmpConfig.Server.DumpSparesBelt);
         yield return new("publish_mods", "comfort", true, EmpConfig.Server.PublishMods, Apply: "join");
+        yield return new("look_mods_own", "comfort", true, EmpConfig.Server.LookModsOwn, Apply: "join", Requires: () => EmpConfig.Server.PublishMods.Value);
 
         yield return new("auto_reconnect", "repair", true, EmpConfig.Server.AutoReconnect);
         yield return new("auto_resync", "repair", true, EmpConfig.Server.AutoResync);

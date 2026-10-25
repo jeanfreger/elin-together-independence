@@ -388,7 +388,7 @@ internal static class ModFetch
                 }
             }
 
-            Write(LoadOrder, SessionList(ModListFile.Parse(reference)));
+            Write(LoadOrder, SessionList(ModListFile.Parse(reference), reference.Contains(ModList.LookOwn)));
             // last: a ticket without the list of the session would bring the player back without its mods
             Directory.CreateDirectory(Path.GetDirectoryName(_ticket)!);
             File.WriteAllText(_ticket, $"{DateTime.UtcNow.Ticks}\n{returnTo}\n{reference}");
@@ -411,10 +411,11 @@ internal static class ModFetch
 
     /// <summary>
     ///     loadorder.txt for one session: every mod the game knows, in the player's order, on when the reference
-    ///     has it. This mod and what it runs on stay as the player has them. What was fetched is not listed: a
-    ///     mod that is not listed is on
+    ///     has it. This mod and what it runs on stay as the player has them, and the mods that only change the look
+    ///     when the game says each player keeps their own. What was fetched is not listed: a mod that is not
+    ///     listed is on
     /// </summary>
-    private static List<string> SessionList(List<Mod> reference)
+    internal static List<string> SessionList(List<Mod> reference, bool ownLooks)
     {
         var packages = EClass.core.mods.packages
             .Where(p => !p.builtin && p.dirInfo is not null && !IsLink(p) && ModLoadOrderPreset.IsValidId(p.id))
@@ -460,7 +461,7 @@ internal static class ModFetch
         foreach (var package in packages) {
             var id = BaseModPackage.NormalizeId(package.id);
             var workshop = ModList.WorkshopOf(package);
-            var on = kept.Contains(id) ? package.willActivate :
+            var on = kept.Contains(id) || (ownLooks && ModList.OnlyLook(package)) ? package.willActivate :
                 workshop.Length > 0 ? workshops.Contains(workshop) : ids.Contains(id);
             lines.Add($"{package.dirInfo.FullName},{(on ? 1 : 0)},{package.id.Trim()}");
         }

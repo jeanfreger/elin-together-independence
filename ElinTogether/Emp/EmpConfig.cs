@@ -189,6 +189,15 @@ internal partial class EmpConfig
             "A game opened by itself (a depot, a shared world) still lets in only the players of its world\n" +
             "任何在游戏列表中找到该游戏的人都可以加入，而不仅是主机的 Steam 好友和受邀玩家；自动开启的游戏（仓库、共享世界）仍只允许其世界的玩家加入");
 
+        Server.LookModsOwn = config.Bind(
+            "Server",
+            "LookModsOwn",
+            false,
+            "Mods that only change the look (pictures, portraits, sounds, translations: no code, no items, no maps) are not\n" +
+            "asked of the players who join: nobody restarts for them, and every player keeps their own\n" +
+            "Off: the players who join need every mod of the host\n" +
+            "只改变外观的模组（图片、肖像、声音、翻译：没有代码、物品或地图）不要求加入的玩家安装：不会为此重启，每位玩家保留自己的");
+
         Server.PublishMods = config.Bind(
             "Server",
             "PublishMods",
@@ -700,6 +709,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> SameGameVersion { get; set; } = null!;
         internal static ConfigEntry<bool> PublishMods { get; set; } = null!;
         internal static ConfigEntry<bool> PublicGame { get; set; } = null!;
+        internal static ConfigEntry<bool> LookModsOwn { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerShipping { get; set; } = null!;
         internal static ConfigEntry<bool> GuestBuild { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerKill { get; set; } = null!;

@@ -161,7 +161,7 @@ internal partial class ElinNetClient
         _mods = null;
         _modsText = request.Mods ?? "";
         if (_modsText.Length > 0) {
-            _mods = ModList.Compare(ModListFile.Parse(_modsText), "the host");
+            _mods = ModList.Compare(ModListFile.Parse(_modsText), "the host", _modsText.Contains(ModList.LookOwn));
             if (_mods.Missing.Count > 0 && ModFetch.Begin(_modsText, _mods, ReturnTo)) {
                 // they are fetched, Elin restarts with them and joins again by itself: nothing more is asked here
                 Socket.Disconnect(Host, EmpDisconnectInfo.ClientCancel);

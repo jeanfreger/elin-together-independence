@@ -22,7 +22,18 @@ internal static class ModList
     /// </summary>
     internal const string SessionFolder = "EmpSession_";
 
+    /// <summary>
+    ///     Line of a list that leaves out the mods that only change the look (server setting LookModsOwn): the
+    ///     player who restarts for it keeps their own
+    /// </summary>
+    internal const string LookOwn = "# Mods that only change the look are not in this list: every player keeps their own";
+
+    // what a mod that only changes the look has: the folders the game reads pictures, sounds and texts from
+    private static readonly string[] _lookFolders = ["texture", "texture replace", "portrait", "sound", "lang", "talktext"];
+
     private static string? _text;
+    private static string? _lean;
+    private static HashSet<string>? _looks;
     private static List<Mod>? _here;
 
     /// <summary>
@@ -57,7 +68,70 @@ internal static class ModList
 #if DEBUG
         Bench ??
 #endif
-        (SaveDepot.Taken && World is { Length: > 0 and < 32768 } world ? world : Text);
+        (SaveDepot.Taken && World is { Length: > 0 and < 32768 } world ? EmpConfig.Server.LookModsOwn.Value ? Lean(world) : world :
+            EmpConfig.Server.LookModsOwn.Value ? _lean ??= Build(true) : Text);
+
+    /// <summary>
+    ///     Workshop numbers and ids of the mods active here that only change the look
+    /// </summary>
+    private static HashSet<string> Looks => _looks ??= new(Active()
+        .Where(p => p.id != ModInfo.Guid && OnlyLook(p))
+        .SelectMany(p => new[] { WorkshopOf(p), Norm(p.id ?? "") })
+        .Where(s => s.Length > 0));
+
+    /// <summary>
+    ///     The list of a depot's world without the mods that only change the look here: the line of such a mod's
+    ///     Workshop page goes, and its title line before it
+    /// </summary>
+    private static string Lean(string world)
+    {
+        var lines = world.Split('\n').ToList();
+        for (var i = lines.Count - 1; i >= 0; i--) {
+            var mod = ModListFile.Parse(lines[i]).FirstOrDefault();
+            if (mod == default || !(Looks.Contains(mod.Workshop) || Looks.Contains(Norm(mod.Id)))) {
+                continue;
+            }
+
+            lines.RemoveAt(i);
+            if (i > 0 && lines[i - 1].Trim() is { Length: > 0 } title && title[0] != '#' && ModListFile.Parse(title).Count == 0) {
+                lines.RemoveAt(--i);
+            }
+        }
+
+        return LookOwn + "\n" + string.Join("\n", lines);
+    }
+
+    /// <summary>
+    ///     That mod only changes the look: every file of it is a picture, a sound or a text the game reads from
+    ///     those folders (no code, no table of items or characters, no map). In doubt, it changes the game
+    /// </summary>
+    internal static bool OnlyLook(BaseModPackage package)
+    {
+        try {
+            var dir = package.dirInfo;
+            if (dir is null || !dir.Exists) {
+                return false;
+            }
+
+            foreach (var file in dir.GetFiles("*", System.IO.SearchOption.AllDirectories)) {
+                var ext = file.Extension.ToLowerInvariant();
+                if (ext is ".dll" or ".exe") {
+                    return false;
+                }
+
+                var path = file.FullName.Substring(dir.FullName.Length).TrimStart('\\', '/');
+                var cut = path.IndexOfAny(['\\', '/']);
+                if (cut < 0 ? ext is ".xlsx" or ".xls" or ".json" or ".z" or ".mp" : !_lookFolders.Contains(path.Substring(0, cut).ToLowerInvariant())) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Could not read the files of the mod {Mod}", package.id);
+            return false;
+        }
+    }
 
     /// <summary>
     ///     The reference for the Steam lobby, read before joining: "mods without a Workshop number;Workshop
@@ -96,10 +170,11 @@ internal static class ModList
     /// <summary>
     ///     The reference against the mods active here, with one line in the log
     /// </summary>
-    internal static Diff Compare(List<Mod> reference, string source)
+    /// <param name="ownLooks">the list says each player keeps their own look-only mods: those here are not extra</param>
+    internal static Diff Compare(List<Mod> reference, string source, bool ownLooks = false)
     {
         reference = reference.Where(m => Norm(m.Id) != ModInfo.Guid).ToList();
-        var here = Here;
+        var here = ownLooks ? Here.Where(m => !Looks.Contains(m.Workshop) && !Looks.Contains(Norm(m.Id))).ToList() : Here;
         var workshops = new HashSet<string>(here.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
         var ids = new HashSet<string>(here.Select(m => Norm(m.Id)));
         var wanted = new HashSet<string>(reference.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
@@ -190,14 +265,23 @@ internal static class ModList
         }
     }
 
-    private static string Build()
+    /// <param name="lean">without the mods that only change the look (logged), and saying so</param>
+    private static string Build(bool lean = false)
     {
         var text = new StringBuilder();
         text.Append("# Mods of this world (written by Elin Together ").Append(ModInfo.BuildVersion).Append(", game ")
             .Append(EClass.core.version.GetText()).Append(")\n");
-        text.Append("# One line a mod: title, then its Steam Workshop page. Subscribe to each page, then restart Elin.\n\n");
+        text.Append("# One line a mod: title, then its Steam Workshop page. Subscribe to each page, then restart Elin.\n");
+        var mods = Active();
+        if (lean) {
+            var looks = mods.Where(p => p.id != ModInfo.Guid && OnlyLook(p)).ToList();
+            EmpLog.Information("Mods left out of the list of the game, they only change the look: {Mods}", looks.Select(p => p.title).ToList());
+            mods = mods.Except(looks).ToList();
+            text.Append(LookOwn).Append('\n');
+        }
 
-        foreach (var mod in Active().OrderBy(p => p.title, StringComparer.OrdinalIgnoreCase)) {
+        text.Append('\n');
+        foreach (var mod in mods.OrderBy(p => p.title, StringComparer.OrdinalIgnoreCase)) {
             var workshop = WorkshopOf(mod);
             text.Append(mod.title).Append("\n    ");
             if (mod.id == ModInfo.Guid) {
