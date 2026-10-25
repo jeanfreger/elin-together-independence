@@ -337,6 +337,17 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     Build mode lists the map's stock as things to place: not what this player may not take (a teammate's own
+    ///     chest)
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Props), nameof(Props.ShouldListAsResource))]
+    private static void OnListAsResource(Thing t, ref bool __result)
+    {
+        __result = __result && (!NetSession.Instance.Rules.UseTeams || CanTake(EClass.pc, t));
+    }
+
+    /// <summary>
     ///     Auto-dump does not fill a chest this player may not open
     /// </summary>
     [HarmonyPostfix]
