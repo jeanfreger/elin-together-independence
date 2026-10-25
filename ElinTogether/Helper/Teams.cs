@@ -269,7 +269,8 @@ internal static class Teams
     /// </summary>
     internal static void OnClaimed(Zone zone)
     {
-        if (!KeepsBook) {
+        // teams off: a claim is nobody's, as before (it stays so when the box is ticked later)
+        if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
             return;
         }
 
