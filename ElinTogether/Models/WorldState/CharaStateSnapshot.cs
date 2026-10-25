@@ -42,6 +42,13 @@ public class CharaStateSnapshot : EClass
     [Key(9)]
     public required MinionType MinionType { get; init; }
 
+    /// <summary>
+    ///     A companion's hunger: the host's game feeds and starves them, each guest's copy kept its own count (hunt 4,
+    ///     2026-10-25). Null for anyone else, and from an older host
+    /// </summary>
+    [Key(10)]
+    public int? Hunger { get; init; }
+
     public static CharaStateSnapshot Create(Chara chara)
     {
         return new() {
@@ -54,6 +61,7 @@ public class CharaStateSnapshot : EClass
             OriginalHostility = chara.c_originalHostility,
             UidMaster = chara.c_uidMaster,
             MinionType = chara.c_minionType,
+            Hunger = chara.IsPCParty && !chara.IsPC && !chara.IsRemotePlayer ? chara.hunger.value : null,
         };
     }
 
@@ -93,6 +101,9 @@ public class CharaStateSnapshot : EClass
         // this is received from host side
         if (remoteChara is null) {
             chara.hp = Hp;
+            if (Hunger is { } hunger && !chara.IsPC) {
+                chara.hunger.value = hunger;
+            }
         }
 
         if (chara.IsPC) {
