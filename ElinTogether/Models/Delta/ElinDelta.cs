@@ -168,6 +168,7 @@ namespace ElinTogether.Models;
 [Union(972, typeof(ManiGeneRequest))]
 [Union(973, typeof(CharaBloomRequest))]
 [Union(975, typeof(CharaEggRequest))]
+[Union(976, typeof(RelicSlotRequest))]
 [Union(977, typeof(MiscreationRequest))]
 // Teams
 [Union(980, typeof(TeamsDelta))]
