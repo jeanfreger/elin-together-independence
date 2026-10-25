@@ -27,8 +27,18 @@ internal static class OwnPlayerConditionPatch
             return true;
         }
 
-        // another player: its own game keeps its strife
+        // another player: its own game keeps its strife. The host's copy (its kills are counted there too, see
+        // StrifeKillDelta) wears off as that game's does: its ticks are replayed here one for one
         if (owner.IsRemotePlayer) {
+            if (NetSession.Instance.IsHost && --__instance.turn < 0) {
+                if (--__instance.lv >= 1) {
+                    __instance.SetTurn();
+                    __instance.exp = __instance.ExpToNext / 2;
+                } else {
+                    __instance.Kill();
+                }
+            }
+
             return false;
         }
 

@@ -167,6 +167,7 @@ namespace ElinTogether.Models;
 [Union(971, typeof(CharaBanishRequest))]
 [Union(972, typeof(ManiGeneRequest))]
 [Union(973, typeof(CharaBloomRequest))]
+[Union(974, typeof(StrifeKillDelta))]
 [Union(975, typeof(CharaEggRequest))]
 [Union(976, typeof(RelicSlotRequest))]
 [Union(977, typeof(MiscreationRequest))]
