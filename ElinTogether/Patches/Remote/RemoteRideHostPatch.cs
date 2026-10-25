@@ -69,13 +69,24 @@ internal class RemoteRideHostPatch
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ActRide), nameof(ActRide.Perform))]
-    internal static void OnRidePerform()
+    internal static bool OnRidePerform(ActRide __instance)
     {
         if (Act.TP is { IsValid: true } at) {
             foreach (var chara in at.ListCharas()) {
                 FreeIfDropped(chara);
             }
         }
+
+        // aimed at oneself while carrying: getting off, in every game. The game takes the first free one of the tile,
+        // in an order each game has its own: with another free animal there one game got off and the other took
+        // that animal (2026-10-25, ride2 dismount_crowded). (The act is still sent: its postfix runs)
+        if (Act.CC is { } rider && (Act.TC == rider || (Act.TC is null && Act.TP?.Equals(rider.pos) == true)) &&
+            (__instance.IsParasite ? rider.parasite : rider.ride) is not null) {
+            ActRide.Unride(rider, __instance.IsParasite);
+            return false;
+        }
+
+        return true;
     }
 
     internal static void FreeIfDropped(Chara chara)
@@ -146,6 +157,31 @@ internal class RemoteRideHostPatch
         rider.SetDirtySpeed();
         if (carried.IsPC || rider.IsPC) {
             rider.Say("ride_unride", rider, carried);
+        }
+    }
+
+    /// <summary>
+    ///     A player who goes to bed keeps his mount for the night (council 2026-10-25, ride sleep): the game got the
+    ///     host's own player off (ConSleep.Tick, a direct call no other game hears of) while a guest never does
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ActRide), nameof(ActRide.Unride), [typeof(Chara), typeof(bool), typeof(bool)])]
+    internal static bool OnUnrideAsleep(Chara host, bool talk)
+    {
+        return talk || !host.IsPC || host.conSleep is not { pcSleep: > 0 };
+    }
+
+    /// <summary>
+    ///     ... and is not put on it again when he wakes: the game's ride on an animal already carrying him gets him
+    ///     off and on again, and a mount noted at bedtime may have died or changed hands during the night
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ConSleep), nameof(ConSleep.OnRemoved))]
+    internal static void OnWakeUp(ConSleep __instance)
+    {
+        if (__instance.owner is { IsPC: true }) {
+            __instance.uidRide = 0;
+            __instance.uidParasite = 0;
         }
     }
 
