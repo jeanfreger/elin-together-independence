@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using UnityEngine;
 using YKF;
@@ -38,6 +39,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         _tabs.Add(CreateTab<TabLobbyBrowser>("emp_ui_tab_lobby", "emp_tab_lobby"));
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
+
+        foreach (var tab in _tabs) {
+            UIHelper.WrapTexts(tab);
+            tab.RebuildLayout(true);
+        }
     }
 
     public override void OnAfterAddLayer()

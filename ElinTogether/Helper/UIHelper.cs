@@ -10,6 +10,25 @@ public static class UIHelper
 {
     private static readonly Dictionary<string, Sprite> _lookup = [];
 
+    /// <summary>
+    ///     YK Framework's TextSmall/TextMedium come from game prefabs whose ContentSizeFitter sizes the width to the
+    ///     unwrapped line, over the card's layout group: long lines were cut at the card's edge (JP, CN, and English at
+    ///     1280x800, 2026-10-25). Under this root the group sets the width and the fitter only the height
+    /// </summary>
+    public static void WrapTexts(Component root)
+    {
+        foreach (var fitter in root.GetComponentsInChildren<ContentSizeFitter>(true)) {
+            if (fitter.horizontalFit != ContentSizeFitter.FitMode.PreferredSize ||
+                !fitter.TryGetComponent<Text>(out var text) || text.horizontalOverflow != HorizontalWrapMode.Wrap ||
+                fitter.transform.parent?.GetComponent<HorizontalOrVerticalLayoutGroup>() is not { childControlWidth: true }) {
+                continue;
+            }
+
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+    }
+
     public static Sprite FindSprite(string name)
     {
         if (_lookup.TryGetValue(name, out var sprite)) {

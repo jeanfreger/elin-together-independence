@@ -152,6 +152,9 @@ internal class TabLobbyBrowser : TabEmpBase
             }
 
             totalPlayers.text1.text = "emp_ui_lobby_tally".Loc(total);
+            // (these lines come after the layer was laid out, see LayerElinTogether.OnLayout)
+            UIHelper.WrapTexts(this);
+            this.RebuildLayout(true);
         }
     }
 

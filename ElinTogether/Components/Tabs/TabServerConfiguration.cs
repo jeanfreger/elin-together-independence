@@ -22,7 +22,8 @@ internal class TabServerConfiguration : TabEmpBase
 
     public override void OnLayout()
     {
-        TextSmall("emp_ui_sv_note_live".lang());
+        // (in a group that sets its width: straight on the page the line ran past the edge, see UIHelper.WrapTexts)
+        Vertical().TextSmall("emp_ui_sv_note_live".lang());
 
         // how we play together: the preset these rules make, what differs from the recommended ones
         var top = Section("preset");
