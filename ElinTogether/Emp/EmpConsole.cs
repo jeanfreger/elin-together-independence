@@ -1,4 +1,5 @@
 using ElinTogether.Common;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Net.Steam;
 using ReflexCLI.Attributes;
@@ -79,6 +80,40 @@ internal class EmpConsole
     internal static string Desync()
     {
         return NetDesync.Describe();
+    }
+
+    /// <summary>
+    ///     Bench: the teams as the host keeps them (or as this guest was told). The menus come later
+    /// </summary>
+    [ConsoleCommand("team.list")]
+    internal static string TeamList()
+    {
+        return Teams.Describe();
+    }
+
+    [ConsoleCommand("team.found")]
+    internal static string TeamFound(int charaUid, string name)
+    {
+        return PlayerOf(charaUid) is { } chara && Teams.Found(chara, name) is var id and > 0
+            ? $"Team {id} founded"
+            : "Not founded (host only, chara on this map, a name)";
+    }
+
+    [ConsoleCommand("team.join")]
+    internal static string TeamJoin(int charaUid, int teamId)
+    {
+        return PlayerOf(charaUid) is { } chara && Teams.Join(chara, teamId) ? $"Joined team {teamId}" : "Not joined";
+    }
+
+    [ConsoleCommand("team.leave")]
+    internal static string TeamLeave(int charaUid)
+    {
+        return PlayerOf(charaUid) is { } chara && Teams.Leave(chara) ? "Left" : "Not in a team";
+    }
+
+    private static Chara? PlayerOf(int charaUid)
+    {
+        return EClass.pc?.uid == charaUid ? EClass.pc : EClass._map?.charas.Find(c => c.uid == charaUid);
     }
 
     [ConsoleCommand("connect_steam")]

@@ -167,6 +167,8 @@ namespace ElinTogether.Models;
 [Union(971, typeof(CharaBanishRequest))]
 [Union(972, typeof(ManiGeneRequest))]
 [Union(973, typeof(CharaBloomRequest))]
+// Teams (974-976 are kept for another change)
+[Union(980, typeof(TeamsDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass

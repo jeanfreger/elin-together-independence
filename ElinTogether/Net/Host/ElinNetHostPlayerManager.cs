@@ -327,6 +327,7 @@ internal partial class ElinNetHost
         }
 
         TellMarriages();
+        TellTeams();
     }
 
     /// <summary>

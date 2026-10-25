@@ -438,5 +438,11 @@
     "LangGeneral.emp_ui_sv_desc_guest_sky_helm.text": "其他玩家使用天空舵时，在该玩家屏幕上显示主机的目的地列表，用该玩家的天空船票支付，所有人的门所在区域一起改变",
     "LangGeneral.emp_ui_sv_cfg_shared_marriages.text": "共享婚姻",
     "LangGeneral.emp_ui_sv_desc_shared_marriages.text": "每位玩家都可以结婚：居民是与之结婚的角色的配偶，先求婚者优先；婚礼、离婚和遗失戒指证书只对该配偶有效。关闭时如以前一样，客人的婚姻只存在于其自己的游戏中",
-    "LangGeneral.emp_marriage_taken.text": "{0}已经结婚了。"
+    "LangGeneral.emp_marriage_taken.text": "{0}已经结婚了。",
+    "LangGeneral.emp_ui_sv_cfg_teams.text": "玩家可以组队",
+    "LangGeneral.emp_ui_sv_desc_teams.text": "玩家可以组队，主机在存档中记录谁属于哪个队伍。不属于任何队伍的玩家是流浪者。关闭时没有队伍，一切如前",
+    "LangGeneral.emp_ui_sv_cfg_team_bases.text": "据点属于其队伍",
+    "LangGeneral.emp_ui_sv_desc_team_bases.text": "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点。关闭时所有玩家如前使用所有据点",
+    "LangGeneral.emp_team_belongs.text": "这属于{0}。",
+    "LangGeneral.emp_team_wanderers.text": "流浪者"
 }

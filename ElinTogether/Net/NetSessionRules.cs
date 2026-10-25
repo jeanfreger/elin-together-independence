@@ -250,6 +250,18 @@ public class NetSessionRules
     [Key(101)]
     public bool SharedMarriages { get; set; } = true;
 
+    /// <summary>
+    ///     Council 2026-10-25: players can be in teams, the host keeps them in its save, see Teams
+    /// </summary>
+    [Key(102)]
+    public bool UseTeams { get; set; }
+
+    /// <summary>
+    ///     A base is its claimer's team's: the other teams cannot open its chests, pick up, build or manage it there
+    /// </summary>
+    [Key(103)]
+    public bool TeamBases { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -264,6 +276,8 @@ public class NetSessionRules
         GuestLandingPortal = EmpConfig.Server.GuestLandingPortal.Value,
         GuestSkyHelm = EmpConfig.Server.GuestSkyHelm.Value,
         SharedMarriages = EmpConfig.Server.SharedMarriages.Value,
+        UseTeams = EmpConfig.Server.Teams.Value,
+        TeamBases = EmpConfig.Server.TeamBases.Value,
         // (a takeover is made from that copy: asking for one asks for the other, a host that ticked only
         // "another player takes over" got nothing)
         KeepWorldCopy = EmpConfig.Server.WorldCopy.Value || EmpConfig.Server.Takeover.Value,
