@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Threading;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
 using ReflexCLI.Attributes;
@@ -62,16 +64,36 @@ internal partial class EmpConfig
                     return;
                 }
 
-                EmpPop.PopupInternal("emp_ui_config_changed".lang());
-
-                config.SaveOnConfigSet = false;
-                config.Reload();
-                config.SaveOnConfigSet = true;
-
-                if (NetSession.Instance.Transport is ElinNetHost host) {
-                    host.UpdateRemoteSessionRules();
-                }
+                // the watcher calls from its own thread: reloading there raced the game's own saves (a box set from a
+                // page read back its old value, settings_suite LIVE 2026-10-25). Reloaded on the game's thread, once
+                // the file has been quiet for a moment
+                Interlocked.Exchange(ref _reloadAt, DateTime.UtcNow.AddMilliseconds(500).Ticks);
             });
+    }
+
+    // when the file changed on disk is read again (UTC ticks), 0: nothing to read
+    private static long _reloadAt;
+
+    /// <summary>
+    ///     Each frame, on the game's thread
+    /// </summary>
+    internal static void UpdateReload()
+    {
+        var at = Interlocked.Read(ref _reloadAt);
+        if (at == 0 || DateTime.UtcNow.Ticks < at || Interlocked.CompareExchange(ref _reloadAt, 0, at) != at) {
+            return;
+        }
+
+        var config = EmpMod.Instance.Config;
+        EmpPop.PopupInternal("emp_ui_config_changed".lang());
+
+        config.SaveOnConfigSet = false;
+        config.Reload();
+        config.SaveOnConfigSet = true;
+
+        if (NetSession.Instance.Transport is ElinNetHost host) {
+            host.UpdateRemoteSessionRules();
+        }
     }
 
     private enum EmpConfigVersion
