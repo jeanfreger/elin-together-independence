@@ -339,7 +339,7 @@ internal partial class ElinNetClient
 
             // a map reloaded to repair it: where we stand, not where the host's copy of us stood (NetDesync)
             if (!MoveToResyncSpot(ownSpot)) {
-                pc.Stub_Move(response.Pos, Card.MoveType.Force);
+                pc.Place(response.Pos);
             }
 
             pc.SetDir(pc.dir);

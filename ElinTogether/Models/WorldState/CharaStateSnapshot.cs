@@ -200,7 +200,7 @@ public class CharaStateSnapshot : EClass
 
         EmpLog.Debug("Reconcile force move chara {Uid} from {@FromPos} to {@Pos}",
             chara.uid, chara.pos.Copy(), (Point)Pos);
-        chara.Stub_Move(Pos, Card.MoveType.Force);
+        chara.Place(Pos);
     }
 
     // per character uid, when its tile last differed from the snapshot's by more than the snapshot allows

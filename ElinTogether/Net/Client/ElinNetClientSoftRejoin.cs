@@ -339,7 +339,7 @@ internal partial class ElinNetClient
             return;
         }
 
-        pc.Stub_Move(response.Pos, Card.MoveType.Force);
+        pc.Place(response.Pos);
         pc.SetDir(pc.dir);
     }
 

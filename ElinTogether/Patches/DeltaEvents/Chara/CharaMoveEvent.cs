@@ -64,5 +64,20 @@ internal static class CharaMoveEvent
         {
             throw new NotImplementedException("Chara.Move");
         }
+
+        /// <summary>
+        ///     Put on a tile as the game puts a character that arrives: a step would pick up what lies there (Chara._Move,
+        ///     the player's footstep), which an arrival, a soft rejoin or a map reload never does
+        /// </summary>
+        internal Card.MoveResult Place(Point point)
+        {
+            var lying = point.IsValid ? point.Things.FindAll(t => !t.ignoreAutoPick) : [];
+            lying.ForEach(t => t.ignoreAutoPick = true);
+            try {
+                return chara.Stub_Move(point, Card.MoveType.Force);
+            } finally {
+                lying.ForEach(t => t.ignoreAutoPick = false);
+            }
+        }
     }
 }

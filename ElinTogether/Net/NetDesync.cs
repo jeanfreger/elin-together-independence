@@ -891,7 +891,7 @@ internal partial class ElinNetClient
         }
 
         EmpLog.Debug("Resync: keeping our own tile {@Pos}", (Position)own);
-        pc.Stub_Move(own, Card.MoveType.Force);
+        pc.Place(own);
         Delta.AddRemote((CharaMoveDelta)pc);
         return true;
     }
