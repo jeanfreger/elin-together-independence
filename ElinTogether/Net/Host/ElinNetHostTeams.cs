@@ -51,6 +51,11 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Chara uid -> the team it asks to join, until its leader answers. Not saved: a request is asked again
+    /// </summary>
+    internal static Dictionary<int, int> TeamRequests { get; } = [];
+
+    /// <summary>
     ///     The teams changed, or a player joins: everyone is told the whole book
     /// </summary>
     internal void TellTeams()
@@ -65,6 +70,7 @@ internal partial class ElinNetHost
             Names = new(TeamNames),
             Zones = new(ZoneTeams),
             Owners = new(CardOwners),
+            Requests = new(TeamRequests),
         });
     }
 }

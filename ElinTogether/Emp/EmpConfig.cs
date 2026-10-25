@@ -503,6 +503,14 @@ internal partial class EmpConfig
             "Otherwise every player uses every base as before\n" +
             "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点；关闭时所有玩家如前使用所有据点");
 
+        Server.TeamApproval = config.Bind(
+            "Server",
+            "TeamApproval",
+            true,
+            "A player who asks to join a team waits for its leader, who accepts or refuses from the list of players\n" +
+            "Otherwise a player joins a team at once\n" +
+            "申请加入队伍的玩家需等待队长在玩家列表中接受或拒绝；关闭时玩家立即加入队伍");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -686,6 +694,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;
         internal static ConfigEntry<bool> Teams { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

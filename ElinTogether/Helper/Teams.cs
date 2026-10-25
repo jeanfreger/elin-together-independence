@@ -23,6 +23,8 @@ internal static class Teams
     private static Dictionary<int, string> _names = [];
     private static Dictionary<int, int> _zones = [];
     private static Dictionary<int, int> _owners = [];
+    private static Dictionary<int, int> _requests = [];
+    private static bool _told;
 
     // the game that keeps the book: the host of the world, or a game playing alone
     private static bool KeepsBook => NetSession.Instance.Transport is not ElinNetClient;
@@ -31,6 +33,7 @@ internal static class Teams
     private static Dictionary<int, string> Names => KeepsBook ? ElinNetHost.TeamNames : _names;
     private static Dictionary<int, int> Zones => KeepsBook ? ElinNetHost.ZoneTeams : _zones;
     private static Dictionary<int, int> Owners => KeepsBook ? ElinNetHost.CardOwners : _owners;
+    private static Dictionary<int, int> Requests => KeepsBook ? ElinNetHost.TeamRequests : _requests;
 
     [ElinPreLoad]
     private static void Forget(GameIOContext context)
@@ -39,6 +42,8 @@ internal static class Teams
         _names = [];
         _zones = [];
         _owners = [];
+        _requests = [];
+        _told = false;
     }
 
     /// <summary>
@@ -46,10 +51,37 @@ internal static class Teams
     /// </summary>
     internal static void Learn(TeamsDelta delta)
     {
+        var (team, asked, known) = (TeamOf(EClass.pc?.uid ?? 0), Requests.Keys.ToArray(), _told);
+        _told = true;
         _teams = new(delta.TeamList);
         _names = new(delta.Names);
         _zones = new(delta.Zones);
         _owners = new(delta.Owners);
+        _requests = new(delta.Requests ?? []);
+        // (not the book told on joining: nothing changed then)
+        if (known) {
+            Notice(team, asked);
+        }
+    }
+
+    /// <summary>
+    ///     Says in the log what changed for the local player: its team, a player who asks to join the team it leads
+    /// </summary>
+    private static void Notice(int teamBefore, int[] askedBefore)
+    {
+        if (!EClass.core.IsGameStarted || EClass.pc is not { } pc) {
+            return;
+        }
+
+        if (TeamOf(pc.uid) is var team && team != teamBefore) {
+            Msg.Say("emp_team_now".Loc(NameOf(team)));
+        }
+
+        foreach (var (uid, id) in Requests) {
+            if (!askedBefore.Contains(uid) && LeaderOf(id) == pc.uid) {
+                Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
+            }
+        }
     }
 
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
@@ -71,6 +103,16 @@ internal static class Teams
     internal static string NameOf(int teamId)
     {
         return Names.TryGetValue(teamId, out var name) && !string.IsNullOrEmpty(name) ? name : "emp_team_wanderers".lang();
+    }
+
+    internal static int LeaderOf(int teamId)
+    {
+        return TeamList.TryGetValue(teamId, out var team) ? team[0] : 0;
+    }
+
+    internal static string PlayerName(int charaUid)
+    {
+        return EClass.game.cards.globalCharas.Find(charaUid)?.NameSimple ?? "?";
     }
 
     internal static int TeamOfZone(Zone? zone)
@@ -222,7 +264,8 @@ internal static class Teams
 
         Remove(chara.uid);
         var id = TeamList.Keys.DefaultIfEmpty(Wanderers).Max() + 1;
-        TeamList[id] = [chara.uid, 1, chara.uid];
+        // open: anyone joins at once; closed: its leader answers who asks (the host's rule when it is founded)
+        TeamList[id] = [chara.uid, EmpConfig.Server.TeamApproval.Value ? 0 : 1, chara.uid];
         Names[id] = name.Trim();
         EmpLog.Information("Team {TeamId} {TeamName} founded by {CharaUid}", id, name, chara.uid);
         Tell();
@@ -230,7 +273,7 @@ internal static class Teams
     }
 
     /// <summary>
-    ///     That player joins the team, leaving its former one (the leader's approval is a later step)
+    ///     That player joins the team, leaving its former one. It leads a team left without members
     /// </summary>
     internal static bool Join(Chara chara, int teamId)
     {
@@ -239,7 +282,9 @@ internal static class Teams
         }
 
         Remove(chara.uid);
-        TeamList[teamId] = [..TeamList[teamId], chara.uid];
+        Requests.Remove(chara.uid);
+        var team = TeamList[teamId];
+        TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
         Tell();
         return true;
@@ -254,9 +299,100 @@ internal static class Teams
             return false;
         }
 
+        Requests.Remove(chara.uid);
+
         EmpLog.Information("Chara {CharaUid} left its team", chara.uid);
         Tell();
         return true;
+    }
+
+    /// <summary>
+    ///     The local player's choice in a team menu: answered here in the game that keeps the book, asked of the
+    ///     host otherwise (wherever this player is)
+    /// </summary>
+    internal static void Ask(TeamAsk kind, int id = 0, int zoneUid = 0)
+    {
+        if (KeepsBook) {
+            Answer(EClass.pc, kind, id, zoneUid);
+        } else {
+            PersonalQuests.TellHost(new TeamRequestDelta { Kind = kind, Id = id, ZoneUid = zoneUid });
+        }
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: what that player asks, read against the book as it is now
+    /// </summary>
+    internal static void Answer(Chara chara, TeamAsk kind, int id, int zoneUid)
+    {
+        if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
+            return;
+        }
+
+        var (team, asked) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray());
+        switch (kind) {
+            case TeamAsk.Found:
+                Found(chara, chara.NameSimple);
+                break;
+            case TeamAsk.Join when TeamList.TryGetValue(id, out var wanted) && TeamOf(chara.uid) != id:
+                // at once into an open team, a team without a leader, or when the host does not ask the leaders
+                if (wanted[1] == 1 || wanted[0] == 0 || !EmpConfig.Server.TeamApproval.Value) {
+                    Join(chara, id);
+                } else {
+                    Requests[chara.uid] = id;
+                    Tell();
+                }
+                break;
+            case TeamAsk.Leave:
+                Leave(chara);
+                break;
+            // only the leader of the team asked answers
+            case TeamAsk.Accept or TeamAsk.Refuse when Requests.TryGetValue(id, out var to) && LeaderOf(to) == chara.uid:
+                Requests.Remove(id);
+                if (kind == TeamAsk.Accept && EClass.game.cards.globalCharas.Find(id) is { } joiner) {
+                    Join(joiner, to);
+                } else {
+                    Tell();
+                }
+                break;
+        }
+
+        Notice(team, asked);
+    }
+
+    /// <summary>
+    ///     The team entries of a player's row in the list of players: on one's own row found, leave, join any
+    ///     other team and the leader's answers; on another player's row, join its team
+    /// </summary>
+    internal static IEnumerable<(string Label, System.Action Act)> MenuFor(Chara chara)
+    {
+        if (!NetSession.Instance.Rules.UseTeams) {
+            yield break;
+        }
+
+        var mine = TeamOf(EClass.pc.uid);
+        if (!chara.IsPC) {
+            if (TeamOf(chara.uid) is var theirs and not Wanderers && theirs != mine) {
+                yield return ("emp_team_join".Loc(NameOf(theirs)), () => Ask(TeamAsk.Join, theirs));
+            }
+            yield break;
+        }
+
+        if (mine == Wanderers) {
+            yield return ("emp_team_found".lang(), () => Ask(TeamAsk.Found));
+        } else {
+            yield return ("emp_team_leave".Loc(NameOf(mine)), () => Ask(TeamAsk.Leave));
+        }
+
+        foreach (var id in TeamList.Keys.Where(id => id != mine).ToArray()) {
+            yield return ("emp_team_join".Loc(NameOf(id)), () => Ask(TeamAsk.Join, id));
+        }
+
+        if (mine != Wanderers && LeaderOf(mine) == EClass.pc.uid) {
+            foreach (var uid in Requests.Where(r => r.Value == mine).Select(r => r.Key).ToArray()) {
+                yield return ("emp_team_accept".Loc(PlayerName(uid)), () => Ask(TeamAsk.Accept, uid));
+                yield return ("emp_team_refuse".Loc(PlayerName(uid)), () => Ask(TeamAsk.Refuse, uid));
+            }
+        }
     }
 
     /// <summary>

@@ -444,5 +444,14 @@
     "LangGeneral.emp_ui_sv_cfg_team_bases.text": "据点属于其队伍",
     "LangGeneral.emp_ui_sv_desc_team_bases.text": "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点。关闭时所有玩家如前使用所有据点",
     "LangGeneral.emp_team_belongs.text": "这属于{0}。",
-    "LangGeneral.emp_team_wanderers.text": "流浪者"
+    "LangGeneral.emp_team_wanderers.text": "流浪者",
+    "LangGeneral.emp_ui_sv_cfg_team_approval.text": "加入队伍需要队长批准",
+    "LangGeneral.emp_ui_sv_desc_team_approval.text": "申请加入队伍的玩家需等待队长在玩家列表中接受或拒绝。关闭时立即加入",
+    "LangGeneral.emp_team_found.text": "创建队伍",
+    "LangGeneral.emp_team_join.text": "加入{0}",
+    "LangGeneral.emp_team_leave.text": "离开{0}",
+    "LangGeneral.emp_team_accept.text": "接受{0}",
+    "LangGeneral.emp_team_refuse.text": "拒绝{0}",
+    "LangGeneral.emp_team_now.text": "你现在属于{0}。",
+    "LangGeneral.emp_team_asks.text": "{0}申请加入{1}。"
 }

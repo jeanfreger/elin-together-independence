@@ -213,6 +213,7 @@ internal static class SettingsTable
         yield return new("shared_marriages", "together", false, EmpConfig.Server.SharedMarriages);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
