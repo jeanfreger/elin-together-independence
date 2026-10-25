@@ -48,7 +48,7 @@ public class AreaStateDelta : ElinDelta
         var host = net as ElinNetHost;
         // a guest's word, when the host lets it build
         if (host is not null && (!NetSession.Instance.Rules.GuestsBuild || !host.ActiveRemoteCharas.ContainsKey(OriginPeer) ||
-                                 Teams.RefusesPeer(host, OriginPeer))) {
+                                 Teams.RefusesPeer(host, OriginPeer, _zone))) {
             return;
         }
 

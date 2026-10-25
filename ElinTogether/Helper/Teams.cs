@@ -312,12 +312,47 @@ internal static class Teams
     }
 
     /// <summary>
-    ///     On the host: the player of that connection stands on another team's land (what it asks to build or
-    ///     manage there is refused)
+    ///     The delivery chest's "Eject" of another team's land: the same click as its open action
     /// </summary>
-    internal static bool RefusesPeer(ElinNetHost host, int peerId)
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitDeliveryChest), nameof(TraitDeliveryChest.TrySetAct))]
+    private static bool OnDeliveryChestAct(TraitDeliveryChest __instance, ActPlan p)
     {
-        return host.ActiveRemoteCharas.TryGetValue(peerId, out var chara) && !CanTouch(chara, EClass._zone);
+        return OnContainerAct(__instance, p);
+    }
+
+    /// <summary>
+    ///     Crafting takes from the chests and floor of the map: not what this player may not take
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Props), nameof(Props.ListThingStack))]
+    private static void OnListThingStack(ThingStack __result)
+    {
+        if (!NetSession.Instance.Rules.UseTeams || __result.list.RemoveAll(t => !CanTake(EClass.pc, t)) == 0) {
+            return;
+        }
+
+        __result.count = __result.list.Sum(t => t.Num);
+        __result.max = __result.list.Select(t => t.Num).DefaultIfEmpty().Max();
+    }
+
+    /// <summary>
+    ///     Auto-dump does not fill a chest this player may not open
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(TaskDump), nameof(TaskDump.IsValidContainer))]
+    private static void OnDumpContainer(Thing c, ref bool __result)
+    {
+        __result = __result && CanOpen(EClass.pc, c);
+    }
+
+    /// <summary>
+    ///     On the host (or the game holding a zone): that player may not change this land, the one the delta
+    ///     changes, nor the one it stands on (a late delta of a player who just went elsewhere)
+    /// </summary>
+    internal static bool RefusesPeer(ElinNetHost host, int peerId, Zone? zone)
+    {
+        return host.ActiveRemoteCharas.TryGetValue(peerId, out var chara) && (!CanTouch(chara, zone) || !CanTouch(chara, chara.currentZone));
     }
 
     /// <summary>

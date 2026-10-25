@@ -42,7 +42,7 @@ public class CharaBuildDelta : ElinDelta
         }
 
         // nor on the land of another team (Teams)
-        if (net is ElinNetHost builder && Teams.RefusesPeer(builder, OriginPeer)) {
+        if (net is ElinNetHost builder && Teams.RefusesPeer(builder, OriginPeer, _zone)) {
             return;
         }
 
