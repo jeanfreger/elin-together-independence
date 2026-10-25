@@ -141,6 +141,9 @@ internal static class CompanionHelper
         foreach (var carried in new[] { player.ride, player.parasite }) {
             if (carried is not null && !ReferenceEquals(carried.host, player)) {
                 carried.host = player;
+                // its ride look comes with a renderer made while carried, as mounting does (issue #4: an old copy
+                // made while nobody rode it, tied here, made the rider's draw throw every frame)
+                carried._CreateRenderer();
             }
         }
 
