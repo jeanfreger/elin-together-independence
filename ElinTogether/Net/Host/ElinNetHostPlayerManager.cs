@@ -13,6 +13,15 @@ internal partial class ElinNetHost
     public readonly Dictionary<int, Chara> ActiveRemoteCharas = [];
 
     /// <summary>
+    ///     When each player's link dropped without anyone leaving (see <see cref="Common.EmpDisconnectInfo.IsLinkLost" />):
+    ///     coming back within <see cref="LinkLostGraceSeconds" /> is the automatic return, not a new arrival
+    /// </summary>
+    private static readonly Dictionary<ulong, float> LinkLostAt = [];
+
+    // (NetReconnect gives up after 3 minutes, plus a world handover wait)
+    private const float LinkLostGraceSeconds = 300f;
+
+    /// <summary>
     ///     A combination of all remote chara's act states
     /// </summary>
     public int SharedActState => States.Values.Sum(s => s.LastAct);
@@ -112,6 +121,10 @@ internal partial class ElinNetHost
         var ask = EmpConfig.Server.ChooseCharacter.Value
             ? roster.Count > 0 || import
             : !known && (roster.Count > 1 || (roster.Count == 0 && import));
+        // a player whose link dropped comes back as the one it was playing, never asked: it did not leave
+        if (known && LinkLostAt.Remove(peer.User, out var lost) && Time.realtimeSinceStartup - lost < LinkLostGraceSeconds) {
+            ask = false;
+        }
         // not for the guests of a zone hosted by a player: they come with the character they are playing
         if (!IsZoneSession && ask) {
             // the player picks who to play, brings someone from its own saves, or makes someone new

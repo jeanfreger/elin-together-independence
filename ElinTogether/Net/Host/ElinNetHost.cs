@@ -230,6 +230,13 @@ internal partial class ElinNetHost : ElinNetBase
             ReleaseLeaseOnDisconnect(peer);
         }
 
+        // (the reason as it was given: the event only carries its text)
+        if (EmpDisconnectInfo.IsLinkLost(Router.DisconnectReason)) {
+            LinkLostAt[peer.User] = UnityEngine.Time.realtimeSinceStartup;
+        } else {
+            LinkLostAt.Remove(peer.User);
+        }
+
         if (States.Remove(peer.Id, out var state)) {
             // Fully remove remote chara from the map (saved chara remains via ElinGameIOProperty)
             if (ActiveRemoteCharas.Remove(peer.Id, out var remoteChara)) {
