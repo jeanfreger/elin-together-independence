@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -80,6 +81,63 @@ internal static class Teams
     internal static int OwnerOf(Card card)
     {
         return Owners.GetValueOrDefault(card.uid);
+    }
+
+    private static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
+
+    /// <summary>
+    ///     That character may use this land: a land of no team or of its team. Only players are asked, residents and
+    ///     companions go on as before
+    /// </summary>
+    internal static bool CanTouch(Chara chara, Zone? zone)
+    {
+        if (!BasesOwned || !chara.IsPlayer) {
+            return true;
+        }
+
+        var team = TeamOfZone(zone);
+        return team == Wanderers || team == TeamOf(chara.uid);
+    }
+
+    /// <summary>
+    ///     That character may take or open this card of the map (on the ground, installed, in a chest): its own card,
+    ///     or the land allows it. What a character carries is not the land's
+    /// </summary>
+    internal static bool CanTake(Chara chara, Card card)
+    {
+        if (!BasesOwned || card.parent is null || OwnerOf(card) == chara.uid) {
+            return true;
+        }
+
+        return card.GetRootCard() is Chara || CanTouch(chara, EClass._zone);
+    }
+
+    /// <summary>
+    ///     "This belongs to (team).", in the log
+    /// </summary>
+    internal static void SayBelongs()
+    {
+        SE.Beep();
+        Msg.Say("emp_team_belongs".Loc(NameOf(TeamOfZone(EClass._zone))));
+    }
+
+    /// <summary>
+    ///     A chest of another team's land: no open action (nor the lock to pick), the click says whose it is
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitContainer), nameof(TraitContainer.TrySetAct))]
+    private static bool OnContainerAct(TraitContainer __instance, ActPlan p)
+    {
+        var owner = __instance.owner;
+        if (owner.parent is not Zone || CanTake(EClass.pc, owner)) {
+            return true;
+        }
+
+        p.TrySetAct("actContainer", () => {
+            SayBelongs();
+            return false;
+        }, owner, CursorSystem.Container);
+        return false;
     }
 
     /// <summary>

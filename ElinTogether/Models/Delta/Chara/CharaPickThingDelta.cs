@@ -55,6 +55,23 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
+        // a player of another team on this land: the thing stays where it is, and everyone is told so (Teams)
+        if (net.IsHost && !Teams.CanTake(chara, thing)) {
+            EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, uid {Uid} belongs to another team",
+                nameof(CharaPickThingDelta), OriginPeer, Thing.Uid);
+            if (thing.parent is Card) {
+                CardAddThingDelta.Rebind(net, Thing, thing);
+            } else if (thing.parent == _zone) {
+                net.Delta.AddRemote(new ZoneAddCardDelta {
+                    Card = Thing,
+                    Pos = thing.pos,
+                    ZoneUid = _zone.uid,
+                });
+            }
+
+            return;
+        }
+
         if (CharaProgressCompleteDelta.IsReplaying) {
             if (net.IsClient && chara.IsRemotePlayer) {
                 _zone.AddCard(thing);

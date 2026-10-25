@@ -25,6 +25,13 @@ internal static class CharaPickThingEvent
     [HarmonyPrefix]
     internal static bool OnCharaPickThingy(Chara __instance, Thing t, bool tryStack, ref Thing __result)
     {
+        // a thing of another team's land stays where it is, whatever picks it (a click, a step on it), see Teams
+        if (__instance.IsPC && !ElinDelta.IsApplying && !Teams.CanTake(__instance, t)) {
+            Teams.SayBelongs();
+            __result = t;
+            return false;
+        }
+
         if (NetSession.Instance.Connection is not { } connection) {
             return true;
         }
