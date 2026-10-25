@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Models;
+using ElinTogether.Net.Steam;
 
 namespace ElinTogether.Net;
 
@@ -51,6 +52,41 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Team id -> the founder who received its free land deed: never twice for a team, nor for a player who
+    ///     founds again
+    /// </summary>
+    [ElinGameIOProperty("team_deeds")]
+    internal static Dictionary<int, int> TeamDeeds
+    {
+        get => field ??= [];
+        set;
+    }
+
+    // the players sent to the spawn zone in this hosting: a reconnect finds them where they were
+    private readonly HashSet<ulong> _spawned = [];
+
+    /// <summary>
+    ///     A player came in (its world and the host's map are on the way): a new player, or one whose team has no
+    ///     base, travels to the host's spawn zone, the way a player travels alone. Nothing when teams are off
+    /// </summary>
+    internal void SendToSpawnZone(Chara chara, ISteamNetPeer peer, bool isNew)
+    {
+        var rules = NetSession.Instance.Rules;
+        if (IsZoneSession || !rules.UseTeams || !rules.AllowIndependentTravel || (!isNew && Teams.HasBase(Teams.TeamOf(chara.uid))) ||
+            Teams.SpawnZone() is not { } zone || zone == _zone || !_spawned.Add(peer.User)) {
+            return;
+        }
+
+        EmpLog.Information("Player {@Peer} starts at the spawn zone {ZoneFullName}", peer, zone.ZoneFullName);
+        SendDeltaTo(peer.Id, new TeamSpawnDelta { ZoneUid = zone.uid });
+    }
+
+    /// <summary>
+    ///     Chara uid -> the team it asks to join, until its leader answers. Not saved: a request is asked again
+    /// </summary>
+    internal static Dictionary<int, int> TeamRequests { get; } = [];
+
+    /// <summary>
     ///     The teams changed, or a player joins: everyone is told the whole book
     /// </summary>
     internal void TellTeams()
@@ -65,6 +101,7 @@ internal partial class ElinNetHost
             Names = new(TeamNames),
             Zones = new(ZoneTeams),
             Owners = new(CardOwners),
+            Requests = new(TeamRequests),
         });
     }
 }

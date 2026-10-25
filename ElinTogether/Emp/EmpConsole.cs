@@ -105,6 +105,21 @@ internal class EmpConsole
         return PlayerOf(charaUid) is { } chara && Teams.Join(chara, teamId) ? $"Joined team {teamId}" : "Not joined";
     }
 
+    /// <summary>
+    ///     Bench: what the team menus do for the local player (Found, Join, Leave, Accept, Refuse), asked of the host
+    ///     from a guest's game
+    /// </summary>
+    [ConsoleCommand("team.ask")]
+    internal static string TeamAsk(string kind, int id)
+    {
+        if (!System.Enum.TryParse<Models.TeamAsk>(kind, true, out var ask)) {
+            return "Unknown ask";
+        }
+
+        Teams.Ask(ask, id);
+        return $"Asked {ask} {id}";
+    }
+
     [ConsoleCommand("team.leave")]
     internal static string TeamLeave(int charaUid)
     {

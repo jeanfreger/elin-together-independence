@@ -33,6 +33,12 @@ public class TeamsDelta : ElinDelta
     [Key(3)]
     public required Dictionary<int, int> Owners { get; init; }
 
+    /// <summary>
+    ///     Chara uid -> the team it asks to join, waiting for the leader
+    /// </summary>
+    [Key(4)]
+    public Dictionary<int, int>? Requests { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

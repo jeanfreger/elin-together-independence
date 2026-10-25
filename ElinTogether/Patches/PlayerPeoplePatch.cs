@@ -91,6 +91,12 @@ internal static class PlayerPeoplePatch
                 return;
             }
 
+            // its team in place of race or job, when the host has teams (Teams)
+            if (NetSession.Instance.Rules.UseTeams) {
+                b.SetSubText(Teams.NameOf(Teams.TeamOf(a.uid)), 300);
+                return;
+            }
+
             base.SetSubText(a, b);
         }
 
@@ -98,7 +104,13 @@ internal static class PlayerPeoplePatch
         {
             // (the local character as the game has it; another player's not here: the game's line where it is)
             if (c.IsPC || !c.IsAliveInCurrentZone) {
-                base.OnClick(c, i);
+                // the team entries go under the game's own for the local character, see OnShowMenu
+                _teamMenuFor = c.IsPC ? c : null;
+                try {
+                    base.OnClick(c, i);
+                } finally {
+                    _teamMenuFor = null;
+                }
                 return;
             }
 
@@ -107,7 +119,36 @@ internal static class PlayerPeoplePatch
                 EClass.pc.SetAI(new AI_Goto(c, 1));
                 layer.Close();
             });
+            AddTeamEntries(menu, c, layer);
             menu.Show();
+        }
+    }
+
+    private static Chara? _teamMenuFor;
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(UIContextMenu), nameof(UIContextMenu.Show), new System.Type[0])]
+    internal static void OnShowMenu(UIContextMenu __instance)
+    {
+        if (_teamMenuFor is { } c) {
+            _teamMenuFor = null;
+            AddTeamEntries(__instance, c, null);
+        }
+    }
+
+    /// <summary>
+    ///     Found, join, leave, accept or refuse (Teams.MenuFor): asked at once, the list shows the new teams once
+    ///     the book comes back
+    /// </summary>
+    private static void AddTeamEntries(UIContextMenu menu, Chara c, Layer? layer)
+    {
+        foreach (var (label, act) in Teams.MenuFor(c)) {
+            // (a text already in the player's language: the game's lookup gives it back as it is)
+            menu.AddButton(label, () => {
+                act();
+                SE.Click();
+                layer?.Close();
+            });
         }
     }
 }

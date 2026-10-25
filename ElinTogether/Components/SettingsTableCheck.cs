@@ -123,6 +123,10 @@ internal static class SettingsTableCheck
             foreach (var raw in Validations) {
                 yield return new() { [entries[0]] = raw };
             }
+        } else if (entries[0] == EmpConfig.Server.SpawnZone) {
+            foreach (var raw in new[] { "start", "host", "", "startVillage2" }) {
+                yield return new() { [entries[0]] = raw };
+            }
         } else {
             foreach (var mode in System.Enum.GetValues(entries[0].SettingType)) {
                 yield return new() { [entries[0]] = mode };

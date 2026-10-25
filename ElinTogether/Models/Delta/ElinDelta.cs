@@ -171,6 +171,8 @@ namespace ElinTogether.Models;
 [Union(977, typeof(MiscreationRequest))]
 // Teams
 [Union(980, typeof(TeamsDelta))]
+[Union(981, typeof(TeamRequestDelta))]
+[Union(982, typeof(TeamSpawnDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass

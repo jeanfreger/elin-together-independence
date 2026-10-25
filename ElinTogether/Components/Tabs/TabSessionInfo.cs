@@ -91,6 +91,9 @@ internal class TabSessionInfo : TabEmpBase
         infoGroup.LayoutElement().preferredWidth = 1f;
         infoGroup.TextFlavor(player.User.Name.TagColor(PeerColorizer.GetColor(player.Index)));
         infoGroup.TextMedium(chara.Name);
+        if (NetSession.Instance.Rules.UseTeams) {
+            infoGroup.Text(Teams.NameOf(Teams.TeamOf(chara.uid)));
+        }
         infoGroup.Text(BuildPingStat(player));
 
         // action buttons: only show for non-host players

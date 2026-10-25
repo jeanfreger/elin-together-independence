@@ -503,6 +503,37 @@ internal partial class EmpConfig
             "Otherwise every player uses every base as before\n" +
             "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点；关闭时所有玩家如前使用所有据点");
 
+        Server.TeamApproval = config.Bind(
+            "Server",
+            "TeamApproval",
+            true,
+            "A player who asks to join a team waits for its leader, who accepts or refuses from the list of players\n" +
+            "Otherwise a player joins a team at once\n" +
+            "申请加入队伍的玩家需等待队长在玩家列表中接受或拒绝；关闭时玩家立即加入队伍");
+
+        Server.TeamPersonal = config.Bind(
+            "Server",
+            "TeamPersonal",
+            false,
+            "Inside a team, a chest, door or bed a player installs on the team's land is that player's: teammates open the chest and see inside but cannot take, cannot pass the door; \"Share with team\" in its menu gives it back to the team\n" +
+            "Otherwise what is on a team's land is the whole team's\n" +
+            "队伍内部，玩家在队伍土地上安装的箱子、门或床归该玩家所有：队友可以打开箱子查看但不能拿取，不能通过该门；在其菜单中选择“与队伍共享”即归还队伍；关闭时队伍土地上的东西属于整个队伍");
+
+        Server.TeamDeed = config.Bind(
+            "Server",
+            "TeamDeed",
+            true,
+            "The founder of a new team receives one land deed, once per team and once per player\n" +
+            "Otherwise a team buys its deed from the merchant as in the game\n" +
+            "新队伍的创建者获得一张土地证书，每个队伍一次、每位玩家一次；关闭时队伍如游戏中一样从商人处购买证书");
+
+        Server.SpawnZone = config.Bind(
+            "Server",
+            "SpawnZone",
+            "start",
+            "Where a new player appears, and a player whose team has no base, when teams are on: start (the meadow where a new game starts), host (the host's map, as before), or the id of a zone\n" +
+            "新玩家以及其队伍没有据点的玩家（启用队伍时）出现的地方：start（新游戏开始的草原）、host（主机所在地图，如前）或区域 id");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -686,6 +717,10 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;
         internal static ConfigEntry<bool> Teams { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;
+        internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;
