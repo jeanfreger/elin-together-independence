@@ -76,7 +76,10 @@ internal class TabClientConfiguration : TabEmpBase
         folder.Text(password.Value.Length > 0 ? "***" : "-");
 
         // how a private GitHub repository becomes the depot, where it is set
-        folder.TextSmall("emp_ui_depot_gh_help".lang());
+        // (one text per line: a text with line breaks was measured one line high and drew over the rows above it)
+        foreach (var line in "emp_ui_depot_gh_help".lang().Split('\n')) {
+            folder.TextSmall(line);
+        }
 
         // Help: something went wrong, one zip to send, with the game's own log in it
         var help = Card("help");

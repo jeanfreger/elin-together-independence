@@ -115,6 +115,13 @@ internal static class SettingsTableCheck
             for (var bits = 0; bits < 1 << entries.Length; bits++) {
                 yield return entries.Select((e, n) => (e, (object)((bits >> n & 1) == 1))).ToDictionary(p => p.e, p => p.Item2);
             }
+        } else if (entries is [{ } box, { } clock] && box.SettingType == typeof(bool) && clock.SettingType.IsEnum) {
+            // (the travel choice: independent travel and the world map clock)
+            foreach (var on in new[] { false, true }) {
+                foreach (var value in System.Enum.GetValues(clock.SettingType)) {
+                    yield return new() { [box] = on, [clock] = value };
+                }
+            }
         } else if (entries[0].SettingType == typeof(int)) {
             foreach (var hours in new[] { 0, 12, 24, 48, 72, 30 }) {
                 yield return new() { [entries[0]] = hours };

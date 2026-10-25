@@ -77,7 +77,7 @@ internal static class SettingsTable
     // - its label is a sentence about what the players experience, says "host" and "friends" or "players",
     //   never "guest"; its texts come in English, Japanese and Chinese in the same commit;
     // - nothing is ever removed: a hidden box keeps its stored value and stays in Advanced.
-    internal static readonly string[] Cards = ["joining", "together", "host_leaves", "fallbacks", "time_details", "comfort", "repair"];
+    internal static readonly string[] Cards = ["joining", "together", "host_leaves", "friends", "fallbacks", "time_details", "comfort", "repair"];
 
     // the boxes of the host-centred fallbacks: "every player gets their own" on is all of them on
     private static ConfigEntry<bool>[] Fallbacks() => [
@@ -106,6 +106,26 @@ internal static class SettingsTable
             };
         },
         i => [(EmpConfig.Server.SourceValidationSet, new[] { "", "plugins", "sources", "sources,plugins" }[i])]);
+
+    // (council 2026-10-25 settings trim: one question where there were two boxes; choose off with import on reads Custom)
+    internal static Choice Characters => Pair("characters", ["new", "pick", "both"],
+        EmpConfig.Server.ChooseCharacter, EmpConfig.Server.ImportCharacter, [(false, false), (true, false), (true, true)]);
+
+    // together: nobody travels alone (the world map clock is left as it is, it means nothing then); a world map clock
+    // "travel together" with independent travel on reads Custom
+    internal static Choice Travel => new("travel", ["together", "alone", "own_pace"],
+        () => [EmpConfig.Server.IndependentTravel, EmpConfig.Server.WorldMapTime],
+        source => (source.Get(EmpConfig.Server.IndependentTravel), source.Raw(EmpConfig.Server.WorldMapTime)) switch {
+            (false, _) => 0,
+            (true, Net.WorldMapTime.SharedClock) => 1,
+            (true, Net.WorldMapTime.PersonalPace) => 2,
+            _ => -1,
+        },
+        i => i switch {
+            0 => [(EmpConfig.Server.IndependentTravel, false)],
+            1 => [(EmpConfig.Server.IndependentTravel, true), (EmpConfig.Server.WorldMapTime, Net.WorldMapTime.SharedClock)],
+            _ => [(EmpConfig.Server.IndependentTravel, true), (EmpConfig.Server.WorldMapTime, Net.WorldMapTime.PersonalPace)],
+        });
 
     // where a new player of a world with teams appears (another zone id typed in the file reads as Custom and is kept)
     internal static Choice SpawnZone => new("spawn_zone", ["start", "host"],
@@ -190,34 +210,36 @@ internal static class SettingsTable
         // Joining
         yield return new("who_joins", "joining", false, Choice: WhoJoins, Apply: "join");
         yield return new("checks", "joining", true, Under: "who_joins", Apply: "join");
-        yield return new("same_game_version", "joining", false, EmpConfig.Server.SameGameVersion, Apply: "join");
-        yield return new("choose_chara", "joining", false, EmpConfig.Server.ChooseCharacter, Apply: "join");
-        yield return new("import_chara", "joining", false, EmpConfig.Server.ImportCharacter, Apply: "join");
+        yield return new("same_game_version", "joining", true, EmpConfig.Server.SameGameVersion, Apply: "join");
+        yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
+        yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
+        yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Apply: "join", Under: "characters");
 
         // Playing together
-        yield return new("independent_travel", "together", false, EmpConfig.Server.IndependentTravel);
-        yield return new("world_map_choice", "together", false, Choice: WorldMapTime);
+        yield return new("travel", "together", false, Choice: Travel);
+        yield return new("independent_travel", "together", true, EmpConfig.Server.IndependentTravel, Under: "travel");
+        yield return new("world_map_choice", "together", true, Choice: WorldMapTime, Under: "travel");
         yield return new("combat_pace", "together", false, Choice: CombatPace);
         yield return new("combat_time", "together", true, pct, Under: "combat_pace");
         yield return new("player_clock", "together", true, EmpConfig.Server.PlayerClock, Requires: () => pct.Value, Under: "combat_pace");
         yield return new("step_pace", "together", true, EmpConfig.Server.PlayerStepPace, Requires: () => pct.Value, Under: "combat_pace");
         yield return new("turn_combat", "together", true, EmpConfig.Server.TurnBasedCombat, Requires: () => !pct.Value, Under: "combat_pace");
         yield return new("shared_speed", "together", true, EmpConfig.Server.SharedAverageSpeed, Under: "combat_pace");
-        yield return new("own_everything", "together", false, Choice: OwnEverything);
+        yield return new("own_everything", "fallbacks", true, Choice: OwnEverything);
         yield return new("building", "together", false, Choice: Building);
         yield return new("guest_build", "together", true, EmpConfig.Server.GuestBuild, Under: "building");
         yield return new("host_manages_base", "together", true, EmpConfig.Server.HostManagesBase, Under: "building");
         yield return new("fights", "together", false, Choice: Fights);
         yield return new("duels", "together", true, EmpConfig.Server.Duels, Under: "fights");
         yield return new("player_kill", "together", true, EmpConfig.Server.PlayerKill, Under: "fights");
-        yield return new("player_trade", "together", false, EmpConfig.Server.PlayerTrade);
-        yield return new("follow", "together", false, EmpConfig.Server.Follow);
-        yield return new("private_chat", "together", false, EmpConfig.Server.PrivateChat);
-        yield return new("guest_moongate", "together", false, EmpConfig.Server.GuestMoongate);
-        yield return new("guest_landing_portal", "together", false, EmpConfig.Server.GuestLandingPortal);
-        yield return new("guest_sky_helm", "together", false, EmpConfig.Server.GuestSkyHelm);
-        yield return new("shared_marriages", "together", false, EmpConfig.Server.SharedMarriages);
-        yield return new("public_game", "together", true, EmpConfig.Server.PublicGame);
+        yield return new("player_trade", "friends", true, EmpConfig.Server.PlayerTrade);
+        yield return new("follow", "friends", true, EmpConfig.Server.Follow);
+        yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
+        yield return new("guest_moongate", "friends", true, EmpConfig.Server.GuestMoongate);
+        yield return new("guest_landing_portal", "friends", true, EmpConfig.Server.GuestLandingPortal);
+        yield return new("guest_sky_helm", "friends", true, EmpConfig.Server.GuestSkyHelm);
+        yield return new("shared_marriages", "friends", true, EmpConfig.Server.SharedMarriages);
+        yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
@@ -231,7 +253,7 @@ internal static class SettingsTable
         yield return new("world_copy", "host_leaves", true, EmpConfig.Server.WorldCopy, Under: "host_leaves");
         yield return new("takeover", "host_leaves", true, EmpConfig.Server.Takeover, Requires: () => EmpConfig.Server.WorldCopy.Value,
             Under: "host_leaves");
-        yield return new("auto_host", "host_leaves", false, EmpConfig.Server.AutoHost, Apply: "load");
+        yield return new("auto_host", "host_leaves", true, EmpConfig.Server.AutoHost, Apply: "load");
 
         // Advanced: the way back to the host-centred game, one box each
         yield return new("personal_quests", "fallbacks", true, EmpConfig.Server.PersonalQuests);
@@ -289,7 +311,7 @@ internal static class SettingsTable
         get {
             var values = new Dictionary<ConfigEntryBase, object>();
             foreach (var (entry, value) in CombatPace.WriteFor(1).Concat(OwnEverything.WriteFor(1)).Concat(Building.WriteFor(2))
-                         .Append((EmpConfig.Server.IndependentTravel, false))) {
+                         .Concat(Travel.WriteFor(0))) {
                 values[entry] = value;
             }
             return new(e => values.TryGetValue(e, out var v) ? v : e.DefaultValue);
@@ -370,6 +392,12 @@ internal static class SettingsTable
             [EmpConfig.Server.TownBoards] = r.TownBoards,
             [EmpConfig.Server.PlayersAtBase] = r.PlayersAtBase,
             [EmpConfig.Server.GlobalChat] = r.GlobalChat,
+            [EmpConfig.Server.TownLife] = r.TownLife,
+            [EmpConfig.Server.ShopsFromEveryPlayer] = r.ShopsFromEveryPlayer,
+            [EmpConfig.Server.NearestSpawns] = r.NearestSpawns,
+            [EmpConfig.Server.ActivitiesFromActor] = r.ActivitiesFromActor,
+            [EmpConfig.Server.AutoCombatPerPlayer] = r.AutoCombatPerPlayer,
+            [EmpConfig.Server.SummonsFollowMaster] = r.SummonsFollowMaster,
             [EmpConfig.Server.Follow] = r.AllowFollow,
             [EmpConfig.Server.PrivateChat] = r.PrivateChat,
             [EmpConfig.Server.GuestMoongate] = r.GuestMoongate,
@@ -394,10 +422,23 @@ internal static class SettingsTable
     /// <summary>
     ///     The visible rows a guest is told, as label and value (the card "This world's rules", read only)
     /// </summary>
-    internal static List<(string Label, string Value)> RuleLines(RuleSource source)
+    internal static List<(string Label, string Value)> RuleLines(RuleSource source) => Lines(source, false);
+
+    /// <summary>
+    ///     The visible rows, and an Advanced one (not under a choice) only when it differs from its default: a hidden
+    ///     box an old world keeps off is still told (council 2026-10-25 settings trim). all: every row not under a
+    ///     choice, for notices
+    /// </summary>
+    private static List<(string Label, string Value)> Lines(RuleSource source, bool all)
     {
         var lines = new List<(string, string)>();
-        foreach (var row in Rows().Where(r => !r.Advanced)) {
+        var defaults = RuleSource.Defaults;
+        foreach (var row in Rows()) {
+            // (a box under a choice is told through its choice: turn-based under each player's pace means nothing)
+            if (row.Advanced && (row.Under is not null || (!all && !Differs(row, source, defaults)))) {
+                continue;
+            }
+
             if (row.Choice is { } choice) {
                 if (choice.Entries.All(e => source.Raw(e) is null)) {
                     continue;
@@ -410,6 +451,11 @@ internal static class SettingsTable
         }
         return lines;
     }
+
+    // (what a guest is not told reads null: not a difference)
+    private static bool Differs(SettingRow row, RuleSource source, RuleSource defaults) =>
+        row.Choice is { } c ? c.Entries.Any(e => source.Raw(e) is not null) && c.Read(source) != c.Read(defaults)
+        : row.Entry is { } e && source.Get(e) is { } v && v != defaults.Get(e);
 
     /// <summary>
     ///     The last change of the host's rules a guest was told, shown on the card
@@ -427,9 +473,10 @@ internal static class SettingsTable
             return true;
         }
 
-        var old = RuleLines(FromRules(before)).ToDictionary(l => l.Label, l => l.Value);
+        // (every row: a hidden box the host turns off is told too)
+        var old = Lines(FromRules(before), true).ToDictionary(l => l.Label, l => l.Value);
         var changed = false;
-        foreach (var (label, value) in RuleLines(FromRules(after))) {
+        foreach (var (label, value) in Lines(FromRules(after), true)) {
             if (old.TryGetValue(label, out var was) && was != value) {
                 LastNotice = "emp_ui_rules_changed".Loc(label, was, value);
                 EmpPop.Information(LastNotice);

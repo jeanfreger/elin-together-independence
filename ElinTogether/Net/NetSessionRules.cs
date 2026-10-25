@@ -274,6 +274,26 @@ public class NetSessionRules
     [Key(111)]
     public bool TeamPvp { get; set; }
 
+    // the six fallbacks a guest was never told (council 2026-10-25 settings trim): its card names them when the host
+    // turns one off; an older host sends none of them and they read as on, their default
+    [Key(112)]
+    public bool TownLife { get; set; } = true;
+
+    [Key(113)]
+    public bool ShopsFromEveryPlayer { get; set; } = true;
+
+    [Key(114)]
+    public bool NearestSpawns { get; set; } = true;
+
+    [Key(115)]
+    public bool ActivitiesFromActor { get; set; } = true;
+
+    [Key(116)]
+    public bool AutoCombatPerPlayer { get; set; } = true;
+
+    [Key(117)]
+    public bool SummonsFollowMaster { get; set; } = true;
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -292,6 +312,12 @@ public class NetSessionRules
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
+        TownLife = EmpConfig.Server.TownLife.Value,
+        ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
+        NearestSpawns = EmpConfig.Server.NearestSpawns.Value,
+        ActivitiesFromActor = EmpConfig.Server.ActivitiesFromActor.Value,
+        AutoCombatPerPlayer = EmpConfig.Server.AutoCombatPerPlayer.Value,
+        SummonsFollowMaster = EmpConfig.Server.SummonsFollowMaster.Value,
         // (a takeover is made from that copy: asking for one asks for the other, a host that ticked only
         // "another player takes over" got nothing)
         KeepWorldCopy = EmpConfig.Server.WorldCopy.Value || EmpConfig.Server.Takeover.Value,

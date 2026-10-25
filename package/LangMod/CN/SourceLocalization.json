@@ -470,5 +470,16 @@
     "LangGeneral.emp_ui_sv_desc_public_game.text": "任何在游戏列表中找到该游戏的人都可以加入，而不仅是主机的 Steam 好友和受邀玩家。自动开启的游戏（仓库、共享世界）仍只允许其世界的玩家。关闭：仅好友和受邀玩家",
     "LangGeneral.emp_ui_sv_cfg_look_mods_own.text": "仅外观模组：各玩家自己的",
     "LangGeneral.emp_ui_sv_desc_look_mods_own.text": "只改变外观的模组（图片、肖像、声音、翻译：没有代码、物品或地图）不要求加入的玩家安装：没有人会为此重启，每位玩家保留自己的。关闭：加入的玩家需要主机的所有模组",
-    "LangGeneral.emp_team_beaten.text": "{0}被{1}击败了。"
+    "LangGeneral.emp_team_beaten.text": "{0}被{1}击败了。",
+    "LangGeneral.emp_ui_sv_cfg_characters.text": "加入者的角色",
+    "LangGeneral.emp_ui_sv_desc_characters.text": "新角色：每次新建。选择自己的：在这个世界中选择自己的角色，或新建一个。选择或带来：也可以从自己的存档带来角色（装备、背包、金钱、名声和业力；存档不会被修改）。",
+    "LangGeneral.emp_ui_sv_opt_characters_new.text": "新角色",
+    "LangGeneral.emp_ui_sv_opt_characters_pick.text": "选择自己的角色",
+    "LangGeneral.emp_ui_sv_opt_characters_both.text": "选择或带来角色",
+    "LangGeneral.emp_ui_sv_cfg_travel.text": "旅行",
+    "LangGeneral.emp_ui_sv_desc_travel.text": "一起：所有人跟随房主。各自旅行，共享时钟：玩家可以去任何地方；世界地图上任何人的每一步都会推进日期。各自旅行，自己的节奏：相同，但独自旅行的玩家会领先于世界：其饥饿和自己的任务支付这些时间。",
+    "LangGeneral.emp_ui_sv_opt_travel_together.text": "一起",
+    "LangGeneral.emp_ui_sv_opt_travel_alone.text": "各自旅行，共享时钟",
+    "LangGeneral.emp_ui_sv_opt_travel_own_pace.text": "各自旅行，自己的节奏",
+    "LangGeneral.emp_ui_sv_sec_friends.text": "朋友可以做房主能做的事"
 }
