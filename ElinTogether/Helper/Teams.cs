@@ -141,6 +141,65 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     On the host: the player of that connection stands on another team's land (what it asks to build or
+    ///     manage there is refused)
+    /// </summary>
+    internal static bool RefusesPeer(ElinNetHost host, int peerId)
+    {
+        return host.ActiveRemoteCharas.TryGetValue(peerId, out var chara) && !CanTouch(chara, EClass._zone);
+    }
+
+    /// <summary>
+    ///     Build mode on another team's land: not offered (the menu button, the hotbar)...
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.CanEnterBuildMode), MethodType.Getter)]
+    private static void OnCanEnterBuildMode(Zone __instance, ref bool __result)
+    {
+        __result = __result && CanTouch(EClass.pc, __instance);
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.CanEnterBuildModeAnywhere), MethodType.Getter)]
+    private static void OnCanEnterBuildModeAnywhere(Zone __instance, ref bool __result)
+    {
+        __result = __result && CanTouch(EClass.pc, __instance);
+    }
+
+    /// <summary>
+    ///     ...and its key says whose land it is
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ActionMode), nameof(ActionMode.DoFunc), typeof(CoreConfig.GameFunc))]
+    private static bool OnDoFunc(CoreConfig.GameFunc func)
+    {
+        if (func != CoreConfig.GameFunc.ToggleBuild || EClass.scene.actionMode.IsBuildMode || CanTouch(EClass.pc, EClass._zone)) {
+            return true;
+        }
+
+        SayBelongs();
+        return false;
+    }
+
+    /// <summary>
+    ///     The base's board of another team's land: the click says whose it is instead of opening the base's menu
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitHomeBoard), nameof(TraitHomeBoard.TrySetAct))]
+    private static bool OnHomeBoardAct(TraitHomeBoard __instance, ActPlan p)
+    {
+        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone)) {
+            return true;
+        }
+
+        p.TrySetAct("actLayerHome", () => {
+            SayBelongs();
+            return false;
+        }, __instance.owner);
+        return false;
+    }
+
+    /// <summary>
     ///     What the bench and the console read: every team, its leader and members, and the teams of the lands
     /// </summary>
     internal static string Describe()
