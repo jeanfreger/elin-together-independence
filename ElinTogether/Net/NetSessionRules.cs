@@ -268,6 +268,12 @@ public class NetSessionRules
     [Key(110)]
     public bool TeamPersonal { get; set; }
 
+    /// <summary>
+    ///     Two players of different teams are enemies outside towns and the spawn zone, see TeamPvp
+    /// </summary>
+    [Key(111)]
+    public bool TeamPvp { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -285,6 +291,7 @@ public class NetSessionRules
         UseTeams = EmpConfig.Server.Teams.Value,
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
+        TeamPvp = EmpConfig.Server.TeamPvp.Value,
         // (a takeover is made from that copy: asking for one asks for the other, a host that ticked only
         // "another player takes over" got nothing)
         KeepWorldCopy = EmpConfig.Server.WorldCopy.Value || EmpConfig.Server.Takeover.Value,

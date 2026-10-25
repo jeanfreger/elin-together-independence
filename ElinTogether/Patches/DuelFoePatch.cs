@@ -17,7 +17,7 @@ internal static class DuelFoePatch
     [HarmonyPatch(typeof(Chara), nameof(Chara.IsHostile), new System.Type[0])]
     internal static void OnIsHostile(Chara __instance, ref bool __result)
     {
-        if (!__result && PlayerDuel.IsFoe(__instance)) {
+        if (!__result && IsFoe(__instance)) {
             __result = true;
         }
     }
@@ -47,13 +47,13 @@ internal static class DuelFoePatch
     }
 
     /// <summary>
-    ///     A blow between the two duellists: not a blow at one of one's own ("frowns at you" after every hit)
+    ///     A blow between the two duellists (or two players of different teams, TeamPvp): not a blow at one of one's own ("frowns at you" after every hit)
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.DoHostileAction))]
     internal static bool OnHostileAction(Chara __instance, Card _tg)
     {
-        if (_tg is not Chara target || !PlayerDuel.AreDueling(__instance.uid, target.uid)) {
+        if (_tg is not Chara target || !AreFoes(__instance, target)) {
             return true;
         }
 
@@ -68,15 +68,15 @@ internal static class DuelFoePatch
     // target of the spell decides)
     internal static bool IsOwn(Card card)
     {
-        return card.IsPCFactionOrMinion && !(card is Chara chara && PlayerDuel.IsFoe(chara)) &&
-               !(Act.TC is Chara target && PlayerDuel.IsFoe(target));
+        return card.IsPCFactionOrMinion && !(card is Chara chara && IsFoe(chara)) &&
+               !(Act.TC is Chara target && IsFoe(target));
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.IsFriendOrAbove), new System.Type[0])]
     internal static void OnIsFriend(Chara __instance, ref bool __result)
     {
-        if (__result && PlayerDuel.IsFoe(__instance)) {
+        if (__result && IsFoe(__instance)) {
             __result = false;
         }
     }
@@ -107,6 +107,15 @@ internal static class DuelFoePatch
     private static bool AreFoes(Chara one, Chara? other)
     {
         // (any two duellists: on the host, two guests' blows and spells are played there)
-        return other is not null && PlayerDuel.AreDueling(one.uid, other.uid);
+        // (and two players of different teams where they fight, TeamPvp)
+        return other is not null && (PlayerDuel.AreDueling(one.uid, other.uid) || TeamPvp.AreFoes(one, other));
+    }
+
+    /// <summary>
+    ///     An enemy to this game's player: the other duellist, a player of another team (TeamPvp)
+    /// </summary>
+    private static bool IsFoe(Chara chara)
+    {
+        return PlayerDuel.IsFoe(chara) || (EClass.pc is { } pc && TeamPvp.AreFoes(pc, chara));
     }
 }

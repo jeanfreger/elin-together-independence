@@ -463,5 +463,7 @@
     "LangGeneral.emp_team_deed_mail.text": "{0}的队伍证书",
     "LangGeneral.emp_ui_sv_cfg_team_personal.text": "队伍内的个人所有权",
     "LangGeneral.emp_ui_sv_desc_team_personal.text": "玩家在队伍土地上安装的箱子、门或床归该玩家所有：队友可以打开箱子查看但不能拿取，也不能通过该门。在其菜单中选择“与队伍共享”即归还队伍。关闭时队伍土地上的东西属于整个队伍",
-    "LangGeneral.emp_team_share.text": "与队伍共享"
+    "LangGeneral.emp_team_share.text": "与队伍共享",
+    "LangGeneral.emp_ui_sv_cfg_team_pvp.text": "队伍之间的PvP",
+    "LangGeneral.emp_ui_sv_desc_team_pvp.text": "不同队伍的玩家在城镇和出生区域之外互为敌人，流浪者不与任何人战斗；只有开启玩家可以互相击杀时才会真正死亡。关闭时不同队伍的玩家不能战斗"
 }

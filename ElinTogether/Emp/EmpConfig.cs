@@ -534,6 +534,14 @@ internal partial class EmpConfig
             "Where a new player appears, and a player whose team has no base, when teams are on: start (the meadow where a new game starts), host (the host's map, as before), or the id of a zone\n" +
             "新玩家以及其队伍没有据点的玩家（启用队伍时）出现的地方：start（新游戏开始的草原）、host（主机所在地图，如前）或区域 id");
 
+        Server.TeamPvp = config.Bind(
+            "Server",
+            "TeamPvp",
+            false,
+            "Two players of different teams are enemies to each other, outside towns and the spawn zone. Wanderers fight nobody\n" +
+            "A player killed by another dies only if \"Players can kill each other\" is on. Otherwise players of different teams cannot fight\n" +
+            "不同队伍的玩家在城镇和出生区域之外互为敌人，流浪者不参与；只有开启玩家可以互相击杀时才会真正死亡。关闭时不同队伍的玩家不能战斗");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -721,6 +729,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
         internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;
         internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
+
+        internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;
