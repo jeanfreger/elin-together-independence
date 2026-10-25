@@ -29,6 +29,11 @@ internal static class ClaimZonePatch
     [HarmonyPostfix]
     internal static void OnClaimed(Zone __instance, bool __runOriginal)
     {
+        // the land is the team's of the player who read the deed
+        if (__runOriginal) {
+            Teams.OnClaimed(__instance);
+        }
+
         if (__runOriginal && NetSession.Instance.Connection is ElinNetHost { IsZoneSession: false } host) {
             CoroutineHelper.Deferred(() => host.PropagateZoneChangeState(__instance), 2);
         }

@@ -142,6 +142,32 @@ internal static class Teams
         return true;
     }
 
+    /// <summary>
+    ///     The player a claim run on the host is for: a guest's yes to a deed (<see cref="ClaimZoneDelta" />)
+    /// </summary>
+    internal static Chara? Claimer { get; set; }
+
+    /// <summary>
+    ///     A land was claimed in the game that keeps the book: it is the claimer's team's, a Wanderer's is nobody's
+    /// </summary>
+    internal static void OnClaimed(Zone zone)
+    {
+        if (!KeepsBook) {
+            return;
+        }
+
+        var claimer = Claimer ?? EClass.pc;
+        var team = TeamOf(claimer.uid);
+        if (team == Wanderers) {
+            Zones.Remove(zone.uid);
+        } else {
+            Zones[zone.uid] = team;
+        }
+
+        EmpLog.Information("Land {ZoneUid} claimed by {CharaUid}, team {TeamId}", zone.uid, claimer.uid, team);
+        Tell();
+    }
+
     private static bool Remove(int charaUid)
     {
         var id = TeamOf(charaUid);

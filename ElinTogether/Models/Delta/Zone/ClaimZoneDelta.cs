@@ -45,6 +45,11 @@ public class ClaimZoneDelta : ElinDelta
         EmpLog.Information("Land {ZoneUid} claimed for player {Uid}", ZoneUid, sender.uid);
         using var _ = Simulate();
         deed.ModNum(-1);
-        _zone.ClaimZone(false, sender.pos.GetNearestPoint(false, true, false) ?? sender.pos);
+        Teams.Claimer = sender;
+        try {
+            _zone.ClaimZone(false, sender.pos.GetNearestPoint(false, true, false) ?? sender.pos);
+        } finally {
+            Teams.Claimer = null;
+        }
     }
 }
