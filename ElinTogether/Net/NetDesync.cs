@@ -153,14 +153,15 @@ internal static class NetDesync
     private static bool _gaveUp;
 
     /// <summary>
-    ///     Sub-option, off: also bring the bag of OUR OWN character to the keeper's copy. The bags of the other
-    ///     players are copies nobody saves, ours is the one we play with: never played, see BagRepairRefused
+    ///     Also bring the bag of OUR OWN character to the keeper's copy, under the AutoResync box: the keeper's copy is
+    ///     what is saved and what a reconnect gives anyway. On since council 2026-10-25 (2nd), after resync_suite R6
+    ///     (a bag moved fast during a gap) and R6c (equip swaps, a backpack inside, an item in hand, 300 ms lag)
     /// </summary>
-    internal static bool RepairOwnBag;
+    internal static bool RepairOwnBag = true;
 
     /// <summary>
     ///     Asking again for another player's bag that differs (its copy in this game), under the AutoResync box.
-    ///     On since council 2026-10-25 (resync_suite R4); our own bag stays <see cref="RepairOwnBag" />
+    ///     On since council 2026-10-25 (resync_suite R4); our own bag: <see cref="RepairOwnBag" />
     /// </summary>
     internal static bool RepairBags = true;
 
