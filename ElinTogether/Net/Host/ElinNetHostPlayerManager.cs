@@ -141,6 +141,7 @@ internal partial class ElinNetHost
         } else {
             // remote character exists
             SendSaveProbe(chara, peer);
+            SendToSpawnZone(chara, peer, false);
         }
     }
 
@@ -196,6 +197,7 @@ internal partial class ElinNetHost
 
         SavedRemoteCharas[peer.User] = chara.uid;
         SendSaveProbe(chara, peer);
+        SendToSpawnZone(chara, peer, false);
     }
 
     /// <summary>
@@ -267,6 +269,7 @@ internal partial class ElinNetHost
         RosterOf(peer.User);
 
         SendSaveProbe(chara, peer);
+        SendToSpawnZone(chara, peer, true);
     }
 
     /// <summary>
@@ -351,6 +354,7 @@ internal partial class ElinNetHost
         RosterOf(peer.User);
 
         SendSaveProbe(chara, peer);
+        SendToSpawnZone(chara, peer, true);
     }
 
     /// <summary>

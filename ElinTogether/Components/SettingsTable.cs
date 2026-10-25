@@ -107,6 +107,12 @@ internal static class SettingsTable
         },
         i => [(EmpConfig.Server.SourceValidationSet, new[] { "", "plugins", "sources", "sources,plugins" }[i])]);
 
+    // where a new player of a world with teams appears (another zone id typed in the file reads as Custom and is kept)
+    internal static Choice SpawnZone => new("spawn_zone", ["start", "host"],
+        () => [EmpConfig.Server.SpawnZone],
+        source => source.Raw(EmpConfig.Server.SpawnZone) is string raw ? System.Array.IndexOf(new[] { "start", "host" }, raw) : -1,
+        i => [(EmpConfig.Server.SpawnZone, new[] { "start", "host" }[i])]);
+
     internal static Choice WorldMapTime => new("world_map_choice", ["SharedClock", "TravelTogether", "PersonalPace"],
         () => [EmpConfig.Server.WorldMapTime],
         source => source.Raw(EmpConfig.Server.WorldMapTime) is Net.WorldMapTime mode ? (int)mode : -1,
@@ -214,6 +220,8 @@ internal static class SettingsTable
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
@@ -261,6 +269,7 @@ internal static class SettingsTable
     internal static ConfigEntryBase[] HostRules() => [
         ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
+        EmpConfig.Server.SpawnZone,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its

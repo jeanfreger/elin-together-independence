@@ -511,6 +511,21 @@ internal partial class EmpConfig
             "Otherwise a player joins a team at once\n" +
             "申请加入队伍的玩家需等待队长在玩家列表中接受或拒绝；关闭时玩家立即加入队伍");
 
+        Server.TeamDeed = config.Bind(
+            "Server",
+            "TeamDeed",
+            true,
+            "The founder of a new team receives one land deed, once per team and once per player\n" +
+            "Otherwise a team buys its deed from the merchant as in the game\n" +
+            "新队伍的创建者获得一张土地证书，每个队伍一次、每位玩家一次；关闭时队伍如游戏中一样从商人处购买证书");
+
+        Server.SpawnZone = config.Bind(
+            "Server",
+            "SpawnZone",
+            "start",
+            "Where a new player appears, and a player whose team has no base, when teams are on: start (the meadow where a new game starts), host (the host's map, as before), or the id of a zone\n" +
+            "新玩家以及其队伍没有据点的玩家（启用队伍时）出现的地方：start（新游戏开始的草原）、host（主机所在地图，如前）或区域 id");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -695,6 +710,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> Teams { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
         internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
+        internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

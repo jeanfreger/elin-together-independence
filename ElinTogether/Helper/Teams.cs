@@ -44,6 +44,7 @@ internal static class Teams
         _owners = [];
         _requests = [];
         _told = false;
+        ElinNetHost.TeamRequests.Clear();
     }
 
     /// <summary>
@@ -118,6 +119,26 @@ internal static class Teams
     internal static int TeamOfZone(Zone? zone)
     {
         return zone is null ? Wanderers : Zones.GetValueOrDefault(zone.uid);
+    }
+
+    /// <summary>
+    ///     The team holds a land (the Wanderers hold none)
+    /// </summary>
+    internal static bool HasBase(int teamId)
+    {
+        return teamId != Wanderers && Zones.ContainsValue(teamId);
+    }
+
+    /// <summary>
+    ///     The host's spawn zone: the meadow where a new game starts, none for "the host's map", or a zone by id
+    /// </summary>
+    internal static Zone? SpawnZone()
+    {
+        return EmpConfig.Server.SpawnZone.Value switch {
+            "host" => null,
+            "start" or "" => EClass.game.StartZone,
+            var id => EClass.game.spatials.Find(id),
+        };
     }
 
     internal static int OwnerOf(Card card)
@@ -268,8 +289,38 @@ internal static class Teams
         TeamList[id] = [chara.uid, EmpConfig.Server.TeamApproval.Value ? 0 : 1, chara.uid];
         Names[id] = name.Trim();
         EmpLog.Information("Team {TeamId} {TeamName} founded by {CharaUid}", id, name, chara.uid);
+        GiveDeed(chara, id);
         Tell();
         return id;
+    }
+
+    /// <summary>
+    ///     A new team's founder receives one land deed (host option), once per team and once per player: founding
+    ///     again after leaving gives none
+    /// </summary>
+    private static void GiveDeed(Chara chara, int teamId)
+    {
+        if (!NetSession.Instance.Rules.UseTeams || !EmpConfig.Server.TeamDeed.Value || ElinNetHost.TeamDeeds.ContainsKey(teamId) ||
+            ElinNetHost.TeamDeeds.ContainsValue(chara.uid)) {
+            return;
+        }
+
+        ElinNetHost.TeamDeeds[teamId] = chara.uid;
+        var deed = ThingGen.Create("deed");
+        if (chara.IsPC) {
+            chara.Pick(deed);
+        } else if (chara.IsAliveInCurrentZone && EClass._map.charas.Contains(chara) && !chara.things.IsFull(deed)) {
+            // in its bag the way any change the host makes to a player's things reaches that player
+            using (ElinDelta.Simulate()) {
+                chara.AddThing(deed);
+            }
+        } else {
+            var parcel = ThingGen.CreateParcel(null, deed);
+            parcel.c_idRefName = "emp_team_deed_mail".Loc(chara.NameSimple);
+            EClass.world.SendPackage(parcel);
+        }
+
+        EmpLog.Information("Team {TeamId}: a land deed for its founder {CharaUid}", teamId, chara.uid);
     }
 
     /// <summary>

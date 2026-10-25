@@ -453,5 +453,12 @@
     "LangGeneral.emp_team_accept.text": "接受{0}",
     "LangGeneral.emp_team_refuse.text": "拒绝{0}",
     "LangGeneral.emp_team_now.text": "你现在属于{0}。",
-    "LangGeneral.emp_team_asks.text": "{0}申请加入{1}。"
+    "LangGeneral.emp_team_asks.text": "{0}申请加入{1}。",
+    "LangGeneral.emp_ui_sv_cfg_team_deed.text": "新队伍获得一张土地证书",
+    "LangGeneral.emp_ui_sv_desc_team_deed.text": "创建新队伍的玩家获得一张土地证书，每个队伍一次、每位玩家一次。关闭时如游戏中一样从商人处购买证书",
+    "LangGeneral.emp_ui_sv_cfg_spawn_zone.text": "新玩家出现的地方",
+    "LangGeneral.emp_ui_sv_desc_spawn_zone.text": "启用队伍时，新玩家和其队伍没有据点的玩家加入时前往此处（需要允许独自旅行）",
+    "LangGeneral.emp_ui_sv_opt_spawn_zone_start.text": "游戏开始的草原",
+    "LangGeneral.emp_ui_sv_opt_spawn_zone_host.text": "主机所在的地图",
+    "LangGeneral.emp_team_deed_mail.text": "{0}的队伍证书"
 }
