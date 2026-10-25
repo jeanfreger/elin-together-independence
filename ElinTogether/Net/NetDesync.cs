@@ -159,9 +159,10 @@ internal static class NetDesync
     internal static bool RepairOwnBag;
 
     /// <summary>
-    ///     Asking again for a bag that differs: written, never played, off until it has been seen running
+    ///     Asking again for another player's bag that differs (its copy in this game), under the AutoResync box.
+    ///     On since council 2026-10-25 (resync_suite R4); our own bag stays <see cref="RepairOwnBag" />
     /// </summary>
-    internal static bool RepairBags;
+    internal static bool RepairBags = true;
 
     // player chara uid -> next time its bag may be asked again, how often it was, what was compared then
     private static readonly Dictionary<int, float> _nextBagAsk = [];
