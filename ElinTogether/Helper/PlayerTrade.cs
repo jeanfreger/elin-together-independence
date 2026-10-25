@@ -338,6 +338,7 @@ public static class PlayerTrade
         _connection = connection;
         _game = game;
         PlayerDuel.Clear();
+        ElinTogether.Patches.TeamPvp.Clear();
 
         if (View is not null || _sessions.Count > 0) {
             Clear();

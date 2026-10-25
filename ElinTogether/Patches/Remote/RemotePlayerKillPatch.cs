@@ -64,6 +64,7 @@ internal static class RemotePlayerKillPatch
         if (tags is not null) {
             card.c_editorTags = tags.Length == 0 ? null : tags;
             PlayerDuel.Struck(card, origin);
+            TeamPvp.Struck(card, origin);
         }
     }
 

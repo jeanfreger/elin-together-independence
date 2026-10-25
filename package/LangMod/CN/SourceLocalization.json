@@ -469,5 +469,6 @@
     "LangGeneral.emp_ui_sv_cfg_public_game.text": "公开游戏",
     "LangGeneral.emp_ui_sv_desc_public_game.text": "任何在游戏列表中找到该游戏的人都可以加入，而不仅是主机的 Steam 好友和受邀玩家。自动开启的游戏（仓库、共享世界）仍只允许其世界的玩家。关闭：仅好友和受邀玩家",
     "LangGeneral.emp_ui_sv_cfg_look_mods_own.text": "仅外观模组：各玩家自己的",
-    "LangGeneral.emp_ui_sv_desc_look_mods_own.text": "只改变外观的模组（图片、肖像、声音、翻译：没有代码、物品或地图）不要求加入的玩家安装：没有人会为此重启，每位玩家保留自己的。关闭：加入的玩家需要主机的所有模组"
+    "LangGeneral.emp_ui_sv_desc_look_mods_own.text": "只改变外观的模组（图片、肖像、声音、翻译：没有代码、物品或地图）不要求加入的玩家安装：没有人会为此重启，每位玩家保留自己的。关闭：加入的玩家需要主机的所有模组",
+    "LangGeneral.emp_team_beaten.text": "{0}被{1}击败了。"
 }

@@ -172,6 +172,7 @@ namespace ElinTogether.Models;
 [Union(976, typeof(RelicSlotRequest))]
 [Union(977, typeof(MiscreationRequest))]
 // Teams
+[Union(978, typeof(TeamBeatenDelta))]
 [Union(980, typeof(TeamsDelta))]
 [Union(981, typeof(TeamRequestDelta))]
 [Union(982, typeof(TeamSpawnDelta))]
