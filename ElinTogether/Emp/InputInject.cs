@@ -95,6 +95,12 @@ public static class InputInject
         }
 
         if (_pointer is { } at) {
+            // a test left before its clicks were taken, and the player went to another map: dropped
+            if (!new Point(at.X, at.Z).IsValid) {
+                Clear();
+                return;
+            }
+
             Aim(at.X, at.Z);
         }
 
@@ -116,6 +122,11 @@ public static class InputInject
         var button = step.Right ? EInput.rightMouse : EInput.leftMouse;
         switch (step.Kind) {
             case Kind.Point:
+                if (!new Point(step.X, step.Z).IsValid) {
+                    Clear();
+                    return;
+                }
+
                 _pointer = (step.X, step.Z);
                 Aim(step.X, step.Z);
                 if (EClass.scene.actionMode is AM_Adv adv) {
