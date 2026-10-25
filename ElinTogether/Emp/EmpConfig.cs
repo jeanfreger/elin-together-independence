@@ -487,6 +487,22 @@ internal partial class EmpConfig
             "Wedding, divorce and the lost ring deed work for that character only. Otherwise, as before, a guest's marriage stays in its own game\n" +
             "每位玩家都可以结婚：居民是与之结婚的角色的配偶，先求婚者优先，主机在存档中记录；婚礼、离婚和遗失戒指证书只对该角色有效。关闭时如以前一样，客人的婚姻只存在于其自己的游戏中");
 
+        Server.Teams = config.Bind(
+            "Server",
+            "Teams",
+            false,
+            "Players can be in teams: the host keeps who is in which team in its save. A player in no team is a Wanderer\n" +
+            "Otherwise there are no teams and everything is as before\n" +
+            "玩家可以组队：主机在存档中记录谁属于哪个队伍。不属于任何队伍的玩家是流浪者；关闭时没有队伍，一切如前");
+
+        Server.TeamBases = config.Bind(
+            "Server",
+            "TeamBases",
+            false,
+            "A base belongs to the team of the player who claimed it: the players of another team cannot open its chests, pick up its things, build there or manage it\n" +
+            "Otherwise every player uses every base as before\n" +
+            "据点属于认领它的玩家所在的队伍：其他队伍的玩家不能打开其箱子、拾取物品、建造或管理据点；关闭时所有玩家如前使用所有据点");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -668,6 +684,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> GuestLandingPortal { get; set; } = null!;
         internal static ConfigEntry<bool> GuestSkyHelm { get; set; } = null!;
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;
+        internal static ConfigEntry<bool> Teams { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

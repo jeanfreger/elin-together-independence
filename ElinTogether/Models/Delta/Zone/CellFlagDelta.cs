@@ -33,7 +33,7 @@ public class CellFlagDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net is not ElinNetHost host || !host.ActiveRemoteCharas.ContainsKey(OriginPeer) || !NetSession.Instance.Rules.GuestsBuild || _zone?.uid != ZoneUid ||
+        if (net is not ElinNetHost host || !host.ActiveRemoteCharas.ContainsKey(OriginPeer) || !NetSession.Instance.Rules.GuestsBuild || Teams.RefusesPeer(host, OriginPeer) || _zone?.uid != ZoneUid ||
             _map is not { } map || X < 0 || Z < 0 || X >= map.Size || Z >= map.Size || Flag is not (1 or 2 or 4 or 8 or 16)) {
             return;
         }

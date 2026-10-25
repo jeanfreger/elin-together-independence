@@ -70,6 +70,14 @@ public class ThingRequest : ElinDelta
             return;
         }
 
+        // a chest or the ground of another team's land (Teams)
+        if (net is ElinNetHost land && land.ActiveRemoteCharas.TryGetValue(OriginPeer, out var taker) && !Teams.CanTake(taker, thing)) {
+            EmpLog.Warning("Rejecting ThingRequest {RequestId} from peer {PeerIndex}, uid {Uid} belongs to another team",
+                Id, OriginPeer, thing.uid);
+            Respond(net, null);
+            return;
+        }
+
         // a limited item of a shop: no more than what is left of it for that player (its own game says no first,
         // when it knows; see LimitedStockPatch)
         var num = Math.Min(Num, thing.Num);

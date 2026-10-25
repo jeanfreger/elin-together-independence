@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -70,7 +71,7 @@ public class AgentTaskDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (net is not ElinNetHost host || !NetSession.Instance.Rules.GuestsBuild ||
-            !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
+            !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) || !Teams.CanTouch(sender, _zone) ||
             Args.CreateSubAct() is not TaskDesignation task || !task.pos.IsValid) {
             return;
         }

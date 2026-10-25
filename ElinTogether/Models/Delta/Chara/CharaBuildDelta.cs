@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -37,6 +38,11 @@ public class CharaBuildDelta : ElinDelta
         // only the host manages the base: a player's held object is not put down on it. Nothing to undo: the client does
         // not put it down itself, it waits for what the host sends back, and the object stays in its bag
         if (net is ElinNetHost { IsZoneSession: false } && NetSession.Instance.Rules.HostManagesBase && _zone.IsPCFaction) {
+            return;
+        }
+
+        // nor on the land of another team (Teams)
+        if (net is ElinNetHost builder && Teams.RefusesPeer(builder, OriginPeer)) {
             return;
         }
 
