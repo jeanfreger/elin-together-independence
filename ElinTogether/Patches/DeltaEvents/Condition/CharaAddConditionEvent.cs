@@ -53,6 +53,17 @@ internal static class CharaAddConditionEvent
             });
         }
 
+        // what heavy rain does to this game's player, rolled here with its own feat (HeavyRainPatch)
+        if (HeavyRainPatch.InOwnStorm && __instance.IsPC && c is ConConfuse or ConBlind && !ElinDelta.IsApplying &&
+            NetSession.Instance.Connection is ElinNetClient wet) {
+            wet.Delta.AddRemote(new CharaAddConditionDelta {
+                Owner = __instance,
+                ConditionId = c.id,
+                Power = c.power,
+                Force = force,
+            });
+        }
+
         // the priestess' blessing, given when this game's dialog closes to the player and its companions (not to
         // the other players of the party): the host gives it, and sets it as a perfume as the dialog does. Nothing
         // else adds these three on this side at that moment
