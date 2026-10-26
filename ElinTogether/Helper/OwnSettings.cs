@@ -90,6 +90,7 @@ internal static class OwnSettings
                 Flags = DialogFlagSync.OwnFlags(player),
                 Deepest = player.stats.deepest,
                 DeepestVoid = player.stats.deepestVoid,
+                LastChuryu = player.stats.lastChuryu,
                 SeedFortune = player.seedFortune,
                 LuckyCoin = player.luckycoin,
                 LastFelmeraReward = player.lastFelmeraReward,
@@ -183,6 +184,10 @@ internal static class OwnSettings
             // the depth reached is this player's own (see BossWinDelta), not the host's
             player.stats.deepest = kept?.Deepest ?? 0;
             player.stats.deepestVoid = kept?.DeepestVoid ?? 0;
+            // and the count of cats it brought along (hunt 5, H5-15): shown by the "nyan" key until the next
+            // Player.UpdateNyan. (The "you have played N hours" count, Player.realHour, is static: per process, so
+            // already the player's own)
+            player.stats.lastChuryu = kept?.LastChuryu ?? 0;
             // so are its fortune rolls and lucky coins (see FortuneCountersDelta)
             player.seedFortune = kept?.SeedFortune ?? 0;
             player.luckycoin = kept?.LuckyCoin ?? 0;
@@ -440,6 +445,7 @@ internal static class OwnSettings
         public Dictionary<string, int>? Flags;
         public int Deepest;
         public int DeepestVoid;
+        public int LastChuryu;
         public int SeedFortune;
         public int LuckyCoin;
         public int LastFelmeraReward;
