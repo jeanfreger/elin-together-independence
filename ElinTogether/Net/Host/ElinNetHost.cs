@@ -154,12 +154,24 @@ internal partial class ElinNetHost : ElinNetBase
         Socket.Broadcast.Send(packet);
     }
 
+    private const float AwayGoneSeconds = 2f;
+
+    // away peer id -> when its link was first seen closed
+    private readonly Dictionary<int, float> _awayGoneAt = [];
+
     protected void DisconnectInactive()
     {
         foreach (var peer in Socket.Peers) {
             if (IsAway(peer)) {
-                // away players have no tick state, drop them as soon as the transport is gone
-                if (!peer.IsConnected) {
+                // away players have no tick state, drop them once the transport is gone. Not at once: a player that
+                // quits closes its link with its reason, which comes a little after the link shows closed; dropped
+                // here first, its leave read as a lost link (2026-10-26)
+                if (peer.IsConnected) {
+                    _awayGoneAt.Remove(peer.Id);
+                } else if (!_awayGoneAt.TryGetValue(peer.Id, out var gone)) {
+                    _awayGoneAt[peer.Id] = UnityEngine.Time.realtimeSinceStartup;
+                } else if (UnityEngine.Time.realtimeSinceStartup - gone > AwayGoneSeconds) {
+                    _awayGoneAt.Remove(peer.Id);
                     Socket.Disconnect(peer, EmpDisconnectInfo.InactivePeer);
                 }
 
