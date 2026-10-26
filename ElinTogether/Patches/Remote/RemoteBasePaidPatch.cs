@@ -45,7 +45,7 @@ internal static class RemoteBasePaidPatch
             SE.Beep();
         }
 
-        EmpPop.Information("emp_base_host_only".lang());
+        EmpPop.Pop("emp_base_host_only".lang());
     }
 
     /// <summary>

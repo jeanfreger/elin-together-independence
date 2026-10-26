@@ -200,7 +200,7 @@ internal static class ModList
     {
         var absent = diff.Missing.Concat(diff.Unfetchable).ToList();
         if (absent.Count > 0) {
-            EmpPop.Information("emp_ui_mods_world".Loc(absent.Count, Names(absent)));
+            EmpPop.Block("emp_ui_mods_world".Loc(absent.Count, Names(absent)));
         }
     }
 

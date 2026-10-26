@@ -744,7 +744,7 @@ internal partial class ElinNetClient
         }
 
         _pendingTravel = null;
-        EmpPop.Information(denied.Reason.lang());
+        EmpPop.Pop(denied.Reason.lang());
 
         // refused after leaving our place to join another player: back to the host
         if (_pendingGrant is not null) {

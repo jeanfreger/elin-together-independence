@@ -327,7 +327,7 @@ internal static class ModFetch
 
         // the list of the session is written: Elin closes, and starts again by itself where it can
         var restarts = Relaunch();
-        EmpPop.Information((restarts ? "emp_ui_mods_restart" : "emp_ui_mods_restart_manual").lang());
+        EmpPop.Block((restarts ? "emp_ui_mods_restart" : "emp_ui_mods_restart_manual").lang());
         yield return new WaitForSecondsRealtime(restarts ? 3f : 8f);
         if (EClass.core.IsGameStarted) {
             // the player started a game meanwhile: it goes on, and its own list is back
@@ -355,7 +355,7 @@ internal static class ModFetch
         _busy = false;
         _done = true;
         EmpLog.Warning("The mods of the game were not fetched: {Why}", why);
-        EmpPop.Information("emp_ui_mods_fetch_failed".lang());
+        EmpPop.Block("emp_ui_mods_fetch_failed".lang());
         EClass.core.actionsNextFrame.Add(() => {
             if (!EClass.core.IsGameStarted) {
                 Return(returnTo);
@@ -670,7 +670,7 @@ internal static class ModFetch
     // prefix of ModManager.SaveLoadOrder, in a session only (Boot)
     private static bool KeepPlayerList()
     {
-        EmpPop.Information("emp_ui_mods_session_locked".lang());
+        EmpPop.Block("emp_ui_mods_session_locked".lang());
         return false;
     }
 }

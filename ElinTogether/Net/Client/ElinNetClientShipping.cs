@@ -139,7 +139,7 @@ internal partial class ElinNetClient
 
             EmpLog.Debug("Took {CardId} x{CardNum} out of world box {Box}", thing.id, thing.Num, content.Box);
         } else if (content.Asked > 0 && mirrors) {
-            EmpPop.Information("emp_ui_thing_gone".lang());
+            EmpPop.Pop("emp_ui_thing_gone".lang());
         }
 
         if (!mirrors || content.BoxThings is null || ShippingHelper.WorldBox(content.Box) is not { } container) {

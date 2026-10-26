@@ -38,7 +38,7 @@ internal static class RemoteBuildModePatch
         // terrain and fill modes click again every frame while the button is held: say it once per press
         if (!EInput.leftMouse.pressing || EInput.leftMouse.down) {
             SE.Beep();
-            EmpPop.Information("emp_base_host_only".lang());
+            EmpPop.Pop("emp_base_host_only".lang());
         }
 
         return false;

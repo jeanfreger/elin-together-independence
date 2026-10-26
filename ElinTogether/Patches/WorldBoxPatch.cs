@@ -25,7 +25,7 @@ internal static class WorldBoxPatch
 
         if (!client.AskWorldBox(box)) {
             // with other players in a zone away from the host: what goes in arrives, nothing shows
-            EmpPop.Information("emp_ui_box_far".lang());
+            EmpPop.Pop("emp_ui_box_far".lang());
         }
     }
 

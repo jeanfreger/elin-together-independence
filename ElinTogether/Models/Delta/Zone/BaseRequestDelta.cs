@@ -121,7 +121,7 @@ public class BaseRequestDelta : ElinDelta
 
         if (_waiting && UnityEngine.Time.realtimeSinceStartup - _sentAt < WaitSeconds) {
             SE.Beep();
-            EmpPop.Information("emp_base_pending".lang());
+            EmpPop.Pop("emp_base_pending".lang());
             return;
         }
 
@@ -346,7 +346,7 @@ public class BaseRequestDelta : ElinDelta
         _waiting = false;
         if (Answer == BaseAnswer.Refused) {
             SE.Beep();
-            EmpPop.Information("emp_base_refused".lang());
+            EmpPop.Pop("emp_base_refused".lang());
             return;
         }
 

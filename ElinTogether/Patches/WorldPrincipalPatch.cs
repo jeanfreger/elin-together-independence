@@ -20,7 +20,7 @@ internal static class WorldPrincipalPatch
         }
 
         if (JsonConvert.SerializeObject(__instance.pp) != JsonConvert.SerializeObject(EClass.game.principal)) {
-            EmpPop.Information("emp_world_setting_host".lang());
+            EmpPop.Pop("emp_world_setting_host".lang());
         }
 
         return false;

@@ -67,7 +67,7 @@ internal partial class ElinNetClient : ElinNetBase
             NetReconnect.Begin();
             // coming back by itself says so on its own
             if (!NetReconnect.Active) {
-                EmpPop.Information((IsDirectConnection ? "emp_ui_timeout" : "emp_ui_timeout_steam").lang());
+                EmpPop.Block((IsDirectConnection ? "emp_ui_timeout" : "emp_ui_timeout_steam").lang());
             }
 
             EndSession(EmpDisconnectInfo.Timeout);
@@ -205,7 +205,12 @@ internal partial class ElinNetClient : ElinNetBase
     protected override void OnPeerConnected(ISteamNetPeer host)
     {
         if (!host.IsConnected) {
-            EmpPop.Information("emp_error_connection".lang());
+            // (an attempt among others while coming back by itself, see NetReconnect: only the give-up blocks)
+            if (NetReconnect.Active) {
+                EmpPop.Information("emp_error_connection".lang());
+            } else {
+                EmpPop.Block("emp_error_connection".lang());
+            }
             EndSession(EmpDisconnectInfo.RemoteClosed);
             return;
         }
@@ -259,8 +264,14 @@ internal partial class ElinNetClient : ElinNetBase
         Session.ResetSession();
 
         // coming back by itself says so on its own
+        // (blocks only when the player is turned away: its own way out, which closes the link as HostShutdown, or a
+        // cancel of its own, is a line of the log; a dialog there stood in the way of joining again, 2026-10-26)
         if (!NetReconnect.Active) {
-            EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
+            if (reason is EmpDisconnectInfo.HostShutdown or EmpDisconnectInfo.ClientCancel) {
+                EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
+            } else {
+                EmpPop.Block("emp_disconnected_host".Loc(disconnectInfo));
+            }
         }
     }
 

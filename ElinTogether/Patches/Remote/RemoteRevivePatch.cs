@@ -55,7 +55,7 @@ internal static class RemoteRevivePatch
         // the host in a guest's zone cannot ask the world's host: refused, as the base's plans are
         if (client.IsZoneSession) {
             SE.Beep();
-            EmpPop.Information("emp_base_host_only".lang());
+            EmpPop.Pop("emp_base_host_only".lang());
             return false;
         }
 

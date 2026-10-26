@@ -28,7 +28,7 @@ internal static class BlockClientQuestPatch
             return true;
         }
 
-        EmpPop.Information("emp_ui_quest_client".lang());
+        EmpPop.Pop("emp_ui_quest_client".lang());
         return false;
     }
 }

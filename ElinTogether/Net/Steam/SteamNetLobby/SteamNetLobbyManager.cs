@@ -281,7 +281,7 @@ public class SteamNetLobbyManager : EClass
 
             // opened by itself: a player alone and offline would get this window at every load
             if (!_quiet) {
-                EmpPop.Information("emp_lobby_create_failed".lang(), created.m_eResult);
+                EmpPop.Block("emp_lobby_create_failed".lang(), created.m_eResult);
             }
 
             NetSession.Instance.ResetSession();
@@ -354,7 +354,7 @@ public class SteamNetLobbyManager : EClass
 
             // an attempt among others while coming back by itself, see NetReconnect
             if (!NetReconnect.Active) {
-                EmpPop.Information("emp_lobby_enter_failed".lang(), enter.Response);
+                EmpPop.Block("emp_lobby_enter_failed".lang(), enter.Response);
             }
 
             return;

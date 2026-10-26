@@ -58,7 +58,7 @@ internal static class InvTransactionEvent
 
                 __instance.thing = thing;
                 __instance.Process(startTransaction);
-            }, () => EmpPop.Information("emp_ui_thing_gone".lang()));
+            }, () => EmpPop.Pop("emp_ui_thing_gone".lang()));
 
         return false;
     }
