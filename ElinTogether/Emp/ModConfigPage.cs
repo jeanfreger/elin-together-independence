@@ -1,6 +1,7 @@
 using System.Linq;
 using BepInEx.Configuration;
 using ElinTogether.Components;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 
 namespace ElinTogether;
@@ -49,17 +50,20 @@ internal static class ModConfigPage
         // the host's rules: not while playing in someone else's game, where the host's apply (the mod's own window
         // shows them only to the host too)
         if (NetSession.Instance.Transport is not ElinNetClient) {
-            note.AddHeader("emp_ui_sv_note_live".lang());
+            note.AddText("emp_ui_sv_note_live".lang());
 
             var preset = SettingsTable.Preset(RuleSource.Current);
             Dropdown(note, "emp_ui_sv_cfg_preset", [..SettingsTable.Presets.Select(p => $"emp_ui_sv_opt_preset_{p}".lang())], preset,
                 SettingsTable.ApplyPreset);
             note.AddText(TabServerConfiguration.PresetText(preset));
-            if (preset != 0) {
-                note.AddButton("emp_ui_sv_reset".lang(), () => SettingsTable.ApplyPreset(0));
-            }
-            if (SettingsTable.CanUndo) {
-                note.AddButton("emp_ui_sv_undo".lang(), SettingsTable.Undo);
+            if (preset != 0 || SettingsTable.CanUndo) {
+                var buttons = UIHelper.NoteButtonRow(note);
+                if (preset != 0) {
+                    note.AddButton("emp_ui_sv_reset".lang(), () => SettingsTable.ApplyPreset(0)).InRow(buttons);
+                }
+                if (SettingsTable.CanUndo) {
+                    note.AddButton("emp_ui_sv_undo".lang(), SettingsTable.Undo).InRow(buttons);
+                }
             }
             note.AddToggle("emp_ui_sv_advanced", TabServerConfiguration.ShowAdvanced, value => {
                 TabServerConfiguration.ShowAdvanced = value;

@@ -28,26 +28,25 @@ internal class TabServerConfiguration : TabEmpBase
         // how we play together: the preset these rules make, what differs from the recommended ones
         var top = Section("preset");
         var preset = SettingsTable.Preset(RuleSource.Current);
-        var line = top.Horizontal();
-        line.Layout.childForceExpandWidth = true;
-        line.Text("emp_ui_sv_cfg_preset".lang());
-        line.Dropdown([..SettingsTable.Presets.Select(p => $"emp_ui_sv_opt_preset_{p}".lang())], SettingsTable.ApplyPreset, preset)
-            .LayoutElement().preferredWidth = 360f;
-        top.TextSmall(PresetText(preset));
+        var presetGroup = top.RowGroup();
+        presetGroup.DropdownRow("emp_ui_sv_cfg_preset".lang(), [..SettingsTable.Presets.Select(p => $"emp_ui_sv_opt_preset_{p}".lang())],
+            SettingsTable.ApplyPreset, preset);
+        presetGroup.TextSmall(PresetText(preset));
 
-        var buttons = top.Horizontal();
-        buttons.Layout.childForceExpandWidth = true;
-        if (preset != 0) {
-            buttons.Button("emp_ui_sv_reset".lang(), () => SettingsTable.ApplyPreset(0));
-        }
-        if (SettingsTable.CanUndo) {
-            buttons.Button("emp_ui_sv_undo".lang(), SettingsTable.Undo);
+        if (preset != 0 || SettingsTable.CanUndo) {
+            var buttons = top.ButtonRow();
+            if (preset != 0) {
+                buttons.RowButton("emp_ui_sv_reset".lang(), () => SettingsTable.ApplyPreset(0));
+            }
+            if (SettingsTable.CanUndo) {
+                buttons.RowButton("emp_ui_sv_undo".lang(), SettingsTable.Undo);
+            }
         }
 
         top.Toggle("emp_ui_sv_advanced", ShowAdvanced, value => {
             ShowAdvanced = value;
             LayerElinTogether.Instance?.Reopen();
-        });
+        }).AsRow();
 
         var rows = SettingsTable.Rows().Where(r => ShowAdvanced || !r.Advanced).ToList();
         foreach (var id in SettingsTable.Cards) {
@@ -58,7 +57,7 @@ internal class TabServerConfiguration : TabEmpBase
 
             var card = Section(id);
             foreach (var row in inCard) {
-                Draw(row.Under is null ? card : Indented(card), row);
+                Draw(card.RowGroup(row.Under is not null), row);
             }
         }
     }
@@ -81,17 +80,8 @@ internal class TabServerConfiguration : TabEmpBase
     private YKVertical Section(string id)
     {
         var card = this.MakeCard();
-        card.Layout.padding = new(20, 20, 8, 10);
         card.HeaderSmall($"emp_ui_sv_sec_{id}".lang());
         return card;
-    }
-
-    // the boxes of a choice, under it
-    private static YKVertical Indented(YKVertical card)
-    {
-        var sub = card.Vertical();
-        sub.Layout.padding = new(40, 0, 0, 0);
-        return sub;
     }
 
     /// <summary>
@@ -102,20 +92,16 @@ internal class TabServerConfiguration : TabEmpBase
     {
         switch (row) {
             case { Choice: { } choice }:
-                var line = card.Horizontal();
-                line.Layout.childForceExpandWidth = true;
-                line.Text(row.Label);
                 var current = choice.Read(RuleSource.Current);
                 var options = Enumerable.Range(0, choice.Options.Length).Select(choice.OptionLabel).ToList();
                 // (boxes that match no option: shown as such, never rewritten until the host picks one)
                 if (current < 0) {
                     options.Add(choice.OptionLabel(-1));
                 }
-                var dropdown = line.Dropdown(options, i => SettingsTable.Write(choice.WriteFor(i)), current < 0 ? options.Count - 1 : current);
-                dropdown.LayoutElement().preferredWidth = 360f;
+                card.DropdownRow(row.Label, options, i => SettingsTable.Write(choice.WriteFor(i)), current < 0 ? options.Count - 1 : current);
                 break;
             case { Entry: { } entry }:
-                var toggle = card.Toggle($"emp_ui_sv_cfg_{row.Id}", entry.Value, value => SettingsTable.Write([(entry, value)]));
+                var toggle = card.Toggle($"emp_ui_sv_cfg_{row.Id}", entry.Value, value => SettingsTable.Write([(entry, value)])).AsRow();
                 toggle.SetTooltipLang($"emp_ui_sv_desc_{row.Id}");
                 // greyed while what it needs is off (the page is drawn again when that changes)
                 if (row.Requires is { } requires) {
@@ -129,7 +115,7 @@ internal class TabServerConfiguration : TabEmpBase
                 // the count of unpaid tax bills against the bills that exist (ElinNetHost.RepairBillCount), in game
                 if (EClass.core.IsGameStarted && NetSession.Instance.Transport is ElinNetHost) {
                     var (count, found) = (EClass.player.taxBills, ElinNetHost.CountTaxBills());
-                    card.Button("emp_ui_sv_bills".Loc(count, found), () => {
+                    card.ButtonRow().RowButton("emp_ui_sv_bills".Loc(count, found), () => {
                         var off = ElinNetHost.RepairBillCount(true);
                         EmpPop.Information((off > 0 ? "emp_ui_sv_bills_done" : "emp_ui_sv_bills_none").Loc(off));
                         LayerElinTogether.Instance?.Reopen();

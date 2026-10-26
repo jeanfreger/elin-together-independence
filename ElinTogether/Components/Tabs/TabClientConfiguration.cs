@@ -20,7 +20,7 @@ internal class TabClientConfiguration : TabEmpBase
             key = KeyCode.P,
             required = true,
         };
-        Row(controls).Button("emp_ui_ping_keymap".Loc(pingKey.key.ToString()), () => {
+        controls.ButtonRow().RowButton("emp_ui_ping_keymap".Loc(pingKey.key.ToString()), () => {
             var l = global::Layer.Create<Dialog>("DialogKeymap");
             l.textDetail.SetText("dialog_keymap".lang("emp_ui_ping_action".lang()));
             l.keymap = pingKey;
@@ -35,24 +35,27 @@ internal class TabClientConfiguration : TabEmpBase
         // Workshop mods: the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
         var mods = Card("mods");
         var fetch = EmpConfig.Client.FetchMods;
-        mods.Toggle("emp_ui_cl_fetch_mods", fetch.Value, value => fetch.Value = value)
+        var fetchGroup = mods.RowGroup();
+        fetchGroup.Toggle("emp_ui_cl_fetch_mods", fetch.Value, value => fetch.Value = value).AsRow()
             .SetTooltipLang(fetch.Description.Description);
-        mods.TextSmall("emp_ui_cl_desc_fetch_mods".lang());
+        fetchGroup.TextSmall("emp_ui_cl_desc_fetch_mods".lang());
 
         // ... and kept: subscribed to, on in the player's own list, so that the next join needs no restart
         // (keeping them means nothing without fetching them: greyed out until then)
         var keep = EmpConfig.Client.KeepMods;
-        var keepToggle = mods.Toggle("emp_ui_cl_keep_mods", keep.Value, value => keep.Value = value);
+        var keepGroup = mods.RowGroup(true);
+        var keepToggle = keepGroup.Toggle("emp_ui_cl_keep_mods", keep.Value, value => keep.Value = value).AsRow();
         keepToggle.SetTooltipLang(keep.Description.Description);
         keepToggle.interactable = fetch.Value;
-        mods.TextSmall("emp_ui_cl_desc_keep_mods".lang());
+        keepGroup.TextSmall("emp_ui_cl_desc_keep_mods".lang());
 
         // Shared save folder (the depot): optional, not needed to play together
         var folder = Card("depot");
         folder.TextSmall("emp_ui_cl_desc_depot".lang());
 
         var depot = EmpConfig.Client.DepotPath;
-        Row(folder).Button("emp_ui_depot_folder".lang(), () => {
+        var depotGroup = folder.RowGroup();
+        depotGroup.ButtonRow().RowButton("emp_ui_depot_folder".lang(), () => {
             Dialog.InputName("emp_ui_depot_folder_ask", depot.Value, (cancel, text) => {
                 if (!cancel) {
                     depot.Value = text.Trim();
@@ -60,10 +63,11 @@ internal class TabClientConfiguration : TabEmpBase
                 }
             }).input.field.characterLimit = 0;
         }).SetTooltipLang(depot.Description.Description);
-        folder.Text(depot.Value.Length > 0 ? depot.Value : "-");
+        depotGroup.TextSmall(depot.Value.Length > 0 ? depot.Value : "-");
 
         var password = EmpConfig.Client.DepotPassword;
-        Row(folder).Button("emp_ui_depot_password".lang(), () => {
+        var passwordGroup = folder.RowGroup();
+        passwordGroup.ButtonRow().RowButton("emp_ui_depot_password".lang(), () => {
             // a password or an access key is never shown again: the box opens empty. Left empty, a GitHub key is
             // kept (a depot of Elin Together Server may have no password: there, empty removes it)
             Dialog.InputName("emp_ui_depot_password_ask", "", (cancel, text) => {
@@ -73,7 +77,7 @@ internal class TabClientConfiguration : TabEmpBase
                 }
             }).input.field.characterLimit = 0;
         }).SetTooltipLang(password.Description.Description);
-        folder.Text(password.Value.Length > 0 ? "***" : "-");
+        passwordGroup.TextSmall(password.Value.Length > 0 ? "***" : "-");
 
         // how a private GitHub repository becomes the depot, where it is set
         // (one text per line: a text with line breaks was measured one line high and drew over the rows above it)
@@ -83,7 +87,7 @@ internal class TabClientConfiguration : TabEmpBase
 
         // Help: something went wrong, one zip to send, with the game's own log in it
         var help = Card("help");
-        Row(help).Button("emp_ui_report".lang(), () => {
+        help.ButtonRow().RowButton("emp_ui_report".lang(), () => {
             if (BugReport.Make() is { } path) {
                 EmpPop.Information("emp_ui_report_done".Loc(path));
                 Util.ShowExplorer(path);
@@ -97,15 +101,7 @@ internal class TabClientConfiguration : TabEmpBase
     private YKVertical Card(string id)
     {
         var card = this.MakeCard();
-        card.Layout.padding = new(20, 20, 8, 10);
         card.HeaderSmall($"emp_ui_cl_sec_{id}".lang());
         return card;
-    }
-
-    private static YKHorizontal Row(YKVertical card)
-    {
-        var row = card.Horizontal();
-        row.Layout.childForceExpandWidth = true;
-        return row;
     }
 }

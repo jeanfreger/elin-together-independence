@@ -23,11 +23,10 @@ internal class TabSessionInfo : TabEmpBase
         }
 
         var card = this.MakeCard();
-        card.Layout.padding = new(20, 20, 8, 10);
         card.HeaderSmall("emp_ui_rules_title".lang());
         card.TextSmall("emp_ui_rules_note".lang());
         foreach (var (label, value) in SettingsTable.RuleLines(SettingsTable.FromRules(NetSession.Instance.Rules))) {
-            card.Text("emp_ui_rules_line".Loc(label, value));
+            card.TextSmall("emp_ui_rules_line".Loc(label, value));
         }
         if (SettingsTable.LastNotice is { } notice) {
             card.TextSmall(notice);
@@ -36,15 +35,17 @@ internal class TabSessionInfo : TabEmpBase
 
     private void BuildPlayerList()
     {
-        Header("emp_ui_connected_players");
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_connected_players".lang());
 
         foreach (var player in NetSession.Instance.CurrentPlayers) {
-            BuildPlayerLine(this, player);
+            BuildPlayerLine(card, player);
         }
     }
 
     /// <summary>
-    ///     One line per player (council 2026-10-26): name, ping (or the host marker), and that player's own buttons
+    ///     One line per player (council 2026-10-26): name, ping (or the host marker), and under it that player's own
+    ///     buttons
     /// </summary>
     private void BuildPlayerLine(YKLayout parent, NetPeerState player)
     {
@@ -54,18 +55,13 @@ internal class TabSessionInfo : TabEmpBase
             return;
         }
 
-        var line = parent.Horizontal();
-        line.Layout.childForceExpandWidth = false;
-        line.Layout.childAlignment = TextAnchor.MiddleLeft;
-        line.Layout.spacing = 10f;
-
         var label = player.User.Name.TagColor(PeerColorizer.GetColor(player.Index)) + "  " + chara.Name;
         if (NetSession.Instance.Rules.UseTeams) {
             label += "  " + Teams.NameOf(Teams.TeamOf(chara.uid));
         }
         // (the ping text of index 0 is the host marker: "Ping - (host)")
         label += "  " + BuildPingStat(player);
-        line.Text(label).LayoutElement().flexibleWidth = 1f;
+        parent.Text(label);
 
         // Kick: the host, on a guest's line. Reconnect: a guest's own line only, or the host on a guest's line
         // (IsHost also reads true on an away client, and reconnecting would drop its zone)
@@ -77,9 +73,10 @@ internal class TabSessionInfo : TabEmpBase
             return;
         }
 
-        line.Button("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index)).LayoutElement().preferredWidth = 150f;
+        var buttons = parent.ButtonRow();
+        buttons.RowButton("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
         if (isHost) {
-            line.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index)).LayoutElement().preferredWidth = 110f;
+            buttons.RowButton("emp_ui_kick".lang(), () => KickPlayer(player.Index));
         }
     }
 

@@ -14,22 +14,12 @@ internal class TabLobbyBrowser : TabEmpBase
     {
         BuildNetButtons();
         BuildLobbyList();
-
-        // normal-size buttons: a width of their own, not the full row
-        foreach (var row in _buttonRows) {
-            foreach (var button in row.GetComponentsInChildren<UnityEngine.UI.Button>(true)) {
-                var element = button.GetComponent<UnityEngine.UI.LayoutElement>() ?? button.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
-                element.preferredWidth = 220f;
-                element.flexibleWidth = 0f;
-            }
-        }
     }
-
-    private readonly System.Collections.Generic.List<YKHorizontal> _buttonRows = new();
 
     private void BuildNetButtons()
     {
-        var btnGroup = NormalButtonRow();
+        var card = this.MakeCard();
+        var btnGroup = card.ButtonRow();
 
         if (!EClass.core.IsGameStarted) {
             // the world kept in the depot: whoever comes first takes it and hosts it
@@ -37,14 +27,14 @@ internal class TabLobbyBrowser : TabEmpBase
                 // held by another player whose lock says where: the same click joins their game
                 var label = SaveDepot.HeldBy() is not { } who ? "emp_ui_depot_take".lang() :
                     (SaveDepot.Joinable ? "emp_ui_depot_join_btn" : "emp_ui_depot_held_btn").Loc(who);
-                btnGroup.Button(label, () => {
+                btnGroup.RowButton(label, () => {
                     LayerElinTogether.Instance?.Close();
                     SaveDepot.Take();
                 });
             }
 
             // a server: a game nobody plays, started with -empserver, joined by its address
-            btnGroup.Button("emp_ui_join_address".lang(), () => {
+            btnGroup.RowButton("emp_ui_join_address".lang(), () => {
                 var last = EmpConfig.Client.ServerAddress;
                 Dialog.InputName("emp_ui_join_address_ask", last.Value.Length > 0 ? last.Value : "127.0.0.1:55556", (cancel, text) => {
                     if (cancel || text.Trim().Length == 0) {
@@ -61,36 +51,23 @@ internal class TabLobbyBrowser : TabEmpBase
         }
 
         if (NetSession.Instance.Transport == null) {
-            btnGroup.Button("emp_ui_sv_start".lang(), StartServerFromPanel);
+            btnGroup.RowButton("emp_ui_sv_start".lang(), StartServerFromPanel);
             if (SaveDepot.Enabled && Game.id != SaveDepot.WorldId) {
-                btnGroup.Button("emp_ui_depot_put".lang(), SaveDepot.Put);
+                btnGroup.RowButton("emp_ui_depot_put".lang(), SaveDepot.Put);
             }
 
             // where "Start Server" fails
             if (EClass.player.chara?.homeBranch?.owner is null) {
-                Text("emp_ui_unclaimed_zone".lang());
+                card.TextSmall("emp_ui_unclaimed_zone".lang());
             }
         } else {
-            btnGroup.Button("emp_ui_sv_invite".lang(), NetSession.Instance.Lobby.InviteSteamOverlay);
-            btnGroup.Button("emp_ui_sv_dc".lang(), DisconnectFromPanel);
+            btnGroup.RowButton("emp_ui_sv_invite".lang(), NetSession.Instance.Lobby.InviteSteamOverlay);
+            btnGroup.RowButton("emp_ui_sv_dc".lang(), DisconnectFromPanel);
         }
 
 #if DEBUG
-        BuildBotButtons();
+        BuildBotButtons(card);
 #endif
-    }
-
-    /// <summary>
-    ///     Buttons side by side at their normal size, not full-width bars (council 2026-10-26)
-    /// </summary>
-    private YKHorizontal NormalButtonRow()
-    {
-        var row = Horizontal();
-        row.Layout.childForceExpandWidth = false;
-        row.Layout.childAlignment = TextAnchor.MiddleLeft;
-        row.Layout.spacing = 10f;
-        _buttonRows.Add(row);
-        return row;
     }
 
     /// <summary>
@@ -108,38 +85,37 @@ internal class TabLobbyBrowser : TabEmpBase
     /// <summary>
     ///     A second game on this machine, which joins and plays by itself
     /// </summary>
-    private void BuildBotButtons()
+    private static void BuildBotButtons(YKVertical card)
     {
         if (NetSession.Instance.Transport is ElinNetClient) {
             return;
         }
 
-        var botGroup = NormalButtonRow();
+        var botGroup = card.ButtonRow();
 
-        botGroup.Button("emp_ui_bot_add".lang(), () => {
+        botGroup.RowButton("emp_ui_bot_add".lang(), () => {
             EmpBotLauncher.Launch();
             LayerElinTogether.Instance?.Reopen();
         });
 
         var running = EmpBotLauncher.Running;
         if (running > 0) {
-            botGroup.Button("emp_ui_bot_stop".Loc(running), () => {
+            botGroup.RowButton("emp_ui_bot_stop".Loc(running), () => {
                 EmpBotLauncher.StopAll();
                 LayerElinTogether.Instance?.Reopen();
             });
         }
 
-        Toggle("emp_ui_bot_all_actions", EmpConfig.Dev.BotAllActions.Value,
-                value => EmpConfig.Dev.BotAllActions.Value = value)
+        card.Toggle("emp_ui_bot_all_actions", EmpConfig.Dev.BotAllActions.Value,
+                value => EmpConfig.Dev.BotAllActions.Value = value).AsRow()
             .SetTooltipLang(EmpConfig.Dev.BotAllActions.Description.Description);
     }
 #endif
 
     private void BuildLobbyList()
     {
-        Spacer(5);
-
-        var totalPlayers = Header("");
+        var card = this.MakeCard();
+        var totalPlayers = card.HeaderSmall("");
 
         NetSession.Instance.Lobby.GetOnlineLobbies(SetupLobbyDisplay);
 
@@ -156,27 +132,24 @@ internal class TabLobbyBrowser : TabEmpBase
                 var count = lobby.MemberCount;
                 total += count;
 
-                // one line per game: its description, and Join on the row (from the title screen: one click joins that
-                // game; in a game, the player leaves it first)
-                var row = Horizontal();
-                row.Layout.childForceExpandWidth = false;
-                row.Layout.childAlignment = TextAnchor.MiddleLeft;
-                row.Layout.spacing = 10f;
-                row.Text("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]))
-                    .LayoutElement().flexibleWidth = 1f;
-                if (!EClass.core.IsGameStarted) {
-                    var target = lobby;
-                    row.Button("emp_ui_depot_join_btn".Loc(lobby.Name), () => {
-                        LayerElinTogether.Instance?.Close();
-                        NetSession.Instance.Lobby.ConnectLobby(target);
-                    }).LayoutElement().preferredWidth = 260f;
-                }
+                // one group per game: its description, what it runs with, and Join (from the title screen: one click
+                // joins that game; in a game, the player leaves it first)
+                var game = card.RowGroup();
+                game.Text("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]));
 
                 // what that game runs with, when its host says so: known before joining
                 if (ModList.Summary(lobby[EmpLobbyData.Mods]) is { } mods) {
-                    TextSmall(mods.Missing > 0
+                    game.TextSmall(mods.Missing > 0
                         ? "emp_ui_mods_lobby_missing".Loc(mods.Count, mods.Missing)
                         : "emp_ui_mods_lobby".Loc(mods.Count));
+                }
+
+                if (!EClass.core.IsGameStarted) {
+                    var target = lobby;
+                    game.ButtonRow().RowButton("emp_ui_depot_join_btn".Loc(lobby.Name), () => {
+                        LayerElinTogether.Instance?.Close();
+                        NetSession.Instance.Lobby.ConnectLobby(target);
+                    });
                 }
             }
 
