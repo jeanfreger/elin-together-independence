@@ -337,6 +337,23 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     A recipe takes back the ingredient it remembers (or the first of its kind) from the map's stock directly,
+    ///     not through the list above: not what this player may not take, another one this player may take instead
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Recipe.Ingredient), nameof(Recipe.Ingredient.RefreshThing))]
+    private static void OnRefreshIngredient(Recipe.Ingredient __instance, ref Thing? __result)
+    {
+        if (!NetSession.Instance.Rules.UseTeams || __result is null || CanTake(EClass.pc, __result)) {
+            return;
+        }
+
+        __result = EClass.pc.things.Find(__instance.id, __instance.mat, __instance.refVal) ??
+                   EClass._map.Stocked.ListThingStack(__instance, StockSearchMode.AroundPC).list.FirstOrDefault();
+        __instance.thing = __result;
+    }
+
+    /// <summary>
     ///     Build mode lists the map's stock as things to place: not what this player may not take (a teammate's own
     ///     chest)
     /// </summary>
