@@ -82,6 +82,9 @@ public class WorldDateAdvanceDelta : ElinDelta
         var untold = _moved + now - world.date.GetRaw() - Minutes;
         PersonalQuests.Postpone((others ? Minutes : 0) + (untold is > 0 and <= Date.MonthToken ? untold : 0));
 
+        // where this game's date stood before this message (the world snapshot may have set it since: _moved)
+        var previous = world.date.GetRaw() - _moved;
+
         SetClientDate([..GameDate]);
         _moved = 0;
 
@@ -96,6 +99,14 @@ public class WorldDateAdvanceDelta : ElinDelta
             foreach (var zoneEvent in _zone.events.list) {
                 zoneEvent.minElapsed += Minutes;
             }
+        }
+
+        // the day ended: the host read it in GameDate.AdvanceDay, and this game never ran that. Counted from the
+        // earlier of the two starts: hours that came with no word of their own (AdvanceHour called alone, an
+        // express travel) leave the message's own minutes inside the new day, and the boundary lies before them
+        var dayFrom = System.Math.Min(before, previous);
+        if (now / Date.DayToken > dayFrom / Date.DayToken && now - dayFrom <= 3 * Date.DayToken) {
+            Msg.Say("endDay");
         }
 
         if (pc is not { isDead: false }) {

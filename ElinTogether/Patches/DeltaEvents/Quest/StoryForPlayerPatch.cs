@@ -56,6 +56,31 @@ internal static class StoryForPlayerPatch
     }
 
     /// <summary>
+    ///     The end of a story quest brings a resident (Demitas, Kettle, Quru, Sorin, Loytel, Corgon): the game puts
+    ///     it next to "the player" and tells "the player" it joined. The host ran it with its own character: the
+    ///     resident stood by the host and the host read the message. It stands by the player who completed the
+    ///     quest, when that player is on this map (else the game's own place), and that player reads the message
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Quest), nameof(Quest.AddResident))]
+    internal static bool OnAddResident(Quest __instance, string id, ref Chara __result)
+    {
+        if (NetSession.Instance.Connection is not ElinNetHost ||
+            QuestRewardPatch.Receiver is not { isDead: false, IsAliveInCurrentZone: true, pos: { } where } receiver) {
+            return true;
+        }
+
+        var chara = CharaGen.Create(id);
+        EClass.Branch.AddMemeber(EClass._zone.AddCard(chara, where.GetNearestPoint(allowBlock: false, allowChara: false)) as Chara);
+        using (MsgRelayContext.RedirectTo(receiver)) {
+            Msg.Say("hire".langGame(chara.Name));
+        }
+
+        __result = chara;
+        return false;
+    }
+
+    /// <summary>
     ///     The dreams of Lesimas: every game moves the quest one step when its player enters a base, at steps 0 to
     ///     3. On one map two games did it one after the other, and a dream was skipped. The game that simulates
     ///     the map does it, alone
