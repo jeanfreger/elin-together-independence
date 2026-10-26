@@ -137,8 +137,9 @@ internal class TabSessionInfo : TabEmpBase
         }
 
         var ping = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
+        // plain digits: ToString("P0") adds a culture-specific space and percent sign that drew as a missing glyph
         var quality = player.ConnectionQualityLocal > 0
-            ? "emp_ui_quality_format".Loc(player.ConnectionQualityLocal.ToString("P0"))
+            ? "emp_ui_quality_format".Loc((player.ConnectionQualityLocal * 100f).ToString("F0"))
             : "";
 
         return "emp_ui_ping_format".Loc(ping.ToString("F0"), quality);
