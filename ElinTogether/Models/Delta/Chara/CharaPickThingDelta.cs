@@ -42,6 +42,11 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
+        // (a delta naming no thing, as a modified game may send, is dropped)
+        if (Thing is null) {
+            return;
+        }
+
         if (Thing.Find() is not Thing { isDestroyed: false } thing) {
             TaskCache.CancelClientAct(net, this, Thing);
             return;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Elements;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Models.AI;
 using ElinTogether.Net;
@@ -474,6 +475,11 @@ internal static class AIUseCrafterPatch
 
             var c = t.GetRootCard();
             if (c is { isChara: true, IsPCFaction: false }) {
+                return false;
+            }
+
+            // a chest or the ground of another team's land: its own game should not have offered it (Teams)
+            if (!Teams.CanTake(act.owner, t)) {
                 return false;
             }
 
