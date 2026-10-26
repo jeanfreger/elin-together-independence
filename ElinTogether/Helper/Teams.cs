@@ -226,8 +226,17 @@ internal static class Teams
     [HarmonyPatch(typeof(TaskBuild), nameof(TaskBuild.OnProgressComplete))]
     private static void OnBuilt(TaskBuild __instance)
     {
-        if (!PersonalOwned || !__instance.useHeld || __instance.owner is not { IsPlayer: true } builder ||
-            __instance.target is not Thing { IsInstalled: true } thing || thing.trait is not (TraitContainer or TraitDoor or TraitBed)) {
+        // held: the player builds it; build mode: the invisible build agent does, for "the player" (the host, or
+        // the guest whose build is replayed here, see AgentTaskDelta)
+        var builder = __instance.owner switch {
+            { IsPlayer: true } player when __instance.useHeld => player,
+            { IsAgent: true } when !__instance.useHeld => EClass.pc,
+            _ => null,
+        };
+        // (build mode makes the card from the recipe and keeps no target: it is the one now installed there)
+        var built = __instance.target ?? __instance.pos?.Installed;
+        if (!PersonalOwned || builder is null ||
+            built is not Thing { IsInstalled: true } thing || thing.trait is not (TraitContainer or TraitDoor or TraitBed)) {
             return;
         }
 
