@@ -648,8 +648,14 @@ internal static class SaveDepot
 
         var at = Root.LastIndexOf(':');
         using var client = new TcpClient();
-        if (!client.ConnectAsync(Root.Substring(0, at), int.Parse(Root.Substring(at + 1))).Wait(5000)) {
-            throw new IOException("the depot does not answer");
+        // a refused connection (no server there) comes wrapped by the task: told as the depot not answering, which
+        // every caller expects; it reached the player as an error at the title screen (GitHub issue 8)
+        try {
+            if (!client.ConnectAsync(Root.Substring(0, at), int.Parse(Root.Substring(at + 1))).Wait(5000)) {
+                throw new IOException("the depot does not answer");
+            }
+        } catch (AggregateException ex) {
+            throw new IOException("the depot does not answer", ex.InnerException ?? ex);
         }
 
         using var stream = client.GetStream();
