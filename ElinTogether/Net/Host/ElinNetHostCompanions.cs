@@ -276,4 +276,30 @@ internal partial class ElinNetHost
             CompanionHelper.RebindRide(player);
         }
     }
+
+    // a player whose link dropped -> the rides between it and another player it was part of (rider, carried, parasite)
+    private static readonly Dictionary<ulong, (List<(int Rider, int Carried, bool Parasite)> Ties, float At)> RideTiesAtLinkLoss = [];
+
+    /// <summary>
+    ///     A ride between two players breaks when one of them drops off the map (the game and the mod untie it), and
+    ///     nothing tied it again on its automatic return: the host's game said nobody rode, the returning player's
+    ///     game still did (ride2 cut_home, 2026-10-26). The ties with another player are kept for that return
+    /// </summary>
+    private static void KeepRideTies(ulong user, Chara player)
+    {
+        var ties = CompanionHelper.PlayerRideTies(player);
+        if (ties.Count > 0) {
+            RideTiesAtLinkLoss[user] = (ties, UnityEngine.Time.realtimeSinceStartup);
+        } else {
+            RideTiesAtLinkLoss.Remove(user);
+        }
+    }
+
+    private static void RestoreRideTies(ulong user)
+    {
+        if (RideTiesAtLinkLoss.Remove(user, out var kept) &&
+            UnityEngine.Time.realtimeSinceStartup - kept.At <= LinkLostGraceSeconds) {
+            CompanionHelper.TieAgain(kept.Ties);
+        }
+    }
 }

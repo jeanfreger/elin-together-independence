@@ -1,5 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using ElinTogether.Helper;
 using UnityEngine;
 
 namespace ElinTogether.Net;
@@ -39,6 +42,9 @@ internal static class NetReconnect
         }
 
         EmpLog.Information("Link with the host lost, joining the same game again");
+        // the world comes back from the host, which ties the rides with another player again on its side; this game
+        // loads that world before, without them: tied again here once back (ride2 cut_home, 2026-10-26)
+        _ties = EClass.pc is { } pc ? CompanionHelper.PlayerRideTies(pc) : null;
 
         _routine = EmpMod.Instance.StartCoroutine(Retry(rejoin, !client.IsLocalConnection && !client.IsDirectConnection,
             session.Rules.AllowTakeover));
@@ -93,6 +99,10 @@ internal static class NetReconnect
                 // back in the game, or the player started something else
                 if (EClass.core.IsGameStarted || session.Transport is ElinNetHost) {
                     back = true;
+                    if (_ties is { Count: > 0 } ties && session.Transport is ElinNetClient) {
+                        EmpMod.Instance.StartCoroutine(TieAgainOnceHere(ties));
+                    }
+
                     yield break;
                 }
 
@@ -168,6 +178,27 @@ internal static class NetReconnect
         }
     }
 
+    private static List<(int Rider, int Carried, bool Parasite)>? _ties;
+
+    private static IEnumerator TieAgainOnceHere(List<(int Rider, int Carried, bool Parasite)> ties)
+    {
+        _ties = null;
+        var until = Time.realtimeSinceStartup + 60f;
+        // (the world loads, then the map, then the other players stand on it)
+        while (Time.realtimeSinceStartup < until) {
+            yield return new WaitForSeconds(1f);
+            if (NetSession.Instance.Transport is not ElinNetClient { IsConnected: true } || EClass._map is null ||
+                !EClass.core.IsGameStarted) {
+                continue;
+            }
+
+            if (ties.All(t => EClass._map.FindChara(t.Rider) is not null && EClass._map.FindChara(t.Carried) is not null)) {
+                CompanionHelper.TieAgain(ties);
+                yield break;
+            }
+        }
+    }
+
     private static void ShowNotice()
     {
         var cancel = false;
@@ -183,7 +214,8 @@ internal static class NetReconnect
             // (the world loading): the join goes on
             _notice = null;
             if (cancel || NetSession.Instance.Transport is not ElinNetClient { IsConnected: true }) {
-                EmpLog.Information("Player gave up joining the game again");
+                EmpLog.Information("Player gave up joining the game again (by the button {Cancel}, transport {Transport})",
+                    cancel, NetSession.Instance.Transport?.GetType().Name ?? "none");
                 Stop();
                 NetSession.Instance.ResetSession();
             }

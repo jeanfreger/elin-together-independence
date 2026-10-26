@@ -157,4 +157,49 @@ internal static class CompanionHelper
         EmpLog.Debug("Ride of player {Uid}: mount {Ride}, rider on it {Parasite}",
             player.uid, player.ride?.uid ?? 0, player.parasite?.uid ?? 0);
     }
+
+    /// <summary>
+    ///     The rides between two players a character is part of: (rider, carried, parasite) uids
+    /// </summary>
+    internal static List<(int Rider, int Carried, bool Parasite)> PlayerRideTies(Chara player)
+    {
+        var ties = new List<(int, int, bool)>();
+        foreach (var (carried, parasite) in new[] { (player.ride, false), (player.parasite, true) }) {
+            if (carried is not null && Patches.PlayerPeoplePatch.IsPlayerChara(carried)) {
+                ties.Add((player.uid, carried.uid, parasite));
+            }
+        }
+
+        if (player.host is { } rider && Patches.PlayerPeoplePatch.IsPlayerChara(rider)) {
+            ties.Add((rider.uid, player.uid, rider.parasite?.uid == player.uid));
+        }
+
+        return ties;
+    }
+
+    /// <summary>
+    ///     Ties those rides again on this map where both are here and free (after a dropped link and its return)
+    /// </summary>
+    internal static void TieAgain(IEnumerable<(int Rider, int Carried, bool Parasite)> ties)
+    {
+        foreach (var (riderUid, carriedUid, parasite) in ties) {
+            if (EClass._map.FindChara(riderUid) is not { } rider || EClass._map.FindChara(carriedUid) is not { } carried ||
+                carried.host is not null || (parasite ? rider.parasite : rider.ride) is not null) {
+                continue;
+            }
+
+            if (parasite) {
+                rider.parasite = carried;
+            } else {
+                rider.ride = carried;
+            }
+
+            carried.host = rider;
+            carried._CreateRenderer();
+            carried.SetDirtySpeed();
+            rider.SetDirtySpeed();
+            carried.MoveImmediate(rider.pos, false, false);
+            EmpLog.Information("Ride of {Rider} on {Carried} tied again after a dropped link", riderUid, carriedUid);
+        }
+    }
 }

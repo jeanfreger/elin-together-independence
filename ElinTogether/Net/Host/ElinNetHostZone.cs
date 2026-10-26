@@ -207,6 +207,7 @@ internal partial class ElinNetHost
             }
 
             BringCompanions(chara, keepSpot);
+            RestoreRideTies(peer.User);
             // sales made while it was a guest somewhere or offline
             PayShipping(chara.uid);
             // what the story gave before this player was of the world
