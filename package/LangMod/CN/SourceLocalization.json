@@ -61,8 +61,8 @@
     "LangGeneral.emp_disconnected_host.text": "已断开与主机的连接\n{0}",
     "LangGeneral.emp_wait_zone.text": "正在等待地图…",
     "LangGeneral.emp_server_started.text": "服务器已启动",
-    "LangGeneral.emp_player_connected.text": "玩家 {@Peer} 已连接",
-    "LangGeneral.emp_player_disconnected.text": "玩家 {@Peer} 已断开连接\n{DisconnectInfo}",
+    "LangGeneral.emp_player_connected.text": "{0} 加入了游戏。",
+    "LangGeneral.emp_player_disconnected.text": "{0} 离开了游戏。",
     "LangGeneral.emp_zone_change.text": "正在切换区域…",
     "LangGeneral.emp_lobby_created.text": "Steam 大厅已创建",
     "LangGeneral.emp_lobby_create_failed.text": "无法创建 Steam 大厅：{Result}\n请稍后再试。",
@@ -481,5 +481,6 @@
     "LangGeneral.emp_ui_sv_opt_travel_together.text": "一起",
     "LangGeneral.emp_ui_sv_opt_travel_alone.text": "各自旅行，共享时钟",
     "LangGeneral.emp_ui_sv_opt_travel_own_pace.text": "各自旅行，自己的节奏",
-    "LangGeneral.emp_ui_sv_sec_friends.text": "朋友可以做房主能做的事"
+    "LangGeneral.emp_ui_sv_sec_friends.text": "朋友可以做房主能做的事",
+    "LangGeneral.emp_player_someone.text": "一名玩家"
 }

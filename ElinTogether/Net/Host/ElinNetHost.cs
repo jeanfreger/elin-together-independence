@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using ElinTogether.Common;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
@@ -205,7 +206,9 @@ internal partial class ElinNetHost : ElinNetBase
             }
         }
 
-        EmpPop.Information("emp_player_connected".lang(), peer);
+        // (the game's tone in the message log: who, not the link's fields; the link goes to the mod's own log)
+        EmpLog.Information("Player {@Peer} connected", peer);
+        EmpPop.Information(Escape("emp_player_connected".Loc(WhoIs(peer))));
 
         // shou lai
         BeginHandshake(peer);
@@ -217,9 +220,22 @@ internal partial class ElinNetHost : ElinNetBase
 #endif
     }
 
+    // a player as the message log names it: its Steam name, "A player" while Steam has not told it yet
+    private static string WhoIs(ISteamNetPeer peer)
+    {
+        return string.IsNullOrEmpty(peer.User.Name) ? "emp_player_someone".lang() : peer.User.Name;
+    }
+
+    // (a notice is read as a message template: a brace in a name would be taken for a field)
+    private static string Escape(string text)
+    {
+        return text.Replace("{", "{{").Replace("}", "}}");
+    }
+
     protected override void OnPeerDisconnected(ISteamNetPeer peer, string disconnectInfo)
     {
-        EmpPop.Information("emp_player_disconnected".lang(), peer, disconnectInfo);
+        EmpLog.Information("Player {@Peer} disconnected: {DisconnectInfo}", peer, disconnectInfo);
+        EmpPop.Information(Escape("emp_player_disconnected".Loc(WhoIs(peer))));
 
         _handshakes.Remove(peer.Id);
         PendingRebind.ReleasePeer(peer.Id);
