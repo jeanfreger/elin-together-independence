@@ -96,7 +96,9 @@ internal static class ModConfigPage
                         }
                     }
                     // (no tooltip on a controller: the text under the row)
-                    note.AddText(row.Description);
+                    foreach (var line in row.Description.Split('\n')) {
+                        note.AddText(line);
+                    }
                 }
             }
 

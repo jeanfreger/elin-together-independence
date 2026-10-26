@@ -58,7 +58,8 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
     {
         get {
             var desc = $"emp_ui_sv_desc_{Id}".lang();
-            return Apply is null ? desc : $"{desc} {$"emp_ui_sv_apply_{Apply}".lang()}";
+            // (under a dropdown, one line per choice: the applies-when line comes on a line of its own, last)
+            return Apply is null ? desc : $"{desc}{(Choice is null ? " " : "\n")}{$"emp_ui_sv_apply_{Apply}".lang()}";
         }
     }
 }

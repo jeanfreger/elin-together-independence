@@ -125,7 +125,11 @@ internal class TabServerConfiguration : TabEmpBase
                 return;
         }
 
-        card.TextSmall(row.Description);
+        // (one text per line: a dropdown tells one line per choice, and a text with line breaks was measured one
+        // line high, see TabClientConfiguration)
+        foreach (var line in row.Description.Split('\n')) {
+            card.TextSmall(line);
+        }
     }
 
     private static void BuildValidationSets(YKVertical sets)
