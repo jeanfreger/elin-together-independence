@@ -17,6 +17,12 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnHostLeaving(HostLeaving leaving)
     {
+        // the host said it leaves: its game may come back (a world reloaded, a restart), joined again by itself as
+        // after a dropped link, see ElinNetClient.UpdateHostLeft
+        if (!IsZoneSession) {
+            HostLeftAt = UnityEngine.Time.realtimeSinceStartup;
+        }
+
         if (IsZoneSession || !Session.Rules.AllowTakeover) {
             return;
         }
