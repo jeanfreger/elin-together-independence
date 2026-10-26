@@ -3,15 +3,12 @@ using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
 using UnityEngine;
-using UnityEngine.UI;
 using YKF;
 
 namespace ElinTogether.Components;
 
 internal class TabSessionInfo : TabEmpBase
 {
-    private Rect _refSize = LayerElinTogether.Instance!.Bound;
-
     public override void OnLayout()
     {
         BuildOverviewSection();
@@ -41,74 +38,48 @@ internal class TabSessionInfo : TabEmpBase
     {
         Header("emp_ui_connected_players");
 
-        var list = Grid()
-            .WithConstraintCount(2);
-        list.Fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        list.Layout.cellSize = new(_refSize.width / 2.2f, _refSize.width * 0.2f);
-        var players = NetSession.Instance.CurrentPlayers;
-        foreach (var player in players) {
-            BuildPlayerCard(list, player);
+        foreach (var player in NetSession.Instance.CurrentPlayers) {
+            BuildPlayerLine(this, player);
         }
     }
 
-    private void BuildPlayerCard(YKLayout parent, NetPeerState player)
+    /// <summary>
+    ///     One line per player (council 2026-10-26): name, ping (or the host marker), and that player's own buttons
+    /// </summary>
+    private void BuildPlayerLine(YKLayout parent, NetPeerState player)
     {
         var chara = player.FindChara();
         if (chara is null) {
-            Text("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid));
+            parent.Text("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid));
             return;
         }
 
-        var card = parent.MakeCard();
-        var bannerGroup = card.Horizontal();
-        bannerGroup.Layout.spacing = 15f;
+        var line = parent.Horizontal();
+        line.Layout.childForceExpandWidth = false;
+        line.Layout.childAlignment = TextAnchor.MiddleLeft;
+        line.Layout.spacing = 10f;
 
-        // portrait
-        var go = new GameObject("portrait");
-        go.transform.SetParent(bannerGroup.transform);
-        var portrait = go.AddComponent<Portrait>();
-        portrait.tooltip = new() {
-            enable = false,
-        };
-        portrait.portrait = go.AddComponent<Image>();
-        portrait.portrait.preserveAspect = true;
-
-        var go1 = new GameObject("overlay");
-        go1.transform.SetParent(go.transform);
-        portrait.overlay = go1.AddComponent<Image>();
-        portrait.overlay.preserveAspect = true;
-
-        portrait.SetChara(chara);
-
-        portrait.portrait.LayoutElement().preferredWidth = _refSize.width * 0.12f;
-        portrait.portrait.rectTransform.sizeDelta = new(_refSize.width, _refSize.width * 0.16f);
-        portrait.overlay.rectTransform.anchorMin =
-            portrait.overlay.rectTransform.anchorMax =
-                portrait.overlay.rectTransform.sizeDelta = Vector2.zero;
-
-        // info
-        var infoGroup = bannerGroup.Vertical();
-        infoGroup.LayoutElement().preferredWidth = 1f;
-        infoGroup.TextFlavor(player.User.Name.TagColor(PeerColorizer.GetColor(player.Index)));
-        infoGroup.TextMedium(chara.Name);
+        var label = player.User.Name.TagColor(PeerColorizer.GetColor(player.Index)) + "  " + chara.Name;
         if (NetSession.Instance.Rules.UseTeams) {
-            infoGroup.Text(Teams.NameOf(Teams.TeamOf(chara.uid)));
+            label += "  " + Teams.NameOf(Teams.TeamOf(chara.uid));
         }
-        infoGroup.Text(BuildPingStat(player));
+        // (the ping text of index 0 is the host marker: "Ping - (host)")
+        label += "  " + BuildPingStat(player);
+        line.Text(label).LayoutElement().flexibleWidth = 1f;
 
-        // action buttons: only show for non-host players
-        // IsHost also reads true on an away client, and reconnecting would drop its zone
+        // Kick: the host, on a guest's line. Reconnect: a guest's own line only, or the host on a guest's line
+        // (IsHost also reads true on an away client, and reconnecting would drop its zone)
+        if (NetSession.Instance.IsAway) {
+            return;
+        }
         var isHost = NetSession.Instance.Transport is ElinNetHost;
-        if (isHost ^ player.User.IsMe && !NetSession.Instance.IsAway) {
-            var btnRow = infoGroup.Horizontal();
-            btnRow.Layout.childForceExpandWidth = true;
-            btnRow.Layout.childAlignment = TextAnchor.MiddleCenter;
+        if (!(isHost ^ player.User.IsMe)) {
+            return;
+        }
 
-            btnRow.Button("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
-
-            if (isHost) {
-                btnRow.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index));
-            }
+        line.Button("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index)).LayoutElement().preferredWidth = 150f;
+        if (isHost) {
+            line.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index)).LayoutElement().preferredWidth = 110f;
         }
     }
 

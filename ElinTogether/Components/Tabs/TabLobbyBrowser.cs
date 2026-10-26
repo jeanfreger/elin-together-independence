@@ -3,6 +3,8 @@ using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
 using HeathenEngineering.SteamworksIntegration;
+using UnityEngine;
+using YKF;
 
 namespace ElinTogether.Components;
 
@@ -12,12 +14,22 @@ internal class TabLobbyBrowser : TabEmpBase
     {
         BuildNetButtons();
         BuildLobbyList();
+
+        // normal-size buttons: a width of their own, not the full row
+        foreach (var row in _buttonRows) {
+            foreach (var button in row.GetComponentsInChildren<UnityEngine.UI.Button>(true)) {
+                var element = button.GetComponent<UnityEngine.UI.LayoutElement>() ?? button.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+                element.preferredWidth = 220f;
+                element.flexibleWidth = 0f;
+            }
+        }
     }
+
+    private readonly System.Collections.Generic.List<YKHorizontal> _buttonRows = new();
 
     private void BuildNetButtons()
     {
-        var btnGroup = Horizontal();
-        btnGroup.Layout.childForceExpandWidth = true;
+        var btnGroup = NormalButtonRow();
 
         if (!EClass.core.IsGameStarted) {
             // the world kept in the depot: whoever comes first takes it and hosts it
@@ -69,6 +81,19 @@ internal class TabLobbyBrowser : TabEmpBase
     }
 
     /// <summary>
+    ///     Buttons side by side at their normal size, not full-width bars (council 2026-10-26)
+    /// </summary>
+    private YKHorizontal NormalButtonRow()
+    {
+        var row = Horizontal();
+        row.Layout.childForceExpandWidth = false;
+        row.Layout.childAlignment = TextAnchor.MiddleLeft;
+        row.Layout.spacing = 10f;
+        _buttonRows.Add(row);
+        return row;
+    }
+
+    /// <summary>
     ///     One address for both kinds of server: Elin Together Server without a game (its world is taken and
     ///     hosted here), or a game started with -empserver (joined)
     /// </summary>
@@ -89,8 +114,7 @@ internal class TabLobbyBrowser : TabEmpBase
             return;
         }
 
-        var botGroup = Horizontal();
-        botGroup.Layout.childForceExpandWidth = true;
+        var botGroup = NormalButtonRow();
 
         botGroup.Button("emp_ui_bot_add".lang(), () => {
             EmpBotLauncher.Launch();
@@ -132,22 +156,27 @@ internal class TabLobbyBrowser : TabEmpBase
                 var count = lobby.MemberCount;
                 total += count;
 
-                HeaderCard("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]));
+                // one line per game: its description, and Join on the row (from the title screen: one click joins that
+                // game; in a game, the player leaves it first)
+                var row = Horizontal();
+                row.Layout.childForceExpandWidth = false;
+                row.Layout.childAlignment = TextAnchor.MiddleLeft;
+                row.Layout.spacing = 10f;
+                row.Text("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]))
+                    .LayoutElement().flexibleWidth = 1f;
+                if (!EClass.core.IsGameStarted) {
+                    var target = lobby;
+                    row.Button("emp_ui_depot_join_btn".Loc(lobby.Name), () => {
+                        LayerElinTogether.Instance?.Close();
+                        NetSession.Instance.Lobby.ConnectLobby(target);
+                    }).LayoutElement().preferredWidth = 260f;
+                }
 
                 // what that game runs with, when its host says so: known before joining
                 if (ModList.Summary(lobby[EmpLobbyData.Mods]) is { } mods) {
                     TextSmall(mods.Missing > 0
                         ? "emp_ui_mods_lobby_missing".Loc(mods.Count, mods.Missing)
                         : "emp_ui_mods_lobby".Loc(mods.Count));
-                }
-
-                // from the title screen: one click joins that game (in a game, the player leaves it first)
-                if (!EClass.core.IsGameStarted) {
-                    var target = lobby;
-                    Horizontal().Button("emp_ui_depot_join_btn".Loc(lobby.Name), () => {
-                        LayerElinTogether.Instance?.Close();
-                        NetSession.Instance.Lobby.ConnectLobby(target);
-                    });
                 }
             }
 
