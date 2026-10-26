@@ -1,6 +1,6 @@
 # Elin Together — version « indépendance »
 
-**Version actuelle : 0.26.1036** (zip `ElinTogether-independence.zip`).
+**Version actuelle : 0.26.1047** (zip `ElinTogether-independence.zip`).
 
 [English](README.md) | Français | [中文](README_zh.md) | [日本語](README_ja.md)
 
