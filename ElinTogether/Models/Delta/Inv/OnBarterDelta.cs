@@ -36,7 +36,7 @@ public class OnBarterDelta : ElinDelta
 
             // restock
             using var _ = Simulate();
-            using var opened = ShopStock.Opened(Gates);
+            using var opened = ShopStock.Opened(Gates, FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null);
             shopOwner.trait.OnBarter();
             return;
         }

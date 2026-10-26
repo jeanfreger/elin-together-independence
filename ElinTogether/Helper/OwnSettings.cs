@@ -78,6 +78,8 @@ internal static class OwnSettings
                 Hoard = player.hoard,
                 KnownCraft = player.knownCraft,
                 Sketches = player.sketches,
+                PlayedStories = player.flags.playedStories,
+                AvailableStories = player.flags.availableStories,
                 KnownBGMs = player.knownBGMs,
                 KnownSongs = player.knownSongs,
                 HangIcons = player.hangIcons,
@@ -231,6 +233,10 @@ internal static class OwnSettings
             player.hoard = kept.Hoard ?? player.hoard;
             player.knownCraft = kept.KnownCraft ?? player.knownCraft;
             player.sketches = kept.Sketches ?? player.sketches;
+            // the story scenes this player saw or can see (Nymelle, Lothria, the base): the host's list skipped a
+            // scene the guest never saw or played one again (hunt 5, H5-20)
+            player.flags.playedStories = kept.PlayedStories ?? player.flags.playedStories;
+            player.flags.availableStories = kept.AvailableStories ?? player.flags.availableStories;
             player.knownBGMs = kept.KnownBGMs ?? player.knownBGMs;
             player.knownSongs = kept.KnownSongs ?? player.knownSongs;
             player.hangIcons = kept.HangIcons ?? player.hangIcons;
@@ -406,6 +412,8 @@ internal static class OwnSettings
         public Hoard? Hoard;
         public HashSet<int>? KnownCraft;
         public HashSet<int>? Sketches;
+        public List<int>? PlayedStories;
+        public List<int>? AvailableStories;
         public HashSet<int>? KnownBGMs;
         public Dictionary<string, KnownSong>? KnownSongs;
         public Dictionary<string, string>? HangIcons;

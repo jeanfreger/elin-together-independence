@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using ElinTogether.Helper;
 using ElinTogether.Models.AI;
 
 namespace ElinTogether.Models;
@@ -26,14 +27,17 @@ internal static class RemoteCraft
     ///     takes. While the host crafts for another player, that player stands in as the local one: without it
     ///     its potions were not doubled by its own feat, and the quality came from the host's skills
     /// </summary>
-    internal static ScopeExit AsCrafter(Chara crafter)
+    internal static ScopeExit AsCrafter(Chara crafter, bool withFame = true)
     {
         var self = EClass.player.chara;
         EClass.player.chara = crafter;
         _standIns++;
+        // the level of what is made (CraftUtil, bottles, loot) follows the crafter's fame, not the host's (H5-04)
+        var fame = withFame ? PlayerFame.As(crafter) : null;
 
         return new() {
             OnExit = () => {
+                fame?.Dispose();
                 EClass.player.chara = self;
                 _standIns--;
             },

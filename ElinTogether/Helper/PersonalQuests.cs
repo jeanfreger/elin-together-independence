@@ -422,9 +422,12 @@ internal static class PlayerStandIn
         IsActive = true;
         _fame = _karma = 0;
         EClass.player.chara = actor;
+        // what is made meanwhile has the level of this player's fame (H5-04)
+        var fame = PlayerFame.As(actor);
 
         return new() {
             OnExit = () => {
+                fame?.Dispose();
                 EClass.player.chara = self;
                 IsActive = false;
 

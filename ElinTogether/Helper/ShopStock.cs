@@ -66,12 +66,17 @@ internal static class ShopStock
     /// <summary>
     ///     The restock run inside is for the player who sent these (null: the host's own)
     /// </summary>
-    internal static ScopeExit Opened(ShopGates? gates)
+    internal static ScopeExit Opened(ShopGates? gates, Chara? opener = null)
     {
         var before = _gates;
         _gates = gates;
+        // a travelling merchant's stock level is the fame of who opens it (H5-04)
+        var fame = PlayerFame.As(opener);
         return new() {
-            OnExit = () => _gates = before,
+            OnExit = () => {
+                fame?.Dispose();
+                _gates = before;
+            },
         };
     }
 
@@ -98,7 +103,7 @@ internal static class ShopStock
         var stats = EClass.player.stats;
         var flags = EClass.player.flags;
         var (married, loytel) = (stats.married, flags.loytelMartLv);
-        var standIn = best == EClass.pc ? null : RemoteCraft.AsCrafter(best);
+        var standIn = best == EClass.pc ? null : RemoteCraft.AsCrafter(best, withFame: false);
         if (gates is not null) {
             stats.married = gates.Married ? System.Math.Max(1, married) : 0;
             // (the mart has levels 0 to 2)

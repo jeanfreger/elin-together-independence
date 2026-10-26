@@ -37,6 +37,16 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     The fame a player on this map last told, null when this game keeps none for it
+    /// </summary>
+    internal int? FameOf(Chara player)
+    {
+        return !IsZoneSession && PlayerStandings.TryGetValue(player.uid, out var standing) && standing.Length >= 2
+            ? standing[StandingFame]
+            : null;
+    }
+
     private static Dictionary<int, byte[]> PersonalLogOf(int charaUid)
     {
         if (!PersonalQuestLogs.TryGetValue(charaUid, out var log)) {
@@ -83,6 +93,11 @@ internal partial class ElinNetHost
         try {
             // what taking it sets up (the parcel to deliver, someone to escort) is for the taker
             using (PlayerStandIn.For(this, peerId, taker)) {
+                // drawn by this game for the map: the taker's fame and skills set its level (H5-01)
+                if (PlayerFame.Of(taker) is not null) {
+                    QuestForTaker.Rescale(quest);
+                }
+
                 using (ElinDelta.Simulate()) {
                     quest.Start();
                 }

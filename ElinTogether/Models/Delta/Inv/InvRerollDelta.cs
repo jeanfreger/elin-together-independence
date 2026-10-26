@@ -43,7 +43,7 @@ public class InvRerollDelta : ElinDelta
         EMono._zone.influence -= cost;
         shopOwner.c_dateStockExpire = 0;
         using (Simulate())
-        using (ShopStock.Opened(Gates)) {
+        using (ShopStock.Opened(Gates, FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null)) {
             shopOwner.trait.OnBarter(true);
         }
 
