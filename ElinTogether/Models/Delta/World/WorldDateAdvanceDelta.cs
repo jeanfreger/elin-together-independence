@@ -120,15 +120,16 @@ public class WorldDateAdvanceDelta : ElinDelta
         // They were played here, without a limit: a day of someone's travel starved this character
 
         // what GameDate.AdvanceHour, Day, Month and Year do for the player of a game that owns its date
+        // (up to a week: a host's long sleep or trip counted no day at all for its guests when it was over 3 days)
         var hours = now / Date.HourToken - before / Date.HourToken;
-        if (hours is > 0 and <= 24 && !pc.isDead) {
+        if (hours is > 0 and <= 24 * 7 && !pc.isDead) {
             for (var h = 0; h < hours; h++) {
                 player.OnAdvanceHour();
             }
         }
 
         var days = now / Date.DayToken - before / Date.DayToken;
-        if (days is > 0 and <= 3 && !pc.isDead) {
+        if (days is > 0 and <= 7 && !pc.isDead) {
             for (var d = 0; d < days; d++) {
                 player.stats.days++;
                 player.questRerollCost = System.Math.Max(0, player.questRerollCost - 3);
@@ -137,6 +138,11 @@ public class WorldDateAdvanceDelta : ElinDelta
                 }
 
                 player.OnAdvanceDay();
+            }
+
+            // the day's report of the player's own base, as the game shows it at each new day (GameDate.AdvanceDay)
+            if (pc.homeZone != null && pc.homeZone.mainFaction == pc.faction) {
+                WidgetSticky.Add(new StickyHomeReport());
             }
         }
 
