@@ -89,6 +89,12 @@ internal static class OwnSettings
                 DeepestVoid = player.stats.deepestVoid,
                 SeedFortune = player.seedFortune,
                 LuckyCoin = player.luckycoin,
+                LastFelmeraReward = player.lastFelmeraReward,
+                GiftJure = player.giftJure,
+                FishArtifact = player.fishArtifact,
+                SeedShrine = player.seedShrine,
+                LittleSaved = player.little_saved,
+                LittleDead = player.little_dead,
                 Ability = EClass.game.altAbility && EClass.ui.IsAbilityOpen,
                 ZoomOut = ActionMode.Adv?.zoomOut2 ?? false,
             };
@@ -177,6 +183,15 @@ internal static class OwnSettings
             // so are its fortune rolls and lucky coins (see FortuneCountersDelta)
             player.seedFortune = kept?.SeedFortune ?? 0;
             player.luckycoin = kept?.LuckyCoin ?? 0;
+            // and its own reward history (audit H5-07): the Felmera sketch rewards already claimed (counted against
+            // its own sketches, which are kept above), the Jure gifts opened, the fishing artifact luck, the shrines
+            // opened, the little ones saved and lost. A world fact stays the host's: the stats.* counts
+            player.lastFelmeraReward = kept?.LastFelmeraReward ?? 0;
+            player.giftJure = kept?.GiftJure ?? 0;
+            player.fishArtifact = kept?.FishArtifact ?? 0;
+            player.seedShrine = kept?.SeedShrine ?? 0;
+            player.little_saved = kept?.LittleSaved ?? 0;
+            player.little_dead = kept?.LittleDead ?? 0;
             if (kept is null) {
                 return;
             }
@@ -414,6 +429,12 @@ internal static class OwnSettings
         public int DeepestVoid;
         public int SeedFortune;
         public int LuckyCoin;
+        public int LastFelmeraReward;
+        public int GiftJure;
+        public int FishArtifact;
+        public int SeedShrine;
+        public int LittleSaved;
+        public int LittleDead;
 
         // the game these were noted from: not noted twice
         [JsonIgnore]
