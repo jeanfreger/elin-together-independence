@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -38,6 +39,22 @@ internal static class CardTryStackEvent
             return true;
         }
 
+        // the inventory's sort ("always sort" runs it at every refresh) loops until no two stacks merge: a merge
+        // asked of the host is not done yet, said done the loop never ended and the game froze (GitHub issue 6).
+        // Asked once, not done for now: the host's answer merges them, the next sort finds one stack
+        if (InventorySort) {
+            if (Asked.Add(__instance.uid)) {
+                client.Delta.AddRemote(new CardTryStackToDelta {
+                    Card = __instance,
+                    To = to,
+                    Parent = to.parent as Card,
+                });
+            }
+
+            __result = false;
+            return false;
+        }
+
         __result = true;
         client.Delta.AddRemote(new CardTryStackToDelta {
             Card = __instance,
@@ -46,5 +63,27 @@ internal static class CardTryStackEvent
         });
 
         return false;
+    }
+
+    internal static bool InventorySort;
+
+    // things whose merge this sort asked for (one ask per thing and per sort)
+    internal static readonly HashSet<int> Asked = [];
+}
+
+[HarmonyPatch(typeof(UIInventory), nameof(UIInventory.Sort))]
+internal static class InventorySortEvent
+{
+    [HarmonyPrefix]
+    internal static void OnSort()
+    {
+        CardTryStackEvent.InventorySort = true;
+        CardTryStackEvent.Asked.Clear();
+    }
+
+    [HarmonyFinalizer]
+    internal static void OnSortEnd()
+    {
+        CardTryStackEvent.InventorySort = false;
     }
 }
