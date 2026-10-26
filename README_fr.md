@@ -1,6 +1,6 @@
 # Elin Together — version « indépendance »
 
-**Version actuelle : 0.26.947** (zip `ElinTogether-independence.zip`).
+**Version actuelle : 0.26.1036** (zip `ElinTogether-independence.zip`).
 
 [English](README.md) | Français | [中文](README_zh.md) | [日本語](README_ja.md)
 
@@ -93,6 +93,14 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
 - **Entre joueurs.** Une fenêtre d'échange (chacun met des objets et de l'or, les deux confirment), des duels où
   personne ne meurt et où rien n'est perdu, et pas de meurtre hors duel.
 
+### Équipes (facultatif)
+
+Décoché au départ (case de l'host *Teams*). Quand l'host les active, les joueurs forment des équipes : chacune a sa
+terre, ses coffres, ses bâtiments et ses portes, un titre de propriété pour son fondateur et, si l'host le permet,
+du PvP entre équipes. Les coffres d'une autre équipe ne servent pas, même pour fabriquer (l'host le refuse aussi).
+Un nouveau joueur apparaît dans la zone d'arrivée : la prairie du début, la carte de l'host, ou une zone donnée par
+son nom ou son numéro. Sans la case, rien ne change.
+
 ### Temps et réglages simplifiés
 
 - **Temps sur la carte du monde, trois modes** (choix de l'host) : *Horloge commune* (une seule horloge, la carte du
@@ -118,12 +126,17 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   recrutement n'est payé qu'une fois.
 - **Combat auto par joueur**, mêmes règles de combat pour tous (points faibles, plancher d'invocation, progression
   du lancer, vitesse) et duel aux règles du jeu.
+- **La difficulté suit le joueur.** La difficulté d'une quête suit le joueur qui la prend.
 
 ### Un invité joue comme un joueur solo
 
 Des dizaines de corrections pour que ce qui marche pour l'host marche pour un invité : mort et testament, cadeaux
 du dieu, autels, pièges, grimoires, guérisseur, bénédictions, investir, runes, rangement automatique, outils tenus
-en main, copie chez Kettle, résurrection d'un compagnon chez le barman, fenêtres qui s'ouvraient chez l'host… La
+en main, copie chez Kettle, résurrection d'un compagnon chez le barman, fenêtres qui s'ouvraient chez l'host, poteaux d'attache, compagnon d'un
+invité qui utilise l'exploit de récupération de l'invité sur les pièges, habitant de l'histoire qui se tient près de
+l'invité qui a fini la quête, « le jour se termine » lu par les invités, inventaire à « toujours trier » qui figeait
+le jeu d'un invité, invité qui quitte en étant ailleurs et n'est plus pris pour un lien perdu… Chaque invité garde
+aussi ses propres scènes d'histoire, sa liste de mécènes et son compte de Churyu d'une copie du monde à l'autre. La
 liste complète est gardée dans les notes du développeur, elle n'est pas publiée.
 
 ### Le monde ne dépend plus du PC de l'host
@@ -330,6 +343,13 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Require the same Elin version | décochée | Un joueur sur une autre version d'Elin est refusé. Décochée : il entre avec un avertissement. |
 | Turn-Based Combat | cochée | Règle du mod d'origine. Sans effet tant que « Combat on each player's time » est cochée. |
 | Shared Average Speed | décochée | Règle du mod d'origine : une seule vitesse pour tous les joueurs, la moyenne. |
+| Players can be in teams | décochée | Les joueurs forment des équipes ; l'host garde dans sa sauvegarde qui est dans quelle équipe. Décochée : pas d'équipes, tout comme avant. |
+| A base belongs to its team | décochée | Une base appartient à l'équipe qui l'a revendiquée : les autres équipes n'y ouvrent pas les coffres, ne ramassent pas, ne construisent pas, ne gèrent pas. |
+| Joining a team needs its leader's approval | cochée | Un joueur qui demande à rejoindre une équipe attend l'accord de son chef. Décochée : il entre aussitôt. |
+| A land deed for a new team | cochée | Le fondateur d'une nouvelle équipe reçoit un titre de propriété. Décochée : l'équipe l'achète au marchand. |
+| Personal ownership inside a team | décochée | Un coffre, une porte ou un lit posé est à celui qui l'installe ; « Share with team » le rend à l'équipe. |
+| Where a new player appears | start | Où apparaît un nouveau joueur : *start* (la prairie du début), *host* (la carte de l'host) ou un nom ou numéro de zone. |
+| PvP between teams | décochée | Les joueurs d'équipes différentes sont ennemis hors des villes et de la zone d'arrivée. Pour mourir il faut encore « Players can kill each other ». |
 
 ### Joueur : l'onglet *Client Settings*
 
@@ -477,19 +497,22 @@ l'ancien attend son joueur.
   Steam Deck, Linux ni Mac.
 - Rattrapage des mondes joués avant « une part pour chacun » : les recettes, les billets de la dette, les cadeaux du
   mariage et les cadeaux de dialogue ne sont pas redonnés.
+- Pas encore reproduit : issu du ticket 5, une canne devant un mannequin d'entraînement ; issu du ticket 6, des
+  objets perdus dans une case d'inventaire invisible.
 
 La liste complète est gardée dans les notes du développeur, elle n'est pas publiée.
 
 ## Ce qu'il reste avant une vraie sortie
 
 Ce fork est publié en préversions pour un groupe d'amis. Voici ce qui sépare cela d'une version qu'on pourrait
-recommander à n'importe qui (état au 12 octobre 2026).
+recommander à n'importe qui (état au 26 octobre 2026).
 
 **1. La preuve sur de vrais PC**
 
 - Presque tout est prouvé sur un seul PC, par le réseau local. Les salons Steam, les invitations, la latence réelle,
   trois ou quatre joueurs et une longue partie ne sont couverts que par quelques vraies soirées, et chacune a trouvé
-  des défauts que les tests n'avaient pas vus. Il faut un petit groupe qui joue chaque version.
+  des défauts que les tests n'avaient pas vus. Il faut un petit groupe qui joue chaque version. En particulier :
+  deux vrais PC avec deux comptes Steam.
 - La reprise du monde par un invité (« Takeover ») : jouée à trois fenêtres, jamais entre deux PC.
 
 **2. Des versions sûres**
@@ -504,11 +527,12 @@ recommander à n'importe qui (état au 12 octobre 2026).
 **3. L'installation**
 
 - Le mod demande le canal **Nightly** d'Elin, et chaque version est compilée pour une version précise du jeu.
-- Un zip (`Install.bat`, `Uninstall.bat`, `Server.bat`, `README.txt`), en anglais, qui remplace la version Workshop du mod d'origine. Pas de page Workshop.
+- Un zip (`Install.bat`, `Uninstall.bat`, `Server.bat`, `README.txt`), en anglais, qui remplace la version Workshop du mod d'origine. Le mainteneur prépare une page Workshop ; aucune date n'est promise.
 - Tous les joueurs doivent avoir exactement la même version.
 
 **4. Ce qui manque**
 
+- Les cas de monture après une connexion perdue : en cours de correction.
 - Le temps du monde commun (la date n'avance qu'avec l'host) : à concevoir.
 - Mods : la liste de l'host appliquée sans relance ; une partie dont la liste change.
 - Duels : arène, pari, abandon. Quêtes de défense à deux.

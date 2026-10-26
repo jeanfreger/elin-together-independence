@@ -1,6 +1,6 @@
 # Elin Together — "independence" fork
 
-**Current version: 0.26.947** (zip `ElinTogether-independence.zip`).
+**Current version: 0.26.1036** (zip `ElinTogether-independence.zip`).
 
 English | [Français](README_fr.md) | [中文](README_zh.md) | [日本語](README_ja.md)
 
@@ -87,6 +87,13 @@ goes to them (see [Credits](#credits)).
 - **Between players.** A trade window (both put items and gold, both confirm), duels where nobody dies and nothing
   is lost, and no killing outside a duel.
 
+### Teams (optional)
+
+Off by default (host box *Teams*). When the host turns them on, players form teams: each team has its own land,
+chests, buildings and doors, a land deed for its founder, and, if the host allows it, PvP between teams. Another
+team's chests cannot be used, not even for crafting (the host refuses it too). A new player appears at the spawn
+zone: the start meadow, the host's map, or a zone given by name or number. Without the box, nothing changes.
+
 ### Time and settings made simpler
 
 - **World map time, three modes** (host choice): *Shared clock* (one clock, the world map waits for no one),
@@ -109,12 +116,17 @@ goes to them (see [Credits](#credits)).
   crafts, sketches, tunes, respawn anchors) belong to that player and survive world copies. Recruits are paid once.
 - **Auto combat per player**, combat parity (weak spots, summon floor, throw growth, speed) and a duel with the
   game's own rules.
+- **Difficulty follows the player.** A quest's difficulty follows the player who takes the quest.
 
 ### A guest plays like a solo player
 
 Dozens of fixes so that what works for the host works for a guest: death and will, the god's gifts, altars, traps,
 spellbooks, the healer, blessings, investing, runes, auto-dump, tools held in hand, Kettle's copy shop, bringing a
-companion back at the barman's, windows that used to open on the host's screen… The full list is kept in the developer's notes, not published.
+companion back at the barman's, windows that used to open on the host's screen, hitching posts, a guest's
+companion using the guest's scavenger feat on traps, a story resident who stands by the guest who finished the
+quest, "the day ends" read by guests, a guest's "always sort" inventory that froze its game, a guest who quits
+while away no longer taken for a lost link… Each guest also keeps
+its own story scenes, backers list and Churyu count across world copies. The full list is kept in the developer's notes, not published.
 
 ### The world does not depend on the host's PC
 
@@ -315,6 +327,13 @@ everyone as soon as they change.
 | Require the same Elin version | off | Players on another version of Elin are refused. Off: let in with a warning. |
 | Turn-Based Combat | on | The original's rule. No effect while "Combat on each player's time" is on. |
 | Shared Average Speed | off | The original's rule: one speed for all players, the average. |
+| Players can be in teams | off | Players form teams; the host keeps who is in which team in its save. Off: no teams, everything as before. |
+| A base belongs to its team | off | A base belongs to the team that claimed it: other teams cannot open its chests, pick up, build or manage there. |
+| Joining a team needs its leader's approval | on | A player asking to join a team waits for its leader to accept. Off: joins at once. |
+| A land deed for a new team | on | The founder of a new team receives one land deed. Off: the team buys it from the merchant. |
+| Personal ownership inside a team | off | A chest, door or bed one installs is that player's; "Share with team" gives it back. |
+| Where a new player appears | start | Where a new player appears: *start* (the start meadow), *host* (the host's map) or a zone name or number. |
+| PvP between teams | off | Players of different teams are enemies outside towns and the spawn zone. Death still needs "Players can kill each other". |
 
 ### Player: the *Client Settings* tab
 
@@ -457,19 +476,21 @@ for its player.
   later stays subscribed for a player who chose to keep the mods. Not tried on Steam Deck, Linux or a Mac.
 - Catching up worlds played before "a share for everyone": recipes, the tickets of the debt, the wedding gifts and
   dialog gifts are not given again.
+- Not reproduced yet: from issue 5, a cane at a training dummy; from issue 6, items lost in an invisible inventory
+  slot.
 
 The full list is kept in the developer's notes, not published.
 
 ## What is left before a real release
 
 This fork is published as pre-releases for a group of friends. Here is what stands between that and a version one
-could recommend to anyone (as of 12 October 2026).
+could recommend to anyone (as of 26 October 2026).
 
 **1. Proof on real PCs**
 
 - Almost everything is proven on one PC, over the local network. Steam lobbies, invitations, real latency, three or
   four players and a long game are only covered by a few real evenings, and each of them found defects the tests
-  had not seen. It needs a small group playing every release.
+  had not seen. It needs a small group playing every release. In particular: two real PCs with two Steam accounts.
 - A guest taking the world over ("Takeover"): played with three windows, never between two PCs.
 
 **2. Safe releases**
@@ -484,11 +505,13 @@ could recommend to anyone (as of 12 October 2026).
 **3. Installing**
 
 - The mod needs Elin's **Nightly** channel, and each release is built for one build of the game.
-- A zip and an `Install.bat`, in English, which replaces the Workshop version of the original mod. No Workshop page.
+- A zip and an `Install.bat`, in English, which replaces the Workshop version of the original mod. The maintainer is
+  preparing a Workshop page; no date is promised.
 - Every player must have exactly the same version.
 
 **4. Missing pieces**
 
+- The riding cases after a dropped connection: being fixed.
 - A shared world time (the date only moves with the host): to be designed.
 - Mods: the host's list applied without a restart; a game whose mod list changes.
 - Duels: arena, betting, give-up. Defense quests for two.
