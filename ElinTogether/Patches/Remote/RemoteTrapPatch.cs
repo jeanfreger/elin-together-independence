@@ -1,4 +1,5 @@
 using ElinTogether.Helper;
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -20,8 +21,9 @@ internal static class RemoteTrapPatch
     internal static bool IsOwnStep { get; private set; }
 
     [HarmonyPrefix]
-    internal static bool OnStepped(TraitFloorSwitch __instance, Chara c)
+    internal static bool OnStepped(TraitFloorSwitch __instance, Chara c, out ScopeExit? __state)
     {
+        __state = null;
         // traps only, not the other things one steps on (seesaw, trolley...); the one that wakes the monsters of
         // the map does it where they are simulated
         if (NetSession.Instance.Connection is null || __instance is not TraitTrap ||
@@ -33,13 +35,21 @@ internal static class RemoteTrapPatch
             return false;
         }
 
+        // another player's companion, simulated here: the disarm, its scavenger feat (1656) and the scrap are
+        // that player's, as the game asks "the player" for them (H5-06)
+        if (NetSession.Instance.Connection is ElinNetHost && CompanionHelper.OwnerOf(c) is { IsRemotePlayer: true } owner &&
+            owner != c) {
+            __state = RemoteCraft.AsCrafter(owner, withFame: false);
+        }
+
         IsOwnStep = c.IsPC && NetSession.Instance.Connection is ElinNetClient;
         return true;
     }
 
     [HarmonyFinalizer]
-    internal static void OnSteppedEnd()
+    internal static void OnSteppedEnd(ScopeExit? __state)
     {
         IsOwnStep = false;
+        __state?.Dispose();
     }
 }
