@@ -80,6 +80,7 @@ internal static class OwnSettings
                 Sketches = player.sketches,
                 PlayedStories = player.flags.playedStories,
                 AvailableStories = player.flags.availableStories,
+                DoneBackers = player.doneBackers,
                 KnownBGMs = player.knownBGMs,
                 KnownSongs = player.knownSongs,
                 HangIcons = player.hangIcons,
@@ -237,6 +238,9 @@ internal static class OwnSettings
             // scene the guest never saw or played one again (hunt 5, H5-20)
             player.flags.playedStories = kept.PlayedStories ?? player.flags.playedStories;
             player.flags.availableStories = kept.AvailableStories ?? player.flags.availableStories;
+            // the supporter characters and trees this player already dealt with (hunt 5, H5-08): the host's list made
+            // them come back for the guest, or hid ones it never met
+            player.doneBackers = kept.DoneBackers ?? player.doneBackers;
             player.knownBGMs = kept.KnownBGMs ?? player.knownBGMs;
             player.knownSongs = kept.KnownSongs ?? player.knownSongs;
             player.hangIcons = kept.HangIcons ?? player.hangIcons;
@@ -414,6 +418,7 @@ internal static class OwnSettings
         public HashSet<int>? Sketches;
         public List<int>? PlayedStories;
         public List<int>? AvailableStories;
+        public HashSet<int>? DoneBackers;
         public HashSet<int>? KnownBGMs;
         public Dictionary<string, KnownSong>? KnownSongs;
         public Dictionary<string, string>? HangIcons;
