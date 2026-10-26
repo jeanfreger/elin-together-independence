@@ -60,10 +60,17 @@ internal static class CharaActPerformEvent
                 return;
             }
 
+            var ride = __instance.id is ABILITY.ActRide or ABILITY.ActParasite && Act.CC.IsPC;
+            // where the rider stands, before too: the replay checks the reach from the rider's tile as that game last
+            // saw it, one step behind, and an animal out of reach was not ridden there (ride2 speed, 2026-10-26)
+            if (ride) {
+                connection.Delta.AddRemote((CharaMoveDelta)Act.CC);
+            }
+
             connection.Delta.AddRemote(delta);
             // the other games replay the ride where they last saw the rider: one step behind, the pair stood on
             // another tile there until someone moved (ride2 "on the spot", 2026-10-24). Where the rider stands, after
-            if (__instance.id is ABILITY.ActRide or ABILITY.ActParasite && Act.CC.IsPC) {
+            if (ride) {
                 connection.Delta.AddRemote((CharaMoveDelta)Act.CC);
             }
 
