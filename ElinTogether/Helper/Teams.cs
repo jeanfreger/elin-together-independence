@@ -137,6 +137,8 @@ internal static class Teams
         return EmpConfig.Server.SpawnZone.Value switch {
             "host" => null,
             "start" or "" => EClass.game.StartZone,
+            // (a zone's number, as the bench and the zone list show it, or its id: "vernis")
+            var id when int.TryParse(id, out var uid) => EClass.game.spatials.Find(uid),
             var id => EClass.game.spatials.Find(id),
         };
     }
