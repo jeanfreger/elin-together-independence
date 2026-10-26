@@ -2,6 +2,7 @@ using ElinTogether.Patches;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.LangMod;
@@ -1648,6 +1649,13 @@ internal partial class ElinNetHost
                            "keeping its last checkpoint",
                 peer, zones.Keys);
 
+            // a dropped link: its automatic return puts it back on the map it held, see ReturnToAwayZone
+            if (EmpDisconnectInfo.IsLinkLost(Router.DisconnectReason)) {
+                _awayAt[peer.User] = (zones.Keys.First(), UnityEngine.Time.realtimeSinceStartup + LinkLostGraceSeconds);
+            } else {
+                _awayAt.Remove(peer.User);
+            }
+
             foreach (var zoneUid in zones.Keys) {
                 DestroyQuestZone(zoneUid);
                 HandOverZone(zoneUid, peer.Id, true);
@@ -1659,5 +1667,25 @@ internal partial class ElinNetHost
         }
 
         ResumePendingHostMove();
+    }
+
+    // player -> the map it held alone when its link dropped, until when it may come back there
+    private readonly Dictionary<ulong, (int ZoneUid, float Until)> _awayAt = [];
+
+    /// <summary>
+    ///     A player whose link dropped while it held a map alone comes back there, as a game loads where it was:
+    ///     it used to land on the host's map instead (ride2 cut_region, 2026-10-26). Not when that map is gone (a
+    ///     quest map), is the host's now, or another player holds it: then the host's map, as before
+    /// </summary>
+    private void ReturnToAwayZone(ISteamNetPeer peer)
+    {
+        if (!_awayAt.Remove(peer.User, out var away) || UnityEngine.Time.realtimeSinceStartup > away.Until ||
+            game.spatials.Find(away.ZoneUid) is not { } zone || zone == _zone ||
+            (!zone.IsRegion && _leases.Any(kv => kv.Key != peer.Id && kv.Value.ContainsKey(zone.uid)))) {
+            return;
+        }
+
+        EmpLog.Information("Player {@Peer} goes back to {ZoneFullName}, where its link dropped", peer, zone.ZoneFullName);
+        SendDeltaTo(peer.Id, new TeamSpawnDelta { ZoneUid = zone.uid });
     }
 }

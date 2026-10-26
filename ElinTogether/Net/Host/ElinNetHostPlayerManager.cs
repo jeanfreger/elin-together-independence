@@ -155,6 +155,7 @@ internal partial class ElinNetHost
             // remote character exists
             SendSaveProbe(chara, peer);
             SendToSpawnZone(chara, peer, false);
+            ReturnToAwayZone(peer);
         }
     }
 
