@@ -337,6 +337,27 @@ public class NetSessionRules
     [Key(123)]
     public bool TeamKnowledge { get; set; }
 
+    /// <summary>
+    ///     Council 7, step 5: a guest's bout with an adventurer counts as the host's does, see AdventurerBout. Off: it
+    ///     stays in the guest's own game. An older host sends none: off, as it was
+    /// </summary>
+    [Key(124)]
+    public bool GuestBouts { get; set; }
+
+    /// <summary>
+    ///     Council 7, step 6: a duel with the host is fought in an arena the host makes, both come back to their tiles
+    ///     after, see PlayerDuel. Off (or between two guests): where they stand
+    /// </summary>
+    [Key(125)]
+    public bool DuelArena { get; set; }
+
+    /// <summary>
+    ///     Council 7, step 7: the challenger of a duel names a stake in gold, both put it down, the winner takes both;
+    ///     given back when the duel ends without a winner (see PlayerDuel). Off: no stakes
+    /// </summary>
+    [Key(126)]
+    public bool DuelBets { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -378,6 +399,9 @@ public class NetSessionRules
         AllowReconnect = EmpConfig.Server.AutoReconnect.Value,
         HostManagesBase = EmpConfig.Server.HostManagesBase.Value,
         AllowDuels = EmpConfig.Server.Duels.Value,
+        GuestBouts = EmpConfig.Server.GuestBouts.Value,
+        DuelArena = EmpConfig.Server.DuelArena.Value,
+        DuelBets = EmpConfig.Server.DuelBets.Value,
         AllowPlayerKill = EmpConfig.Server.PlayerKill.Value,
         AllowGuestBuild = EmpConfig.Server.GuestBuild.Value,
         UseSharedSpeed = EmpConfig.Server.SharedAverageSpeed.Value,

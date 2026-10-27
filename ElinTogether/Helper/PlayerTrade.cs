@@ -499,7 +499,7 @@ public static class PlayerTrade
     ///     <c>IsFull</c> would then count its worn items too. Gold takes a cell too when the receiver has none yet
     ///     (<c>AddCurrency</c> creates the coins at the top level)
     /// </summary>
-    private static bool HasRoom(Chara chara, int incoming, int gold)
+    internal static bool HasRoom(Chara chara, int incoming, int gold)
     {
         if (gold > 0 && chara.GetCurrency() == 0) {
             incoming++;

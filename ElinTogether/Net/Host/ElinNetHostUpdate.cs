@@ -179,7 +179,7 @@ internal partial class ElinNetHost
             // an away player is not on the host map, only what it shares with the world is relevant here:
             // its chat and the quest log (and its world-map steps, held as its lead in Personal Pace: dropped here,
             // a guest's lead never grew, bench personalpace_suite 2026-10-23)
-            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or PlayerIdleDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true })) {
+            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or PlayerIdleDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true } or AdventurerBoutDelta)) {
                 continue;
             }
 

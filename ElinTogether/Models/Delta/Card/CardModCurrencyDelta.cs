@@ -54,12 +54,13 @@ public class CardModCurrencyDelta : ElinDelta
     /// <summary>
     ///     Gold this player paid in the last two minutes, and forgets it (one payment pays one thing)
     /// </summary>
-    internal static long TakeSpent(int peer, long wanted)
+    /// <param name="since">only what it paid from then on (a duel's stake: after the yes)</param>
+    internal static long TakeSpent(int peer, long wanted, float since = 0f)
     {
         var now = UnityEngine.Time.realtimeSinceStartup;
         long found = 0;
         for (var i = 0; i < Spent.Count && found < wanted; i++) {
-            if (Spent[i].Peer != peer || now - Spent[i].At > SpentWindow) {
+            if (Spent[i].Peer != peer || now - Spent[i].At > SpentWindow || Spent[i].At < since) {
                 continue;
             }
 

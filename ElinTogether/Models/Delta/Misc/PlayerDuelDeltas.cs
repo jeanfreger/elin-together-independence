@@ -22,6 +22,12 @@ public class DuelIntentDelta : ElinDelta
     [Key(2)]
     public int PartnerUid { get; set; }
 
+    /// <summary>
+    ///     A challenge: the stake each one puts down, 0 none, -1 as much as the poorer one has (PlayerDuel, step 7)
+    /// </summary>
+    [Key(3)]
+    public int Bet { get; set; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host && host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var from)) {
@@ -63,6 +69,33 @@ public class DuelStateDelta : ElinDelta
     /// </summary>
     [Key(5)]
     public string Reason { get; set; } = "";
+
+    /// <summary>
+    ///     Countdown: the fight is about to start (false while a duellist is still on its way to the arena)
+    /// </summary>
+    [Key(7)]
+    public bool Ready { get; set; }
+
+    /// <summary>
+    ///     The arena the duel is fought in, 0 where they stand (PlayerDuel, step 6)
+    /// </summary>
+    [Key(8)]
+    public int ArenaUid { get; set; }
+
+    /// <summary>
+    ///     The tile each duellist left for the arena, x and z: where it comes back to
+    /// </summary>
+    [Key(9)]
+    public int[]? ReturnA { get; set; }
+
+    [Key(10)]
+    public int[]? ReturnB { get; set; }
+
+    /// <summary>
+    ///     The stake each duellist puts down, in gold (0: none)
+    /// </summary>
+    [Key(11)]
+    public int Bet { get; set; }
 
     protected override void OnApply(ElinNetBase net)
     {

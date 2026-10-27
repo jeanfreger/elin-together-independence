@@ -35,6 +35,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         // (alone too: the host's own team's knowledge is put in place after a load, given back to the world when the
         // box is unticked)
         TeamKnowledge.Update();
+        PlayerDuel.Always();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
             return;
@@ -50,6 +51,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         TileStateDelta.Flush();
         PlayerTrade.Update();
         PlayerDuel.Update();
+        AdventurerBout.Update();
         CardCache.Update();
         CharaSynchronizationContext.Update();
         NetProfileSynchronizationContext.Update();

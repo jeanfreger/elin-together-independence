@@ -78,6 +78,11 @@ internal partial class ElinNetClient
         if (pc.currentZone?.instance is { } instance) {
             zone = game.spatials.Find(instance.uidZone) ?? pc.homeZone;
 
+            // out of a bout with an adventurer: the host puts its adventurer back (AdventurerBout)
+            if (instance is ZoneInstanceBout bout) {
+                AdventurerBout.Leave(bout);
+            }
+
             // the zone of our quest, run by the host who came along: it takes everyone out, and tells us how
             // the quest went on the way, see ElinNetHost.LeaveAccompaniedZone
             if (!Session.IsAway && PersonalQuests.InstancesEnabled &&
@@ -1158,7 +1163,7 @@ internal partial class ElinNetClient
     /// </summary>
     internal static bool ReachesAwayPlayer(ElinDelta delta)
     {
-        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or ModerationDelta;
+        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or ModerationDelta or AdventurerBoutDelta or DuelStateDelta;
     }
 
     /// <summary>

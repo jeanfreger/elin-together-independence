@@ -272,6 +272,30 @@ internal partial class EmpConfig
             "Potions, arrows and charges used during the duel stay spent\n" +
             "玩家可以通过对方角色的菜单发起决斗：不会有人死亡，结束时双方恢复，没有任何损失；决斗中使用的药水、箭矢和充能不会返还");
 
+        Server.DuelBets = config.Bind(
+            "Server",
+            "DuelBets",
+            false,
+            "Bets: the challenger of a duel names a stake in gold (none, 100, 1,000 or as much as the poorer of the two has), shown in the box the other one answers; both put it down, the winner takes both\n" +
+            "The stakes go back to each one when the duel ends without a winner (a player leaves or drops out, the game stops); giving up loses them. Otherwise no stakes\n" +
+            "赌注：发起决斗的一方指定金币赌注（无、100、1000 或两人中较少一方的全部金币），显示在对方回答的对话框中；双方各自押上，胜者全拿；决斗没有胜者时（玩家离开、掉线、游戏停止）赌注退还给各自，认输则失去赌注。关闭时没有赌注");
+
+        Server.DuelArena = config.Bind(
+            "Server",
+            "DuelArena",
+            false,
+            "A duel the host fights is fought in an arena: when the challenge is accepted the host makes a field for it and goes there, the other one follows, and after the duel each one comes back to the tile it left\n" +
+            "A duel between two other players is still fought where they stand. Otherwise every duel is fought where they stand\n" +
+            "主机参与的决斗在竞技场中进行：接受挑战后主机创建一块场地并前往，另一方随后跟来，决斗结束后双方各自回到原来的位置；其他两名玩家之间的决斗仍在原地进行。关闭时所有决斗都在原地进行");
+
+        Server.GuestBouts = config.Bind(
+            "Server",
+            "GuestBouts",
+            true,
+            "A guest can duel an adventurer as the host does: the adventurer leaves town for the bout and comes back healed, its week before the next bout is everyone's, a won bout counts and its reward is the adventurer's own\n" +
+            "Otherwise the guest fights a copy of the adventurer in its own game and nothing of it counts in the world\n" +
+            "其他玩家可以像主机一样与冒险者决斗：决斗期间冒险者离开城镇，结束后恢复返回，下次决斗前的一周对所有人相同，胜利会被记录，奖励来自冒险者本身；否则该玩家只是在自己的游戏中与冒险者的副本战斗，世界中不会留下任何结果");
+
         Server.GuestBuild = config.Bind(
             "Server",
             "GuestBuild",
@@ -809,6 +833,9 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> PlayerKill { get; set; } = null!;
         internal static ConfigEntry<bool> HostManagesBase { get; set; } = null!;
         internal static ConfigEntry<bool> Duels { get; set; } = null!;
+        internal static ConfigEntry<bool> GuestBouts { get; set; } = null!;
+        internal static ConfigEntry<bool> DuelArena { get; set; } = null!;
+        internal static ConfigEntry<bool> DuelBets { get; set; } = null!;
         internal static ConfigEntry<bool> PersonalQuests { get; set; } = null!;
         internal static ConfigEntry<bool> ChooseCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> AutoReconnect { get; set; } = null!;
