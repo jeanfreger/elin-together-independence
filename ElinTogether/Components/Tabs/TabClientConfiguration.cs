@@ -118,6 +118,11 @@ internal class TabClientConfiguration : TabEmpBase
             Patches.ReportBoxPatch.Enlarge(input);
         });
         help.TextSmall("emp_ui_report_send_desc".lang());
+
+        // the last seconds of the screen sent with the report (ReplayBuffer)
+        var replay = EmpConfig.Client.RecordReplay;
+        help.Toggle("emp_ui_cl_record_replay", replay.Value, value => replay.Value = value).AsRow()
+            .SetTooltipLang(replay.Description.Description);
     }
 
     private YKVertical Card(string id)

@@ -74,6 +74,8 @@ internal sealed class EmpMod : BaseUnityPlugin
         NetSession.Instance.Lobby.TryParseLobbyCommand();
 
         TitleButtonPatch.RegisterTitleButton(Scene.Mode.Title);
+
+        StartCoroutine(Helper.ReplayBuffer.Run());
     }
 
     // (the patches of a release build are only there while a session is: this runs on the title screen too)

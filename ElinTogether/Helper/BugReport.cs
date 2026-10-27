@@ -34,6 +34,12 @@ internal static class BugReport
             using (var file = new FileStream(path, FileMode.Create))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create)) {
                 Add(zip, "info.txt", Encoding.UTF8.GetBytes(Describe()));
+                // the last seconds of the screen (ReplayBuffer), already JPEG: stored as they are
+                foreach (var (name, jpg) in ReplayBuffer.Snapshot()) {
+                    using var entry = zip.CreateEntry(name, System.IO.Compression.CompressionLevel.NoCompression).Open();
+                    entry.Write(jpg, 0, jpg.Length);
+                }
+
                 foreach (var name in new[] { "Player.log", "Player-prev.log" }) {
                     AddFile(zip, Path.Combine(data, name), name);
                 }

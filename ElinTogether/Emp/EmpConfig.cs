@@ -96,6 +96,13 @@ internal partial class EmpConfig
             "Address of the server joined last with \"Join by address\", as host:port (the port is 55556)\n" +
             "上次通过“按地址加入”连接的服务器地址，格式为 主机:端口（端口为 55556）");
 
+        Client.RecordReplay = config.Bind(
+            "Client",
+            "RecordReplay",
+            true,
+            "Keep the last 30 seconds of the screen (one small picture a second, in memory only) and send them with a bug report\n" +
+            "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送");
+
         Client.FetchMods = config.Bind(
             "Client",
             "FetchMods",
@@ -758,6 +765,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<string> DepotPassword { get; set; } = null!;
         internal static ConfigEntry<string> ServerAddress { get; set; } = null!;
         internal static ConfigEntry<bool> FetchMods { get; set; } = null!;
+        internal static ConfigEntry<bool> RecordReplay { get; set; } = null!;
         internal static ConfigEntry<bool> KeepMods { get; set; } = null!;
     }
 
