@@ -52,8 +52,8 @@ public class PartyMemberDelta : ElinDelta
         }
 
         using var _ = Simulate();
-        // sent away by a player: whoever takes it again, it is theirs
-        chara.SetCompanionOwner(null);
+        // sent away by its player, it stays that player's (what it carries is kept apart from the others' as a
+        // god's artifact, GitHub issue 12); whoever takes it again is its owner from then on (JoinParty)
         party.RemoveMember(chara);
 
         // _leaveParty

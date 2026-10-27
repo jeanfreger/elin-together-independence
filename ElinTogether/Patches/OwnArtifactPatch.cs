@@ -24,11 +24,12 @@ internal static class OwnArtifactPatch
         }
 
         var taker = __instance.GetRootCard() as Chara ?? EClass.pc;
-        var mine = CompanionHelper.OwnerOf(taker) ?? taker;
+        var mine = Side(taker);
+        // (residents included: a companion sent home is still its player's, GitHub issue 12)
         var others = EClass._map.charas
             .Concat(EClass.pc.faction.GetChildren().SelectMany(b => b.members))
             .Distinct()
-            .Where(c => CompanionHelper.OwnerOf(c) is { IsPlayer: true } owner && owner != mine);
+            .Where(c => c.IsPCFactionOrMinion && Side(c) != mine);
 
         __state = [];
         foreach (var chara in others) {
@@ -37,6 +38,23 @@ internal static class OwnArtifactPatch
                 __state.Add(kept);
             }
         }
+    }
+
+    /// <summary>
+    ///     The player whose side a chara is on: a player itself, a summon its master's, a companion or resident its
+    ///     owner's (by its tag, in the party or not), and the host's when nobody else's
+    /// </summary>
+    private static int Side(Chara chara, int depth = 0)
+    {
+        if (chara.IsPC || chara.GetBool("remote_chara")) {
+            return chara.uid;
+        }
+
+        if (chara.master is { } master && master != chara && depth < 4) {
+            return Side(master, depth + 1);
+        }
+
+        return chara.CompanionOwnerUid is var uid and not 0 ? uid : (EClass.pc.party?.leader ?? EClass.pc).uid;
     }
 
     [HarmonyFinalizer]
