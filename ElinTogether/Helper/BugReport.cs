@@ -1,10 +1,13 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using ElinTogether.Net;
+using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace ElinTogether.Helper;
 
@@ -104,6 +107,104 @@ internal static class BugReport
             source.CopyTo(entry);
         } catch (IOException) {
             // noexcept
+        }
+    }
+
+    // ---------------------------------------------------------------- sent from the game (user, 2026-10-27)
+
+    /// <summary>
+    ///     The relay that turns a report into a GitHub issue (dev/relay/worker.js): it holds the GitHub key, the game
+    ///     never does. Empty until it is online: the report then opens the issue page, filled, in the browser
+    /// </summary>
+    internal const string Relay = "https://elin-report.yhhhuii095.workers.dev";
+
+    private const string Issues = "https://github.com/jeanfreger/elin-together-independence/issues/new";
+
+    // what the relay takes at most for the logs
+    private const int MaxZip = 6 * 1024 * 1024;
+
+    /// <summary>
+    ///     The player's words and its logs go to the developers: a GitHub issue made by the relay, its link given
+    ///     back; or, without the relay, the issue page opened filled in the browser and the zip shown to drag in
+    /// </summary>
+    internal static void Send(string words, Action<string?> done)
+    {
+        var zip = Make();
+        if (Relay.Length == 0) {
+            OpenIssuePage(words, zip);
+            done(null);
+            return;
+        }
+
+        EmpMod.Instance.StartCoroutine(Post(words, zip, done));
+    }
+
+    private static IEnumerator Post(string words, string? zip, Action<string?> done)
+    {
+        string payload;
+        try {
+            var bytes = zip is not null && new FileInfo(zip).Length <= MaxZip ? File.ReadAllBytes(zip) : null;
+            payload = JsonConvert.SerializeObject(new {
+                title = FirstLine(words),
+                text = words,
+                info = Describe(),
+                zip = bytes is null ? "" : Convert.ToBase64String(bytes),
+                version = ModInfo.BuildVersion,
+            });
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            EmpLog.Warning(ex, "The bug report could not be read to send it");
+            OpenIssuePage(words, zip);
+            done(null);
+            yield break;
+        }
+
+        using var request = new UnityWebRequest(Relay.TrimEnd('/') + "/report", "POST");
+        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+        request.SetRequestHeader("X-Emp-Report", "elin-together");
+        request.timeout = 60;
+        yield return request.SendWebRequest();
+
+        string? url = null;
+        if (request.result == UnityWebRequest.Result.Success) {
+            try {
+                url = JsonConvert.DeserializeAnonymousType(request.downloadHandler.text, new { url = "" })?.url;
+            } catch (JsonException) {
+            }
+        }
+
+        if (url is null) {
+            EmpLog.Warning("The relay did not take the bug report ({Code}: {Error}), the issue page opens instead",
+                request.responseCode, request.error);
+            OpenIssuePage(words, zip);
+        } else {
+            EmpLog.Information("Bug report sent: {Url}", url);
+        }
+
+        done(url);
+    }
+
+    private static string FirstLine(string words)
+    {
+        var line = words.Split('\n')[0].Trim();
+        return line.Length > 80 ? line.Substring(0, 80) + "…" : line;
+    }
+
+    /// <summary>
+    ///     Without the relay: GitHub's new issue page, filled (the player signs in and clicks Submit), and the zip shown
+    ///     to drag into it
+    /// </summary>
+    private static void OpenIssuePage(string words, string? zip)
+    {
+        var body = $"### What happened\n\n{words}\n\n### The game\n\n```\n{Describe()}```\n\n(Drag the zip ElinTogether-rapport-*.zip from your desktop here.)";
+        if (body.Length > 6000) {
+            body = body.Substring(0, 6000);
+        }
+
+        Application.OpenURL($"{Issues}?labels=bug&title={Uri.EscapeDataString("[In-game report] " + FirstLine(words))}&body={Uri.EscapeDataString(body)}");
+        if (zip is not null) {
+            Util.ShowExplorer(zip);
         }
     }
 }

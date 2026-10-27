@@ -96,6 +96,28 @@ internal class TabClientConfiguration : TabEmpBase
             }
         });
         help.TextSmall("emp_ui_report_desc".lang());
+
+        // the same, sent to the developers as a GitHub issue: the player writes what happened (user, 2026-10-27)
+        help.ButtonRow().RowButton("emp_ui_report_send".lang(), () => {
+            var input = Dialog.InputName("emp_ui_report_what", "", (cancel, text) => {
+                if (cancel || text.Trim().Length < 3) {
+                    return;
+                }
+
+                EmpPop.Information("emp_ui_report_sending".lang());
+                BugReport.Send(text.Trim(), url => {
+                    if (url is null) {
+                        EmpPop.Information("emp_ui_report_page".lang());
+                        return;
+                    }
+
+                    Dialog.YesNo("emp_ui_report_sent".Loc(url), () => Application.OpenURL(url));
+                });
+            }, Dialog.InputType.Chat);
+            input.input.field.characterLimit = 3000;
+            input.input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
+        });
+        help.TextSmall("emp_ui_report_send_desc".lang());
     }
 
     private YKVertical Card(string id)

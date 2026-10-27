@@ -515,5 +515,11 @@
     "LangGeneral.emp_ui_sv_desc_permadeath_revive.text": "仅限永久死亡世界：死亡玩家的角色会留在世界中，任何人都可以在酒保处支付费用将其复活，不会删除任何内容。关闭：游戏原本的永久死亡（主机死亡会删除世界）。",
     "LangGeneral.emp_ui_chara_dead_tag.text": "（已死亡：等待在酒保处复活）",
     "LangGeneral.emp_ui_chara_dead.text": "这个角色已经死亡，正在等待在酒保处复活。",
-    "LangGeneral.emp_act_duel_giveup.text": "认输（结束决斗）"
+    "LangGeneral.emp_act_duel_giveup.text": "认输（结束决斗）",
+    "LangGeneral.emp_ui_report_send.text": "向开发者报告问题",
+    "LangGeneral.emp_ui_report_send_desc.text": "写下发生了什么：它会连同你的日志发送给开发者，并在 GitHub 上生成一份公开报告。日志（包含 Steam 名称和 ID）只有开发者可以查看。",
+    "LangGeneral.emp_ui_report_what.text": "发生了什么？（你在做什么，你期望什么）",
+    "LangGeneral.emp_ui_report_sending.text": "正在发送报告……",
+    "LangGeneral.emp_ui_report_page.text": "已在浏览器中打开报告页面：把桌面上的 zip 拖进去，然后点击 Submit。",
+    "LangGeneral.emp_ui_report_sent.text": "报告已发送：{0}\n在浏览器中打开吗？"
 }
