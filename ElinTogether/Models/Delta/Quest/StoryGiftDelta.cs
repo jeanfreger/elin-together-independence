@@ -37,7 +37,44 @@ public class StoryGiftDelta : ElinDelta
         }
 
         var reach = System.Math.Max(System.Math.Abs(at.x - Pos.X), System.Math.Abs(at.z - Pos.Z));
-        return reach > MaxReach ? $"a gift {reach} cells away from the sender" : null;
+        return reach > MaxReach ? $"a gift {reach} cells away from the sender" : OverBudget();
+    }
+
+    // what the dialogs and wishes of one player may give in an hour (security audit 2026-10-27, item 5: any thing, up to
+    // 1000 of it or 10,000,000 gold, as often as a modified game liked): far above a real game's quests and wishes
+    private const int HourlyGifts = 40;
+    private const long HourlyGold = 2_000_000;
+    private const long HourlyValue = 2_000_000;
+
+    private static readonly System.Collections.Generic.Dictionary<int, (float Since, int Gifts, long Gold, long Value)> Given = [];
+
+    private string? OverBudget()
+    {
+        Thing thing;
+        try {
+            thing = Data.Decompress<Thing>();
+        } catch (System.Exception) {
+            return "a gift that cannot be read";
+        }
+
+        var gold = thing.trait is TraitCurrency && thing.id == "money" ? (long)thing.Num : 0;
+        var value = gold > 0 ? 0 : (long)thing.GetValue() * thing.Num;
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (!Given.TryGetValue(OriginPeer, out var given) || now - given.Since > 3600f) {
+            given = (now, 0, 0, 0);
+        }
+
+        if (given.Gifts + 1 > HourlyGifts || given.Gold + gold > HourlyGold || given.Value + value > HourlyValue) {
+            var why = $"gift {thing.id} x{thing.Num} over the hour's budget ({given.Gifts} gifts, {given.Gold} gold, {given.Value} value)";
+            if (TrustEnforced) {
+                ElinNetHost.AdminLog($"refused {why} from peer {OriginPeer}");
+            }
+
+            return why;
+        }
+
+        Given[OriginPeer] = (given.Since, given.Gifts + 1, given.Gold + gold, given.Value + value);
+        return null;
     }
 
     protected override void OnApply(ElinNetBase net)
