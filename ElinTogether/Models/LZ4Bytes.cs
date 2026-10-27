@@ -57,10 +57,9 @@ public class LZ4Bytes
     {
         using var input = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var ms = new MemoryStream();
-        // ponytail: high compression is slow (it freezes the game on a big map), but a map goes out in ONE message
-        // and Steam refuses a message over 512 KB: the fast mode makes maps 40% bigger. Fast mode once maps are
-        // sent in pieces
-        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress, LZ4StreamFlags.HighCompression);
+        // fast mode: high compression froze the main thread at each join (~0.4 s on a small map, empload 2026-10-27).
+        // Maps are ~40% bigger, which SteamNetPeer sends in pieces (NetFragments)
+        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
 
         input.CopyTo(lz4);
         lz4.Flush();
@@ -73,7 +72,7 @@ public class LZ4Bytes
     public static LZ4Bytes CreateFromBytes(byte[] input)
     {
         using var ms = new MemoryStream();
-        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress, LZ4StreamFlags.HighCompression);
+        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
 
         lz4.Write(input, 0, input.Length);
         lz4.Flush();
