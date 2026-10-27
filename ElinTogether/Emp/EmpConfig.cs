@@ -516,6 +516,14 @@ internal partial class EmpConfig
             "The quests of a player who left the game keep their time left: the days the world went on without it are added to their deadlines when it comes back. Otherwise they ran out as the world went on\n" +
             "离开游戏的玩家的任务保留剩余时间：玩家回来时，世界在其离开期间经过的天数会加到任务期限上；关闭时任务期限随世界流逝");
 
+        // council 2026-10-26, stage 5: a week since 0.26.1082
+        Server.CatchUpDays = config.Bind(
+            "Server",
+            "CatchUpDays",
+            7,
+            "A game far behind the world's date (a player's long trip, a map left alone) lives at most this many of the last days, a day per frame; the time before them is skipped over without its days. 1, 3 or 7\n" +
+            "远远落后于世界日期的游戏（玩家长途旅行、无人的地图）最多经历最后这么多天，每帧一天；更早的时间直接跳过。1、3 或 7");
+
         Server.SummonsFollowMaster = config.Bind(
             "Server",
             "SummonsFollowMaster",
@@ -817,6 +825,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;
+        internal static ConfigEntry<int> CatchUpDays { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;
         internal static ConfigEntry<bool> PlayersAtBase { get; set; } = null!;
         internal static ConfigEntry<bool> GlobalChat { get; set; } = null!;

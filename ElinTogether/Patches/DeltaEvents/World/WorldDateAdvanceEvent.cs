@@ -12,15 +12,17 @@ namespace ElinTogether.Patches;
 internal static class WorldDateAdvanceEvent
 {
     /// <summary>
-    ///     A date further than this from ours is not a date to catch up with (a month of the game)
+    ///     A date further than this from ours is not a date to catch up with (a year of the game). It was a month,
+    ///     when every minute of it was replayed; most of it is skipped over now, and a map whose player was away
+    ///     (EmptyWorld) may well be that far behind the world
     /// </summary>
-    private const int MaxCatchUpMinutes = Date.MonthToken;
+    private const int MaxCatchUpMinutes = Date.YearToken;
 
     /// <summary>
-    ///     Council 2026-10-26 (stage 5): a catch-up replays at most this much (a week), what lies before is
-    ///     collapsed: the date jumps over it without its hours and days
+    ///     Council 2026-10-26 (stage 5): a catch-up replays at most this much (the host's "Catch-up lives", a week
+    ///     by default), what lies before is collapsed: the date jumps over it without its hours and days
     /// </summary>
-    internal const int MaxReplayMinutes = 7 * Date.DayToken;
+    internal static int MaxReplayMinutes => System.Math.Max(1, NetSession.Instance.Rules.CatchUpDays) * Date.DayToken;
 
     // and replays a day per frame at most: not every hour of a week in one frame, in every game
     private const int ChunkMinutes = Date.DayToken;

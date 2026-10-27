@@ -46,6 +46,9 @@ public class WorldDateAdvanceDelta : ElinDelta
     // sometimes first
     private static int _moved;
 
+    // the most of one jump this player lives (its hours and days), see OnApply
+    private const int MaxLivedMinutes = 7 * Date.DayToken;
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net.IsHost) {
@@ -78,9 +81,10 @@ public class WorldDateAdvanceDelta : ElinDelta
         var before = now - Minutes;
 
         // the date went further than the minutes told: hours that came with no word of their own (the express
-        // travel of the map's holder calls GameDate.AdvanceHour, not AdvanceMin). Another player's time too
+        // travel of the map's holder calls GameDate.AdvanceHour, not AdvanceMin). Another player's time too, and the
+        // days a long catch-up of the host skipped over (stage 5: up to a year, see WorldDateAdvanceEvent)
         var untold = _moved + now - world.date.GetRaw() - Minutes;
-        PersonalQuests.Postpone((others ? Minutes : 0) + (untold is > 0 and <= Date.MonthToken ? untold : 0));
+        PersonalQuests.Postpone((others ? Minutes : 0) + (untold is > 0 and <= Date.YearToken ? untold : 0));
 
         // where this game's date stood before this message (the world snapshot may have set it since: _moved)
         var previous = world.date.GetRaw() - _moved;
@@ -121,15 +125,16 @@ public class WorldDateAdvanceDelta : ElinDelta
 
         // what GameDate.AdvanceHour, Day, Month and Year do for the player of a game that owns its date
         // (up to a week: a host's long sleep or trip counted no day at all for its guests when it was over 3 days;
-        // a longer jump counts its last week, as the host's catch-up replays it, council 2026-10-26 stage 5)
-        var hours = System.Math.Min(now / Date.HourToken - before / Date.HourToken, WorldDateAdvanceEvent.MaxReplayMinutes / Date.HourToken);
+        // a longer jump counts its last week. A catch-up of the host comes a day per message, each counted, the days
+        // it skipped over come without a word of their own, as the host did not live them either: stage 5)
+        var hours = System.Math.Min(now / Date.HourToken - before / Date.HourToken, MaxLivedMinutes / Date.HourToken);
         if (hours > 0 && !pc.isDead) {
             for (var h = 0; h < hours; h++) {
                 player.OnAdvanceHour();
             }
         }
 
-        var days = System.Math.Min(now / Date.DayToken - before / Date.DayToken, WorldDateAdvanceEvent.MaxReplayMinutes / Date.DayToken);
+        var days = System.Math.Min(now / Date.DayToken - before / Date.DayToken, MaxLivedMinutes / Date.DayToken);
         if (days > 0 && !pc.isDead) {
             for (var d = 0; d < days; d++) {
                 player.stats.days++;
