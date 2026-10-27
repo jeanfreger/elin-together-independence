@@ -27,6 +27,44 @@ public class QuestChangePhaseDelta : ElinDelta
     [Key(3)]
     public int From { get; set; } = -1;
 
+    // steps of the shared quests one player may make in a minute (a dialog moves a quest one step at a time)
+    private const int StepsPerMinute = 6;
+    private static readonly System.Collections.Generic.Dictionary<int, (float Since, int Steps)> Steps = [];
+
+    /// <summary>
+    ///     Security audit 2026-10-27 (item 5): a step without the phase it moved from skipped the check of a stale
+    ///     journal, so a modified game could set any quest (the main one too) to any phase. A guest's game always says
+    ///     where it moved from (QuestChangePhaseEvent); and a player makes a few steps a minute, not a run of them
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (From < 0) {
+            return $"quest {Uid} set to phase {Modifier} without the phase it moved from";
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (!Steps.TryGetValue(OriginPeer, out var steps) || now - steps.Since > 60f) {
+            steps = (now, 0);
+        }
+
+        if (steps.Steps >= StepsPerMinute) {
+            return $"quest {Uid} step {From} -> {Modifier}, over {StepsPerMinute} steps a minute";
+        }
+
+        Steps[OriginPeer] = (steps.Since, steps.Steps + 1);
+        return null;
+    }
+
+    /// <summary>
+    ///     The sender's journal goes back to where the host has it
+    /// </summary>
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        if (SharedQuests.Find(Uid, Id) is { } quest) {
+            host.SendDeltaTo(OriginPeer, new QuestChangePhaseDelta { Uid = quest.uid, Modifier = quest.phase });
+        }
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         var quest = SharedQuests.Find(Uid, Id);

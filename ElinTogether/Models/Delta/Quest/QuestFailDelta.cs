@@ -14,6 +14,15 @@ public class QuestFailDelta : ElinDelta
     [Key(0)]
     public required int Uid { get; init; }
 
+    /// <summary>
+    ///     Security audit 2026-10-27 (item 5): a failure costs everyone karma and fame. A guest on the host's map never
+    ///     says one (the host fails it at the same hour, QuestFailEvent): only a player away in its own zones may
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return host.IsAwayPeer(OriginPeer) ? null : $"quest {Uid} failed by a guest on the host's map";
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         var quest = SharedQuests.Find(Uid, null);
