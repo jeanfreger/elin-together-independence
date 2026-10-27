@@ -26,7 +26,7 @@ public class ModerationDelta : ElinDelta
     public required ulong[] Mutes { get; init; }
 
     [Key(1)]
-    public ulong[] Admins { get; init; } = [];
+    public ulong[] Admins { get; set; } = [];
 
     protected override void OnApply(ElinNetBase net)
     {
