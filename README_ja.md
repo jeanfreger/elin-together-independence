@@ -1,6 +1,6 @@
 # Elin Together — 「独立」版フォーク
 
-**現在のバージョン：0.26.1067**（zip：`ElinTogether-independence.zip`）。
+**現在のバージョン：0.26.1069**（zip：`ElinTogether-independence.zip`）。
 
 [English](README.md) | [Français](README_fr.md) | [中文](README_zh.md) | 日本語
 
