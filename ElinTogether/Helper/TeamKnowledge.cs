@@ -83,6 +83,10 @@ internal static class TeamKnowledge
             Hold(team);
         }
 
+        if (On && Seeded && _team is not null) {
+            MergeGoneTeams();
+        }
+
         if (flipped) {
             TellEveryone();
         }
@@ -192,6 +196,71 @@ internal static class TeamKnowledge
     internal static TeamLore Of(int team)
     {
         return team == LocalTeam ? Take(EClass.player) : Stored(team) ?? WorldUnion();
+    }
+
+    // ---- teams changing
+
+    /// <summary>
+    ///     In the game that keeps the book: that player went from one team to another (joined, left for the
+    ///     Wanderers, founded a team). What it knew comes with it: the team it enters knows it all from now on, the
+    ///     team it left keeps what it knew (a team left without members keeps it too). Every player of that team is
+    ///     told
+    /// </summary>
+    internal static void Moved(int from, int to)
+    {
+        if (LocalTeam is not { } local || from == to) {
+            return;
+        }
+
+        Store(local, Take(EClass.player));
+        // (a new team: the founder's knowledge)
+        var merged = Union(new[] { Stored(to), Stored(from) ?? WorldUnion() }.OfType<TeamLore>());
+        Store(to, merged);
+        EmpLog.Information("A player came from team {From} to team {To}: the team knows {Recipes} recipes, {Creatures} creatures",
+            from, to, merged.Known.Count, merged.Codex.Count);
+        TellTeam(to);
+    }
+
+    /// <summary>
+    ///     A team that is no more: what it knew goes to the Wanderers
+    /// </summary>
+    private static void MergeGoneTeams()
+    {
+        var gone = ElinNetHost.TeamLoreBook.Keys.Where(team => team != Teams.Wanderers && !ElinNetHost.TeamList.ContainsKey(team)).ToArray();
+        if (gone.Length == 0) {
+            return;
+        }
+
+        foreach (var team in gone) {
+            if (Stored(team) is { } lore) {
+                Store(Teams.Wanderers, Union(new[] { Of(Teams.Wanderers), lore }));
+            }
+
+            ElinNetHost.TeamLoreBook.Remove(team);
+            EmpLog.Information("Team {TeamId} is gone: what it knew goes to the Wanderers", team);
+        }
+
+        TellTeam(Teams.Wanderers);
+    }
+
+    /// <summary>
+    ///     Every player of that team, the host's own game included, knows what the team knows now
+    /// </summary>
+    private static void TellTeam(int team)
+    {
+        if (team == LocalTeam && Stored(team) is { } own) {
+            Put(EClass.player, own);
+        }
+
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host) {
+            return;
+        }
+
+        foreach (var (peer, chara) in host.ActiveRemoteCharas) {
+            if (Teams.TeamOf(chara.uid) == team) {
+                host.SendDeltaTo(peer, new TeamLoreDelta { Lore = Of(team) });
+            }
+        }
     }
 
     // ---- learning

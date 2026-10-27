@@ -465,12 +465,14 @@ internal static class Teams
             return Wanderers;
         }
 
+        var from = TeamOf(chara.uid);
         Remove(chara.uid);
         var id = TeamList.Keys.DefaultIfEmpty(Wanderers).Max() + 1;
         // open: anyone joins at once; closed: its leader answers who asks (the host's rule when it is founded)
         TeamList[id] = [chara.uid, EmpConfig.Server.TeamApproval.Value ? 0 : 1, chara.uid];
         Names[id] = name.Trim();
         EmpLog.Information("Team {TeamId} {TeamName} founded by {CharaUid}", id, name, chara.uid);
+        TeamKnowledge.Moved(from, id);
         GiveDeed(chara, id);
         Tell();
         return id;
@@ -514,11 +516,13 @@ internal static class Teams
             return false;
         }
 
+        var from = TeamOf(chara.uid);
         Remove(chara.uid);
         Requests.Remove(chara.uid);
         var team = TeamList[teamId];
         TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
+        TeamKnowledge.Moved(from, teamId);
         Tell();
         return true;
     }
@@ -528,11 +532,13 @@ internal static class Teams
     /// </summary>
     internal static bool Leave(Chara chara)
     {
+        var from = TeamOf(chara.uid);
         if (!KeepsBook || !Remove(chara.uid)) {
             return false;
         }
 
         Requests.Remove(chara.uid);
+        TeamKnowledge.Moved(from, Wanderers);
 
         EmpLog.Information("Chara {CharaUid} left its team", chara.uid);
         Tell();
