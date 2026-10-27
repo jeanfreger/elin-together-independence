@@ -363,3 +363,4 @@ healthchecksdb
 /.vscode/
 /scripts/
 /dev_proposed_tests/
+/bench/
