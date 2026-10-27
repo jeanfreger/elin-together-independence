@@ -110,7 +110,8 @@ internal partial class ElinNetHost
 
         var away = world.date.GetRaw() - seen;
         PlayerLastSeen[charaUid] = world.date.GetRaw();
-        if (away <= 0 || !PersonalQuestLogs.TryGetValue(charaUid, out var log)) {
+        // (the box off: its quests ran out with the world, as before; the date it came back is still kept)
+        if (away <= 0 || !EmpConfig.Server.AbsentQuestsWait.Value || !PersonalQuestLogs.TryGetValue(charaUid, out var log)) {
             return;
         }
 

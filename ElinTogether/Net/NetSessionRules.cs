@@ -322,6 +322,14 @@ public class NetSessionRules
     [Key(121)]
     public bool PermadeathRevive { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-26 (MMO world time, stage 5): the days a long catch-up replays at most, the time before
+    ///     them is skipped over (WorldDateAdvanceEvent). Every game that holds a map uses the host's. An older host
+    ///     sends none: a week, as it did
+    /// </summary>
+    [Key(122)]
+    public int CatchUpDays { get; set; } = 7;
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -354,6 +362,7 @@ public class NetSessionRules
         IdleMinutes = System.Math.Max(0, EmpConfig.Server.IdleMinutes.Value),
         NightPasses = EmpConfig.Server.NightPasses.Value,
         TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
+        CatchUpDays = System.Math.Max(1, EmpConfig.Server.CatchUpDays.Value),
         PermadeathRevive = EmpConfig.Server.PermadeathRevive.Value,
         TimeJumpsTogether = EmpConfig.Server.WorldMapTime.Value == WorldMapTime.TravelTogether,
         WorldMapTime = EmpConfig.Server.WorldMapTime.Value,
