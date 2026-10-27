@@ -19,11 +19,16 @@ internal static class EmpServer
 {
     private const float SaveSeconds = 300f;
 
+    // a copy of the world in the game's own backups (GameIO.MakeBackup, it keeps the last ones): what an operator
+    // restores after a griefer or a broken save (council 2026-10-27, 50 players: snapshots)
+    private const float BackupSeconds = 3600f;
+
     private static readonly string? _save = Arg("-empserver");
     private static readonly string _folder = Path.Combine(Application.persistentDataPath, "ElinMP");
 
     private static float _next;
     private static float _nextSave;
+    private static float _nextBackup;
     private static bool _loading;
     private static string _saved = "-";
     private static string _order = "";
@@ -96,6 +101,7 @@ internal static class EmpServer
             }
 
             _nextSave = Time.unscaledTime + SaveSeconds;
+            _nextBackup = Time.unscaledTime + BackupSeconds;
             return;
         }
 
@@ -116,7 +122,7 @@ internal static class EmpServer
                 File.Delete(taken);
                 File.Move(orders, taken);
                 foreach (var line in File.ReadAllLines(taken).Where(l => l.Trim().Length > 0)) {
-                    _order = host.RunOrder(line);
+                    _order = line.Trim() == "backup" ? Backup() : host.RunOrder(line);
                     EmpLog.Information("Server: order {Order}: {Result}", line, _order);
                 }
 
@@ -134,7 +140,28 @@ internal static class EmpServer
             }
         }
 
+        if (Time.unscaledTime >= _nextBackup) {
+            Backup();
+        }
+
         Tell("running");
+    }
+
+    /// <summary>
+    ///     The world as it is now, saved then copied to the game's backups (also the operator's order "backup")
+    /// </summary>
+    private static string Backup()
+    {
+        _nextBackup = Time.unscaledTime + BackupSeconds;
+        try {
+            EClass.game.Save(true, true);
+            GameIO.MakeBackup(new GameIndex { id = Game.id, cloud = EClass.game.isCloud });
+            EmpLog.Information("Server: backup of {Save} made", Game.id);
+            return "Backup made " + DateTime.Now.ToString("HH:mm");
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Server: backup of {Save} failed", Game.id);
+            return "error: backup failed";
+        }
     }
 
     private static void Fail(string reason)
