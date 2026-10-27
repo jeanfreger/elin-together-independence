@@ -17,8 +17,16 @@ public class ModerationDelta : ElinDelta
     /// </summary>
     internal static HashSet<ulong> Muted { get; } = [];
 
+    /// <summary>
+    ///     The admins of this world, as this game knows them (the host keeps the list)
+    /// </summary>
+    internal static HashSet<ulong> AdminIds { get; } = [];
+
     [Key(0)]
     public required ulong[] Mutes { get; init; }
+
+    [Key(1)]
+    public ulong[] Admins { get; init; } = [];
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -29,6 +37,8 @@ public class ModerationDelta : ElinDelta
 
         Muted.Clear();
         Muted.UnionWith(Mutes);
+        AdminIds.Clear();
+        AdminIds.UnionWith(Admins);
     }
 
     internal static bool IsMuted(ulong user)

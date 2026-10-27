@@ -179,6 +179,7 @@ namespace ElinTogether.Models;
 // World time (council 2026-10-26)
 [Union(983, typeof(PlayerIdleDelta))]
 // Admin tools (council 2026-10-27)
+[Union(984, typeof(AdminCommandDelta))]
 [Union(985, typeof(ModerationDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]

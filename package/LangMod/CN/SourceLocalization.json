@@ -499,5 +499,12 @@
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_5.text": "5 分钟",
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_15.text": "15 分钟",
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_60.text": "60 分钟",
-    "LangGeneral.emp_ui_muted.text": "你在此世界中不能发言（已被管理员禁言）。"
+    "LangGeneral.emp_ui_muted.text": "你在此世界中不能发言（已被管理员禁言）。",
+    "LangGeneral.emp_ui_mute.text": "禁言",
+    "LangGeneral.emp_ui_unmute.text": "解除禁言",
+    "LangGeneral.emp_ui_ban.text": "封禁",
+    "LangGeneral.emp_ui_unban.text": "解除封禁",
+    "LangGeneral.emp_ui_make_admin.text": "设为管理员",
+    "LangGeneral.emp_ui_admin_tag.text": "（管理员）",
+    "LangGeneral.emp_ui_banned_title.text": "已封禁的玩家"
 }

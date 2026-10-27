@@ -1,7 +1,10 @@
 using ElinTogether.Common;
 using ElinTogether.Helper;
+using System.Linq;
 using ElinTogether.LangMod;
+using ElinTogether.Models;
 using ElinTogether.Net;
+using HeathenEngineering.SteamworksIntegration;
 using UnityEngine;
 using YKF;
 
@@ -41,6 +44,28 @@ internal class TabSessionInfo : TabEmpBase
         foreach (var player in NetSession.Instance.CurrentPlayers) {
             BuildPlayerLine(card, player);
         }
+
+        BuildBannedList();
+    }
+
+    /// <summary>
+    ///     The host: who is banned from this world, each with Unban (admin tools, council 2026-10-27)
+    /// </summary>
+    private void BuildBannedList()
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } || ElinNetHost.Bans.Count == 0) {
+            return;
+        }
+
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_banned_title".lang());
+        foreach (var (user, why) in ElinNetHost.Bans.ToList()) {
+            card.Text(why.Length > 0 ? $"{user}  ({why})" : user.ToString());
+            card.ButtonRow().RowButton("emp_ui_unban".lang(), () => {
+                ElinNetHost.Unban(user);
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
     }
 
     /// <summary>
@@ -65,6 +90,9 @@ internal class TabSessionInfo : TabEmpBase
         if (player.Idle) {
             label += "  " + "emp_ui_player_idle".lang();
         }
+        if (ModerationDelta.AdminIds.Contains(player.User)) {
+            label += "  " + "emp_ui_admin_tag".lang();
+        }
         parent.Text(label);
 
         // Kick: the host, on a guest's line. Reconnect: a guest's own line only, or the host on a guest's line
@@ -73,15 +101,62 @@ internal class TabSessionInfo : TabEmpBase
             return;
         }
         var isHost = NetSession.Instance.Transport is ElinNetHost;
-        if (!(isHost ^ player.User.IsMe)) {
+        if (isHost ^ player.User.IsMe) {
+            parent.ButtonRow().RowButton("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
+        }
+
+        // moderation: the host and the admins, on the line of a player who is neither the host nor an admin
+        ulong target = player.User;
+        var self = NetSession.Instance.Self;
+        ulong me = self?.User ?? UserData.Me;
+        var mine = self is not null ? player.Index == self.Index : player.User.IsMe;
+        if (player.Index == 0 || mine || ModerationDelta.AdminIds.Contains(target) ||
+            !(isHost || ModerationDelta.AdminIds.Contains(me))) {
             return;
         }
 
-        var buttons = parent.ButtonRow();
-        buttons.RowButton("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
+        var row = parent.ButtonRow();
+        row.RowButton("emp_ui_kick".lang(), () => Order("kick", target, player.Index));
+        row.RowButton((ModerationDelta.IsMuted(target) ? "emp_ui_unmute" : "emp_ui_mute").lang(),
+            () => Order(ModerationDelta.IsMuted(target) ? "unmute" : "mute", target, player.Index));
+        row.RowButton("emp_ui_ban".lang(), () => Order("ban", target, player.Index));
         if (isHost) {
-            buttons.RowButton("emp_ui_kick".lang(), () => KickPlayer(player.Index));
+            row.RowButton("emp_ui_make_admin".lang(), () => {
+                (NetSession.Instance.Transport as ElinNetHost)?.MakeAdmin(target, true);
+                LayerElinTogether.Instance?.Reopen();
+            });
         }
+    }
+
+    /// <summary>
+    ///     The host does it; an admin asks the host, which checks it (AdminCommandDelta)
+    /// </summary>
+    private static void Order(string verb, ulong target, int peerIndex)
+    {
+        switch (NetSession.Instance.Transport) {
+            case ElinNetHost host:
+                switch (verb) {
+                    case "kick":
+                        host.Kick(peerIndex);
+                        break;
+                    case "ban":
+                        host.Ban(target);
+                        break;
+                    case "mute":
+                        host.Mute(target);
+                        break;
+                    case "unmute":
+                        host.Unmute(target);
+                        break;
+                }
+
+                break;
+            case ElinNetClient client:
+                client.Delta.AddRemote(new AdminCommandDelta { Verb = verb, Target = target });
+                break;
+        }
+
+        LayerElinTogether.Instance?.Reopen();
     }
 
     private static void ReconnectPlayer(int peerIndex)
@@ -94,12 +169,6 @@ internal class TabSessionInfo : TabEmpBase
                 client.ReconnectSelf();
                 break;
         }
-    }
-
-    private static void KickPlayer(int peerIndex)
-    {
-        (NetSession.Instance.Transport as ElinNetHost)?.Kick(peerIndex);
-        LayerElinTogether.Instance?.Reopen();
     }
 
     private static string BuildPingStat(NetPeerState player)

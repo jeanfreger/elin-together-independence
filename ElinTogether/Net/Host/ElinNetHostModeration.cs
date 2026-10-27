@@ -37,6 +37,17 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     Steam ids the host made admins of this world: they kick, ban and mute other players (not the host, not
+    ///     another admin). Only the host or the server's operator makes or unmakes them
+    /// </summary>
+    [ElinGameIOProperty("mod_admins")]
+    internal static Dictionary<ulong, int> Admins
+    {
+        get => field ??= [];
+        set;
+    }
+
     // Steam id -> until when a kicked player is kept out (real time; forgotten at a restart)
     private static readonly Dictionary<ulong, float> KeptOut = [];
 
@@ -136,7 +147,9 @@ internal partial class ElinNetHost
 
         ModerationDelta.Muted.Clear();
         ModerationDelta.Muted.UnionWith(Mutes.Keys);
-        Delta.AddRemote(new ModerationDelta { Mutes = [..Mutes.Keys] });
+        ModerationDelta.AdminIds.Clear();
+        ModerationDelta.AdminIds.UnionWith(Admins.Keys);
+        Delta.AddRemote(new ModerationDelta { Mutes = [..Mutes.Keys], Admins = [..Admins.Keys] });
     }
 
     /// <summary>
@@ -145,6 +158,45 @@ internal partial class ElinNetHost
     internal bool FromMuted(int peerId)
     {
         return Socket.Peers.FirstOrDefault(p => p.Id == peerId) is { } peer && ModerationDelta.IsMuted(peer.User);
+    }
+
+    internal string MakeAdmin(ulong user, bool admin)
+    {
+        if (admin) {
+            Admins[user] = 1;
+        } else if (!Admins.Remove(user)) {
+            return $"{user} was not an admin";
+        }
+
+        AdminLog($"{(admin ? "admin" : "unadmin")} {user}");
+        TellModeration();
+        return $"{user} {(admin ? "is now an admin" : "is no longer an admin")}";
+    }
+
+    /// <summary>
+    ///     An admin's order (AdminCommandDelta), checked here: from an admin of this world, about a player who is
+    ///     neither the host nor an admin
+    /// </summary>
+    internal void RunAdminOrder(int originPeer, AdminCommandDelta order)
+    {
+        ulong host = UserData.Me;
+        var sender = Socket.Peers.FirstOrDefault(p => p.Id == originPeer);
+        ulong from = sender is null ? 0UL : sender.User;
+        if (sender is null || !Admins.ContainsKey(from) || order.Target == host || Admins.ContainsKey(order.Target)) {
+            AdminLog($"refused order {order.Verb} {order.Target} from {from}: not an admin, or about the host or an admin");
+            return;
+        }
+
+        var target = Socket.Peers.FirstOrDefault(p => (ulong)p.User == order.Target);
+        var done = order.Verb switch {
+            "kick" => target is null ? "not playing" : Kick(target.Id, order.Reason),
+            "ban" => Ban(order.Target, order.Reason),
+            "unban" => Unban(order.Target),
+            "mute" => Mute(order.Target, order.Reason),
+            "unmute" => Unmute(order.Target),
+            _ => "unknown order",
+        };
+        AdminLog($"by admin {from} {sender.User.Name}: {order.Verb} {order.Target}: {done}");
     }
 
     internal static string Unban(ulong user)
@@ -198,6 +250,8 @@ internal partial class ElinNetHost
             "unban" => Unban(user),
             "mute" => Mute(user, reason),
             "unmute" => Unmute(user),
+            "admin" => MakeAdmin(user, true),
+            "unadmin" => MakeAdmin(user, false),
             _ => "error: unknown order " + words[0],
         };
         AdminLog($"order \"{line.Trim()}\": {done}");
