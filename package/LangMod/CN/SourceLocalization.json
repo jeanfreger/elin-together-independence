@@ -573,5 +573,21 @@
     "LangGeneral.emp_duel_refund.text": "你的赌注已退还。",
     "LangGeneral.emp_duel_unpaid.text": "赌注没有凑齐：决斗取消。",
     "LangGeneral.emp_ui_sv_cfg_own_journal.text": "每位玩家有自己的日志",
-    "LangGeneral.emp_ui_sv_desc_own_journal.text": "每位玩家在旅途中保留自己的消息记录和个人纪录（挖掘、死亡、睡眠次数）；图鉴、击杀数和世界日期仍然共享。关闭：旅行后玩家的日志显示主机的内容。"
+    "LangGeneral.emp_ui_sv_desc_own_journal.text": "每位玩家在旅途中保留自己的消息记录和个人纪录（挖掘、死亡、睡眠次数）；图鉴、击杀数和世界日期仍然共享。关闭：旅行后玩家的日志显示主机的内容。",
+    "LangGeneral.emp_ui_sv_cfg_team_bills.text": "队伍各自缴纳土地税",
+    "LangGeneral.emp_ui_sv_desc_team_bills.text": "每个拥有土地的队伍单独收到每月税单，只计算自己的土地，按成员的最高名声计算（不属于任何队伍的土地：流浪者的税单）。未付税单按队伍计数：四张及以上只扣该队伍玩家的善恶值。关闭：整个世界只有一张税单（如前）。",
+    "LangGeneral.emp_team_bill.text": "{0}的税单：{1}",
+    "LangGeneral.emp_ui_teams_title.text": "队伍",
+    "LangGeneral.emp_ui_team_bills.text": "未付税单：{0}",
+    "LangGeneral.emp_ui_sv_cfg_team_story.text": "队伍各自保留剧情日志",
+    "LangGeneral.emp_ui_sv_desc_team_story.text": "每个队伍记录其玩家参与过的主线任务最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上。剧情本身仍属于整个世界。关闭：没有队伍日志。",
+    "LangGeneral.emp_ui_team_story.text": "剧情：{0}",
+    "LangGeneral.emp_team_chapter_none.text": "尚无",
+    "LangGeneral.emp_team_chapter_0.text": "旅途开始",
+    "LangGeneral.emp_team_chapter_100.text": "遇见了阿什",
+    "LangGeneral.emp_team_chapter_200.text": "读了地契",
+    "LangGeneral.emp_team_chapter_250.text": "向阿什报告了",
+    "LangGeneral.emp_team_chapter_300.text": "遇见了法里斯",
+    "LangGeneral.emp_team_chapter_600.text": "奈梅尔之后",
+    "LangGeneral.emp_team_chapter_700.text": "阿什离开了家"
 }

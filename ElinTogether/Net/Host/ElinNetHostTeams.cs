@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
@@ -83,6 +84,73 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     Host option "Teams pay their own land" (<see cref="TeamBills" />): team id -> its unpaid tax bills. The
+    ///     world's count (<c>player.taxBills</c>) stays the sum the game knows; what it holds above these is older than
+    ///     the box (bills of no team)
+    /// </summary>
+    [ElinGameIOProperty("team_tax_bills")]
+    internal static Dictionary<int, int> TeamTaxBills
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     Host option "Teams keep their own story journal" (<see cref="TeamStory" />): team id -> the furthest phase
+    ///     of the main quest one of its players took part in
+    /// </summary>
+    [ElinGameIOProperty("team_story")]
+    internal static Dictionary<int, int> TeamStoryBook
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     The chara uid of every player of this world, the host's own included
+    /// </summary>
+    internal static IEnumerable<int> PlayerCharaUids()
+    {
+        return SavedRemoteCharas.Values.Append(player.uidChara).Distinct();
+    }
+
+    /// <summary>
+    ///     The fame of that player: the host's own, another's as its game last told it
+    /// </summary>
+    internal static int FameOfPlayer(int charaUid)
+    {
+        return charaUid == player.uidChara ? player.fame
+            : PlayerStandings.TryGetValue(charaUid, out var standing) && standing.Length >= 1 ? standing[StandingFame] : 0;
+    }
+
+    /// <summary>
+    ///     Karma the date costs the connected players of one team (its unpaid tax, <see cref="TeamBills" />), as
+    ///     <see cref="GiveKarmaToEveryone" /> does for all. The host's own player is the caller's business
+    /// </summary>
+    internal void GiveKarmaToTeam(int team, int karma)
+    {
+        if (IsZoneSession) {
+            return;
+        }
+
+        foreach (var peer in Socket.Peers.ToArray()) {
+            if (!SavedRemoteCharas.TryGetValue(peer.User, out var uid) || Teams.TeamOf(uid) != team) {
+                continue;
+            }
+
+            if (ActiveRemoteCharas.TryGetValue(peer.Id, out var chara)) {
+                GiveKarma(chara, karma);
+            } else {
+                SendDeltaTo(peer.Id, new PlayerStandingDelta {
+                    Fame = 0,
+                    Karma = karma,
+                    Relative = true,
+                });
+            }
+        }
+    }
+
     // the players sent to the spawn zone in this hosting: a reconnect finds them where they were
     private readonly HashSet<ulong> _spawned = [];
 
@@ -123,6 +191,8 @@ internal partial class ElinNetHost
             Zones = new(ZoneTeams),
             Owners = new(CardOwners),
             Requests = new(TeamRequests),
+            Bills = TeamBills.Told(),
+            Story = TeamStory.Told(),
         });
     }
 }

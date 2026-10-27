@@ -39,6 +39,19 @@ public class TeamsDelta : ElinDelta
     [Key(4)]
     public Dictionary<int, int>? Requests { get; init; }
 
+    /// <summary>
+    ///     Team id -> its unpaid tax bills, -1 -> the world's bills of no team (<see cref="TeamBills" />); none while
+    ///     the box is off
+    /// </summary>
+    [Key(5)]
+    public Dictionary<int, int>? Bills { get; init; }
+
+    /// <summary>
+    ///     Team id -> the furthest main-quest phase it took part in (<see cref="TeamStory" />); none while the box is off
+    /// </summary>
+    [Key(6)]
+    public Dictionary<int, int>? Story { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

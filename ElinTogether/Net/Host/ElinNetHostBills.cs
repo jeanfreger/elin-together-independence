@@ -76,6 +76,7 @@ internal partial class ElinNetHost
         EmpLog.Information("Unpaid tax bills: the world counted {Count}, {Found} exist: {Phantom} that nothing could pay are taken off",
             player.taxBills, found, phantom);
         player.taxBills = found;
+        TeamBills.Fit();
         return phantom;
     }
 }

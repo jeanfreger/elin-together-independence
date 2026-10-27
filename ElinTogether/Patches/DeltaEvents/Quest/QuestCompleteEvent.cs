@@ -148,6 +148,11 @@ internal static class QuestRewardPatch
     private static Chara? _earner;
 
     /// <summary>
+    ///     The player alone on its own map whose quest step the host repeats now, if any
+    /// </summary>
+    internal static Chara? Earner => _nothing ? _earner : null;
+
+    /// <summary>
     ///     Whatever was done with it above: a reward of the story is the group's, every other player gets its share
     ///     (ElinNetHost.NoteStoryReward; not in a client's game, the host's hears of it)
     /// </summary>

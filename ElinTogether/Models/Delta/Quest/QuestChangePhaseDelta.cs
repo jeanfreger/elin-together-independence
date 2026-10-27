@@ -119,6 +119,10 @@ public class QuestChangePhaseDelta : ElinDelta
                 Uid = quest.uid,
                 Modifier = Modifier,
             });
+            // (the teams' story journal: the game's step threw before TeamStory could see it)
+            if (quest is QuestMain && host.PlayerChara(OriginPeer) is { } stepper) {
+                TeamStory.Record(stepper, Modifier, away);
+            }
         }
     }
 }

@@ -365,6 +365,20 @@ public class NetSessionRules
     [Key(127)]
     public bool OwnJournal { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-25 (dev/PLAN_teams_knowledge.md): one tax bill per team for its own lands, unpaid bills
+    ///     counted per team, see TeamBills. An older host sends none: one bill for the world, as it was
+    /// </summary>
+    [Key(128)]
+    public bool TeamBills { get; set; }
+
+    /// <summary>
+    ///     Council 2026-10-25: the furthest main-quest chapter each team took part in, on the team card, no world
+    ///     effect, see TeamStory. An older host sends none: no journal
+    /// </summary>
+    [Key(129)]
+    public bool TeamStory { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -384,6 +398,8 @@ public class NetSessionRules
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
+        TeamBills = EmpConfig.Server.TeamBills.Value,
+        TeamStory = EmpConfig.Server.TeamStory.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,
