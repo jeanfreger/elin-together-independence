@@ -29,6 +29,13 @@ public class WorldStateSnapshot : EClass
     [Key(4)]
     public required int SharedSpeed { get; init; }
 
+    /// <summary>
+    ///     The zone of the characters whose own <see cref="CharaStateSnapshot.CurrentZoneUid" /> is 0: written once
+    ///     here instead of in every entry (efficiency audit 2026-10-27)
+    /// </summary>
+    [Key(5)]
+    public int ZoneUid { get; init; }
+
     [ElinPreLoad]
     private static void ClearSweepStrikes(GameIOContext context)
     {
@@ -42,13 +49,19 @@ public class WorldStateSnapshot : EClass
             selfState.Speed = pc.Stub_get_Speed();
         }
 
+        var zoneUid = _zone.uid;
         var snapshots = new Dictionary<int, CharaStateSnapshot>();
         foreach (var chara in _map.charas) {
             if (!chara.IsInActiveMap) {
                 continue;
             }
 
-            snapshots[chara.uid] = CharaStateSnapshot.Create(chara);
+            var snapshot = CharaStateSnapshot.Create(chara);
+            if (snapshot.CurrentZoneUid == zoneUid) {
+                snapshot.CurrentZoneUid = 0;
+            }
+
+            snapshots[chara.uid] = snapshot;
         }
 
         // (the players' own state, LastAct, speed, turbo, is not attached any more: no game reads it here, the host
@@ -61,6 +74,7 @@ public class WorldStateSnapshot : EClass
             CharaSnapshots = [..snapshots.Values],
             GlobalUidNext = game.cards.uidNext,
             SharedSpeed = NetSession.Instance.SharedSpeed,
+            ZoneUid = zoneUid,
         };
     }
 
@@ -75,6 +89,7 @@ public class WorldStateSnapshot : EClass
             CharaSnapshots = ImmutableArray<CharaStateSnapshot>.Empty,
             GlobalUidNext = GlobalUidNext,
             SharedSpeed = SharedSpeed,
+            ZoneUid = ZoneUid,
         };
     }
 
@@ -82,6 +97,12 @@ public class WorldStateSnapshot : EClass
     {
         if (NetSession.Instance.Connection is not ElinNetClient client) {
             return;
+        }
+
+        foreach (var snapshot in CharaSnapshots) {
+            if (snapshot.CurrentZoneUid == 0) {
+                snapshot.CurrentZoneUid = ZoneUid;
+            }
         }
 
         client.Delta.AddLocal(new DynamicDelta {

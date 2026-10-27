@@ -90,7 +90,8 @@ internal static class Bench
         CharaSnapshots = [..charas.Select(c => new CharaStateSnapshot {
             Owner = new() { Uid = c.Uid, Type = RemoteCard.CardType.Chara, Num = 1 },
             Pos = new() { X = c.X, Z = c.Z },
-            CurrentZoneUid = ZoneUid,
+            // the snapshot's own zone, see WorldStateSnapshot.ZoneUid
+            CurrentZoneUid = 0,
             Hp = c.Hp,
             IsDead = false,
             Hostility = c.Player ? Hostility.Ally : Hostility.Neutral,
@@ -101,6 +102,7 @@ internal static class Bench
         })],
         GlobalUidNext = 2_345_678,
         SharedSpeed = 0,
+        ZoneUid = ZoneUid,
     };
 
     internal static WorldStateDeltaList Moves(IEnumerable<Chara> charas) => new() {

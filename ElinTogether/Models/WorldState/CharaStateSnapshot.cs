@@ -17,8 +17,11 @@ public class CharaStateSnapshot : EClass
     [Key(1)]
     public required Position Pos { get; init; }
 
+    /// <summary>
+    ///     0 inside a <see cref="WorldStateSnapshot" />: the zone of that snapshot (zone uids start at 1)
+    /// </summary>
     [Key(2)]
-    public required int CurrentZoneUid { get; init; }
+    public required int CurrentZoneUid { get; set; }
 
     [Key(3)]
     public required int Hp { get; set; }
