@@ -131,7 +131,12 @@ internal partial class ElinNetHost
             // an away player is not on the host map, only what it shares with the world is relevant here:
             // its chat and the quest log (and its world-map steps, held as its lead in Personal Pace: dropped here,
             // a guest's lead never grew, bench personalpace_suite 2026-10-23)
-            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true })) {
+            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or PlayerIdleDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true })) {
+                continue;
+            }
+
+            // a flood of one kind of delta (a broken or modified game): dropped past a generous budget
+            if (Floods(delta, peer.Id)) {
                 continue;
             }
 
@@ -300,12 +305,19 @@ internal partial class ElinNetHost
         // collect peer connection stats into player states
         foreach (var peer in Socket.Peers) {
             if (States.TryGetValue(peer.Id, out var state)) {
+                state.Idle = PlayerIdle.IsIdle(peer.Id);
                 state.LastPingMs = peer.Stat.LastPingMs;
                 state.AvgPingMs = peer.Stat.AvgPingMs;
                 state.ConnectionQualityLocal = peer.Stat.ConnectionQualityLocal;
                 state.ConnectionQualityRemote = peer.Stat.ConnectionQualityRemote;
             }
         }
+
+        if (States.TryGetValue(0, out var self)) {
+            self.Idle = PlayerIdle.IsIdle(0);
+        }
+
+        SeePlayers();
 
         Broadcast(SessionPlayersSnapshot.Create());
     }

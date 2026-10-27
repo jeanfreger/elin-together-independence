@@ -294,6 +294,27 @@ public class NetSessionRules
     [Key(117)]
     public bool SummonsFollowMaster { get; set; } = true;
 
+    /// <summary>
+    ///     Council 2026-10-26 (MMO world time): a player without input for that many minutes is away from the
+    ///     keyboard, see PlayerIdle. 0: off, also what an older host reads as (it never asked)
+    /// </summary>
+    [Key(118)]
+    public int IdleMinutes { get; set; }
+
+    /// <summary>
+    ///     Council 2026-10-26: how many of the online, active players must sleep for the night of the world, with
+    ///     <see cref="UseOwnSleep" />. An older host sends none: everyone, as it did
+    /// </summary>
+    [Key(119)]
+    public NightRule NightPasses { get; set; } = NightRule.Everyone;
+
+    /// <summary>
+    ///     Council 2026-10-26 (MMO world time, stage 3): while no player is connected and active, the date of the
+    ///     world stands still, see EmptyWorld. An older host sends none: time goes on, as it did
+    /// </summary>
+    [Key(120)]
+    public bool TimeStopsWhenEmpty { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -323,6 +344,9 @@ public class NetSessionRules
         KeepWorldCopy = EmpConfig.Server.WorldCopy.Value || EmpConfig.Server.Takeover.Value,
         AutoResync = EmpConfig.Server.AutoResync.Value,
         UseOwnSleep = EmpConfig.Server.OwnSleep.Value,
+        IdleMinutes = System.Math.Max(0, EmpConfig.Server.IdleMinutes.Value),
+        NightPasses = EmpConfig.Server.NightPasses.Value,
+        TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
         TimeJumpsTogether = EmpConfig.Server.WorldMapTime.Value == WorldMapTime.TravelTogether,
         WorldMapTime = EmpConfig.Server.WorldMapTime.Value,
         DumpSparesBelt = EmpConfig.Server.DumpSparesBelt.Value,
@@ -361,4 +385,15 @@ public enum WorldMapTime
     SharedClock,
     TravelTogether,
     PersonalPace,
+}
+
+/// <summary>
+///     Council 2026-10-26, "Night passes when": the share of online, active players asleep that makes the night
+///     of the world. Away-from-keyboard and dead players are not counted
+/// </summary>
+public enum NightRule
+{
+    Everyone,
+    Half,
+    One,
 }

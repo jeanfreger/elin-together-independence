@@ -30,6 +30,14 @@ public class CharaTickConditionDelta : ElinDelta
     /// </summary>
     internal static void Emit(ElinNetBase net, Chara chara)
     {
+        // a guest tells only its own character's and its companions' turns, as the host checks (OnHostPermit): the
+        // other characters its game happens to run (the host's character or pets before their GoalRemote, the
+        // residents of a map it keeps alone) are the host's to tick, or nobody's here. Bench logs 10-25..27: 175
+        // "conditions of N is not the sender's", all of this kind
+        if (net is ElinNetClient && !chara.IsPC && !IsOwn(chara)) {
+            return;
+        }
+
         if (RemoteTravelRegionPatch.IsPayingStep) {
             _step[chara] = _step.GetValueOrDefault(chara) + 1;
             return;
@@ -38,6 +46,13 @@ public class CharaTickConditionDelta : ElinDelta
         net.Delta.AddRemote(new CharaTickConditionDelta {
             Owner = chara,
         });
+    }
+
+    // the guest's companion, or the summon of the guest or of its companion
+    private static bool IsOwn(Chara chara)
+    {
+        var who = chara.IsMinion && chara.master is { } master && master != chara ? master : chara;
+        return who.IsPC || who.IsCompanionOf(pc);
     }
 
     /// <summary>

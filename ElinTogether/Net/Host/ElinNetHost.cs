@@ -92,6 +92,7 @@ internal partial class ElinNetHost : ElinNetBase
         Scheduler.Subscribe(RemoveStaleIntegrityCheck, 2);
 
         RememberPcOwner();
+        KeepSavedRideTies();
 
         // host also registers self state
         var selfState = States[0] = new() {
@@ -251,6 +252,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         _handshakes.Remove(peer.Id);
         PendingRebind.ReleasePeer(peer.Id);
+        ForgetFlood(peer.Id);
 
         if (IsZoneSession) {
             OnZoneGuestDisconnecting(peer);
@@ -263,6 +265,15 @@ internal partial class ElinNetHost : ElinNetBase
             LinkLostAt[peer.User] = UnityEngine.Time.realtimeSinceStartup;
         } else {
             LinkLostAt.Remove(peer.User);
+        }
+
+        if (!IsZoneSession) {
+            Patches.PlayerIdle.Forget(peer.Id);
+        }
+
+        // the date it leaves at: what the world does after is not taken from its own quests (stage 4)
+        if (States.TryGetValue(peer.Id, out var leaving)) {
+            SeePlayers(leaving);
         }
 
         if (States.Remove(peer.Id, out var state)) {

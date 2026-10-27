@@ -17,6 +17,38 @@ public class CardModNumDelta : ElinDelta
     // TODO could fix this by swapping Elin internal code
     public static bool IsOverwriting { get; private set; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        // a thing in the bag of another player's companion (the host's own pets too) is that player's to spend; a
+        // player's own bag is refused in OnApply whatever the box says
+        return NoCharacter(sender) ??
+               (Card.Find()?.GetRootCard() is Chara holder && PlayerKarma.PlayerBehind(holder) is not null &&
+                !OwnsOrCompanion(sender!, holder)
+                   ? $"the thing is held by {holder.uid}"
+                   : null);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        GiveBack(host);
+    }
+
+    /// <summary>
+    ///     The sender's copy as the host has it: back where it is (made again if it went) and its count
+    /// </summary>
+    private void GiveBack(ElinNetBase net)
+    {
+        if (Card.Find() is not Thing { isDestroyed: false } thing) {
+            return;
+        }
+
+        SendBack(net, Card);
+        net.Delta.AddRemote(new CardModNumDelta {
+            Card = thing,
+            Num = thing.Num,
+        });
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Card.Find() is not { isDestroyed: false } card) {
@@ -38,6 +70,7 @@ public class CardModNumDelta : ElinDelta
             if (Num < 0 || Num > card.Num || card.GetRootCard() is Chara { IsPlayer: true } root && root != sender) {
                 EmpLog.Warning("Refusing {DeltaType} {Uid}: {CardNum} -> {NewCardNum} from peer {PeerIndex}",
                     nameof(CardModNumDelta), card.uid, card.Num, Num, OriginPeer);
+                GiveBack(net);
                 return;
             }
 

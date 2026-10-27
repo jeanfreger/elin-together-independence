@@ -176,6 +176,8 @@ namespace ElinTogether.Models;
 [Union(980, typeof(TeamsDelta))]
 [Union(981, typeof(TeamRequestDelta))]
 [Union(982, typeof(TeamSpawnDelta))]
+// World time (council 2026-10-26)
+[Union(983, typeof(PlayerIdleDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass
@@ -214,8 +216,9 @@ public abstract class ElinDelta : EClass
     ///     On the host, for a delta a guest sent: why that guest may not do this (the character it is about is
     ///     neither its own nor one of its companions), null when it may. Council 2 on network trust (audit
     ///     2026-10-23): a reason is only logged ("would have refused") and the delta applied as before, unless the
-    ///     host turned EnforceOwnership on. Never a kick: a lagging game says stale things too. The default: the
-    ///     sender plays a character here
+    ///     host turned EnforceOwnership on or the game is public (TrustEnforced): then it is dropped and
+    ///     OnHostRefused sends the sender how things really are. Never a kick: a lagging game says stale things
+    ///     too. The default: the sender plays a character here
     /// </summary>
     internal virtual string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
@@ -257,7 +260,41 @@ public abstract class ElinDelta : EClass
     private static readonly Dictionary<(Type, int), float> _permitLogged = [];
     private const float PermitLogWindow = 10f;
 
-    /// <returns>false when the delta is refused (only with EnforceOwnership on)</returns>
+    /// <summary>
+    ///     The checks refuse for real: the host's box, or always in a game anybody can join (council 2, audit
+    ///     2026-10-23: on for a public game). Off, a refusal is only logged
+    /// </summary>
+    internal static bool TrustEnforced => EmpConfig.Server.EnforceOwnership.Value || NetSession.Instance.Lobby.OpenToAll;
+
+    /// <summary>
+    ///     On the host, after this guest's delta was refused: the sender's game is told how things really are, where
+    ///     there is something to tell (the card it moved, used or spent back where the host has it)
+    /// </summary>
+    internal virtual void OnHostRefused(ElinNetHost host)
+    {
+    }
+
+    /// <summary>
+    ///     That card as the host has it, to everyone: back in its container (CardAddThingDelta.Rebind) or on its tile
+    /// </summary>
+    internal static void SendBack(ElinNetBase net, RemoteCard? remote)
+    {
+        if (remote?.Find() is not Thing { isDestroyed: false } thing) {
+            return;
+        }
+
+        if (thing.parent is Card) {
+            CardAddThingDelta.Rebind(net, remote, thing);
+        } else if (thing.parent == _zone && thing.pos is { IsValid: true } pos) {
+            net.Delta.AddRemote(new ZoneAddCardDelta {
+                Card = remote,
+                Pos = pos,
+                ZoneUid = _zone.uid,
+            });
+        }
+    }
+
+    /// <returns>false when the delta is refused (only when TrustEnforced)</returns>
     private bool HostPermits(ElinNetHost host)
     {
         string? reason;
@@ -273,7 +310,7 @@ public abstract class ElinDelta : EClass
             return true;
         }
 
-        var enforce = EmpConfig.Server.EnforceOwnership.Value;
+        var enforce = TrustEnforced;
         var key = (GetType(), OriginPeer);
         var now = UnityEngine.Time.unscaledTime;
         if (!_permitLogged.TryGetValue(key, out var last) || now - last >= PermitLogWindow) {
@@ -288,6 +325,12 @@ public abstract class ElinDelta : EClass
     public void Apply(ElinNetBase net)
     {
         if (FromPeer && net is ElinNetHost permitHost && !HostPermits(permitHost)) {
+            try {
+                OnHostRefused(permitHost);
+            } catch (Exception ex) {
+                EmpLog.Debug(ex, "Sending back after a refused {DeltaType} threw", GetType().Name);
+            }
+
             return;
         }
 

@@ -302,4 +302,26 @@ internal partial class ElinNetHost
             CompanionHelper.TieAgain(kept.Ties);
         }
     }
+
+    /// <summary>
+    ///     A world loaded with a ride between the host and another player (saved while one carried the other): that
+    ///     player is not here yet and the tie is dropped as it is away; its return ties it again, as after a dropped
+    ///     link (ride2 reload, 2026-10-26: the host's game said nobody rode, the guest's world copy still did)
+    /// </summary>
+    private static void KeepSavedRideTies()
+    {
+        // (read from both ends: a save may keep the rider's side only)
+        List<(int Rider, int Carried, bool Parasite)> mine = pc is { } host ? CompanionHelper.PlayerRideTies(host) : [];
+        foreach (var (user, uid) in SavedRemoteCharas) {
+            if (game.cards.globalCharas.Find(uid) is not { } player) {
+                continue;
+            }
+
+            var ties = CompanionHelper.PlayerRideTies(player);
+            ties.AddRange(mine.Where(t => (t.Rider == uid || t.Carried == uid) && !ties.Contains(t)));
+            if (ties.Count > 0) {
+                RideTiesAtLinkLoss[user] = (ties, UnityEngine.Time.realtimeSinceStartup);
+            }
+        }
+    }
 }

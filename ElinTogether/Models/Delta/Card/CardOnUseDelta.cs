@@ -35,6 +35,20 @@ public class CardOnUseDelta : ElinDelta
     [Key(5)]
     public bool? Equip { get; init; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        // by the sender or its companion, out of what they hold or what lies around (a shrine, a well, a chest)
+        return NoCharacter(sender) ?? NotOwned(sender, User, "user") ??
+               (Card.Find()?.GetRootCard() is Chara holder && !OwnsOrCompanion(sender!, holder)
+                   ? $"the used thing is held by {holder.uid}"
+                   : null);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Card);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Card.Find() is not { isDestroyed: false } card || User.Find() is not Chara user) {

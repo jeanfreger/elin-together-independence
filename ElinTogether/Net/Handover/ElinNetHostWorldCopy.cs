@@ -124,7 +124,9 @@ internal partial class ElinNetHost
     /// </summary>
     internal void AnnounceLeaving()
     {
-        if (_leavingTold || IsZoneSession || !Session.Rules.AllowTakeover || !Session.Rules.KeepWorldCopy) {
+        // told with the takeover off too: a guest that only saw its link drop took it for a lost link and tried to
+        // join again for 3 minutes, on "Going back into the game" (two real PCs, 2026-10-27)
+        if (_leavingTold || IsZoneSession) {
             return;
         }
 

@@ -441,6 +441,37 @@ internal partial class EmpConfig
             "The night only passes for the world when every player is asleep at the same time. Otherwise everyone waits for everyone\n" +
             "玩家上床后立刻为自己睡觉，不用等别人；只有所有玩家同时睡着时，世界才会过夜。关闭时所有人互相等待");
 
+        Server.IdleMinutes = config.Bind(
+            "Server",
+            "IdleMinutes",
+            5,
+            "Minutes without keyboard, mouse or own act after which a player is away from the keyboard: it no longer holds the night, waits on the world map or moves the shared date. 0: off\n" +
+            "玩家在多少分钟内没有键盘、鼠标或自身动作即视为离开：不再阻止夜晚过去、不再让世界地图等待、不再推进共享日期。0：关闭");
+
+        Server.NightPasses = config.Bind(
+            "Server",
+            "NightPasses",
+            NightRule.Half,
+            "With OwnSleep, the night of the world passes when this share of the online, active players sleeps. Everyone / Half / One\n" +
+            "开启各睡各的时，在线且未离开的玩家中有这么多人睡着，世界的夜晚就会过去。Everyone / Half / One");
+        // a config from before this rule keeps its night: everyone (a new install takes Half)
+        if (Regex.IsMatch(before, @"^\s*\[Server\]", RegexOptions.Multiline) &&
+            !Regex.IsMatch(before, @"^\s*NightPasses\s*=", RegexOptions.Multiline)) {
+            Server.NightPasses.Value = NightRule.Everyone;
+        }
+
+        Server.TimeStopsWhenEmpty = config.Bind(
+            "Server",
+            "TimeStopsWhenEmpty",
+            true,
+            "While no player is connected and active (the host counts unless it is away from the keyboard; a -empserver game never does), the date of the world stands still. Otherwise time goes on as before\n" +
+            "没有在线且未离开的玩家时（房主未离开也算；-empserver 服务器本身不算），世界的日期停止；关闭时时间照常流逝");
+        // a config from before this rule keeps its time going (a new install stops it)
+        if (Regex.IsMatch(before, @"^\s*\[Server\]", RegexOptions.Multiline) &&
+            !Regex.IsMatch(before, @"^\s*TimeStopsWhenEmpty\s*=", RegexOptions.Multiline)) {
+            Server.TimeStopsWhenEmpty.Value = false;
+        }
+
         Server.SummonsFollowMaster = config.Bind(
             "Server",
             "SummonsFollowMaster",
@@ -611,14 +642,16 @@ internal partial class EmpConfig
             "加入的玩家可以在角色列表中删除自己的某个角色及其携带的物品（会确认两次），其同伴留在世界中");
 
         // off by default, the one rule that is: the checks are new and logged first ("would have refused"), a
-        // refusal of a legit act would cost a player what it did (council 2, audit 2026-10-23)
+        // refusal of a legit act would cost a player what it did (council 2, audit 2026-10-23). A public game
+        // (PublicGame) refuses whatever this says, see ElinDelta.TrustEnforced
         Server.EnforceOwnership = config.Bind(
             "Server",
             "EnforceOwnership",
             false,
-            "What a guest's game says about a character that is neither its own nor one of its companions (its task, its damage, its skills, its party) is refused\n" +
+            "What a guest's game says about a character that is neither its own nor one of its companions (its task, its damage, its skills, its party), " +
+            "about a thing held by another player or its companions, and a flood of data (over 500 of one kind a second) are refused. Always on in a public game\n" +
             "Off: only written to the log. A trade, a gift to another player or an order to one's own companion is never refused\n" +
-            "客机游戏发来的、关于既非其角色也非其同伴的角色的数据（任务、伤害、技能、队伍）会被拒绝；关闭时仅写入日志。交易、送给其他玩家的礼物或对自己同伴的命令永远不会被拒绝");
+            "客机游戏发来的、关于既非其角色也非其同伴的角色的数据（任务、伤害、技能、队伍）、关于其他玩家或其同伴所持物品的数据，以及大量数据洪流会被拒绝；公开游戏中始终开启。关闭时仅写入日志。交易、送给其他玩家的礼物或对自己同伴的命令永远不会被拒绝");
         Server.ActivitiesFromActor = config.Bind(
             "Server",
             "ActivitiesFromActor",
@@ -732,6 +765,9 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> SoftRecall { get; set; } = null!;
         internal static ConfigEntry<bool> AutoHost { get; set; } = null!;
         internal static ConfigEntry<bool> OwnSleep { get; set; } = null!;
+        internal static ConfigEntry<int> IdleMinutes { get; set; } = null!;
+        internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
+        internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;
         internal static ConfigEntry<bool> PlayersAtBase { get; set; } = null!;
         internal static ConfigEntry<bool> GlobalChat { get; set; } = null!;

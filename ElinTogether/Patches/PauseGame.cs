@@ -14,7 +14,8 @@ internal class PauseGame
     [HarmonyPatch(typeof(AM_Adv), nameof(AM_Adv.ShouldPauseGame), MethodType.Getter)]
     internal static void OnGetShouldPauseGame(ref bool __result)
     {
-        if (ActionModeCombat.Paused) {
+        // nobody plays: the world waits for someone (council 2026-10-26, stage 3)
+        if (ActionModeCombat.Paused || EmptyWorld.Frozen) {
             __result = true;
             return;
         }

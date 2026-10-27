@@ -83,6 +83,15 @@ internal class EmpConsole
     }
 
     /// <summary>
+    ///     Network and main-thread counters since the game started (the CSV in ElinMP/Logs has them per 10 s)
+    /// </summary>
+    [ConsoleCommand("metrics")]
+    internal static string Metrics()
+    {
+        return NetMetrics.Describe();
+    }
+
+    /// <summary>
     ///     Bench: the teams as the host keeps them (or as this guest was told). The menus come later
     /// </summary>
     [ConsoleCommand("team.list")]

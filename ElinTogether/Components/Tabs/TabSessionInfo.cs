@@ -61,6 +61,10 @@ internal class TabSessionInfo : TabEmpBase
         }
         // (the ping text of index 0 is the host marker: "Ping - (host)")
         label += "  " + BuildPingStat(player);
+        // away from the keyboard: time no longer waits for it (council 2026-10-26), said here only, no popup
+        if (player.Idle) {
+            label += "  " + "emp_ui_player_idle".lang();
+        }
         parent.Text(label);
 
         // Kick: the host, on a guest's line. Reconnect: a guest's own line only, or the host on a guest's line

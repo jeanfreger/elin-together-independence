@@ -17,6 +17,15 @@ internal static class NetReconnect
     private const float GiveUpSeconds = 180f;
 
     /// <summary>
+    ///     A host that said it leaves is waited for that long only: a world reloaded comes back in that time, a game
+    ///     closed for good does not, and its guests waited 3 minutes on "Going back into the game" (two real PCs,
+    ///     2026-10-27)
+    /// </summary>
+    private const float HostLeftSeconds = 45f;
+
+    private const float HostLeftFirstTry = 10f;
+
+    /// <summary>
     ///     Council 9: a host gone without a word is waited for that long before a guest takes the world over (a
     ///     line cut for a moment comes back by itself, and nothing is lost)
     /// </summary>
@@ -30,7 +39,7 @@ internal static class NetReconnect
     /// <summary>
     ///     To call before the session is reset: where the game was is read from the connection going away
     /// </summary>
-    internal static void Begin()
+    internal static void Begin(bool hostLeft = false)
     {
         var session = NetSession.Instance;
 
@@ -47,7 +56,7 @@ internal static class NetReconnect
         _ties = EClass.pc is { } pc ? CompanionHelper.PlayerRideTies(pc) : null;
 
         _routine = EmpMod.Instance.StartCoroutine(Retry(rejoin, !client.IsLocalConnection && !client.IsDirectConnection,
-            session.Rules.AllowTakeover));
+            session.Rules.AllowTakeover, hostLeft));
     }
 
     /// <summary>
@@ -74,15 +83,18 @@ internal static class NetReconnect
         }
     }
 
-    private static IEnumerator Retry(Action rejoin, bool byLobby, bool takeover)
+    private static IEnumerator Retry(Action rejoin, bool byLobby, bool takeover, bool hostLeft)
     {
         var session = NetSession.Instance;
         var lost = Time.realtimeSinceStartup;
         // the host said it left: no wait for it, the turns run from now
         var wait = WorldHandover.Following ? 0f : TakeoverSeconds;
         // (with a takeover: the wait for the host, then a turn for each guest, then the time to join that game)
-        var giveUp = lost + GiveUpSeconds + (takeover ? wait + WorldHandover.TurnSeconds * WorldHandover.Turns : 0f);
-        var tried = float.MinValue;
+        var giveUp = lost + (hostLeft && !takeover ? HostLeftSeconds : GiveUpSeconds) +
+                     (takeover ? wait + WorldHandover.TurnSeconds * WorldHandover.Turns : 0f);
+        // the host said it leaves: its first join again waits a little. Asked at once, the host still closing its game
+        // (a reload) kept the port busy and could not open its session again (ride2 reload, 2026-10-27)
+        var tried = hostLeft ? lost + HostLeftFirstTry - RetrySeconds : float.MinValue;
         var back = false;
 
         // whatever happens in here, no notice left on screen and nothing left that reads as still trying
@@ -90,7 +102,7 @@ internal static class NetReconnect
             // the caller resets the session right after Begin: the title screen is up on the next frame
             yield return null;
 
-            ShowNotice();
+            ShowNotice(hostLeft);
 
             // a hard end: a join that connects but never loads the world counts in the same time
             while (Time.realtimeSinceStartup < giveUp) {
@@ -151,10 +163,10 @@ internal static class NetReconnect
             yield break;
         }
 
-        EmpLog.Information("Gave up joining the game again after {Seconds}s", GiveUpSeconds);
+        EmpLog.Information("Gave up joining the game again after {Seconds}s", Time.realtimeSinceStartup - lost);
 
         session.ResetSession();
-        Dialog.Ok("emp_ui_reconnect_failed");
+        Dialog.Ok(hostLeft ? "emp_ui_host_closed" : "emp_ui_reconnect_failed");
     }
 
     private static void Attempt(Action rejoin, bool byLobby)
@@ -199,10 +211,11 @@ internal static class NetReconnect
         }
     }
 
-    private static void ShowNotice()
+    private static void ShowNotice(bool hostLeft)
     {
         var cancel = false;
-        var notice = _notice = Dialog.Choice("emp_ui_reconnecting",
+        // (the host said it leaves: waiting for its game, not for a link)
+        var notice = _notice = Dialog.Choice(hostLeft ? "emp_ui_host_left_waiting" : "emp_ui_reconnecting",
             d => d.AddButton("emp_ui_reconnect_cancel".lang(), () => cancel = true));
         notice.SetOnKill(() => {
             // closed by Clear

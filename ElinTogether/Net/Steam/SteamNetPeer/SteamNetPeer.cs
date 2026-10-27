@@ -106,6 +106,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
         }
 
         var size = bytes.Length;
+        NetMetrics.Sent(Id, bytes);
 
         lock (ArenaLock) {
             if (Arena == IntPtr.Zero || BrokenReason is not null) {
@@ -159,6 +160,11 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     private readonly Queue<(byte[] bytes, SteamNetSendFlag flags)> _backlog = new();
     private int _backlogBytes;
     private int _nextMessageId;
+
+    // gauges for NetMetrics, read without the lock
+    internal int BacklogCount => _backlog.Count;
+    internal int BacklogBytes => _backlogBytes;
+
     private bool _stalled;
 
     /// <summary>

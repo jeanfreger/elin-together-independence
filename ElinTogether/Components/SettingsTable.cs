@@ -148,6 +148,21 @@ internal static class SettingsTable
         source => source.Raw(EmpConfig.Server.WorldMapLeadCap) is int hours ? Array.IndexOf(LeadCaps, hours) : -1,
         i => [(EmpConfig.Server.WorldMapLeadCap, LeadCaps[i])]);
 
+    // council 2026-10-26: how many of the active players must sleep for the night of the world
+    internal static Choice NightPasses => new("night_passes", ["Everyone", "Half", "One"],
+        () => [EmpConfig.Server.NightPasses],
+        source => source.Raw(EmpConfig.Server.NightPasses) is NightRule rule ? (int)rule : -1,
+        i => [(EmpConfig.Server.NightPasses, (NightRule)i)]);
+
+    // minutes without input before a player is away from the keyboard, 0 off (another number typed in the file
+    // reads as Custom and is kept)
+    private static readonly int[] IdleSteps = [0, 5, 15, 30];
+
+    internal static Choice IdleMinutes => new("idle_minutes", [..IdleSteps.Select(m => m.ToString())],
+        () => [EmpConfig.Server.IdleMinutes],
+        source => source.Raw(EmpConfig.Server.IdleMinutes) is int minutes ? Array.IndexOf(IdleSteps, minutes) : -1,
+        i => [(EmpConfig.Server.IdleMinutes, IdleSteps[i])]);
+
     // own pace: PlayerCombatTime with its clock and step pace (turn-based does nothing then); turn-based, shared
     // average and classic: without PlayerCombatTime (clock and step pace do nothing then, they are left alone)
     internal static Choice CombatPace => new("combat_pace", ["own", "turns", "average", "classic"],
@@ -274,6 +289,9 @@ internal static class SettingsTable
         yield return new("world_time", "time_details", true, EmpConfig.Server.SharedWorldTime);
         yield return new("world_keeper", "time_details", true, EmpConfig.Server.WorldKeeper);
         yield return new("own_sleep", "time_details", true, EmpConfig.Server.OwnSleep);
+        yield return new("night_passes", "time_details", true, Choice: NightPasses, Requires: () => EmpConfig.Server.OwnSleep.Value);
+        yield return new("idle_minutes", "time_details", true, Choice: IdleMinutes);
+        yield return new("time_stops_empty", "time_details", true, EmpConfig.Server.TimeStopsWhenEmpty);
         yield return new("world_map_lead", "time_details", true, Choice: LeadCap);
 
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");
@@ -296,7 +314,7 @@ internal static class SettingsTable
     internal static ConfigEntryBase[] HostRules() => [
         ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
-        EmpConfig.Server.SpawnZone,
+        EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
@@ -416,6 +434,9 @@ internal static class SettingsTable
             [EmpConfig.Server.PlayerTrade] = r.AllowPlayerTrade,
             [EmpConfig.Server.WorldCopy] = r.KeepWorldCopy,
             [EmpConfig.Server.Takeover] = r.AllowTakeover,
+            [EmpConfig.Server.NightPasses] = r.NightPasses,
+            [EmpConfig.Server.IdleMinutes] = r.IdleMinutes,
+            [EmpConfig.Server.TimeStopsWhenEmpty] = r.TimeStopsWhenEmpty,
         };
         return new(e => values.TryGetValue(e, out var v) ? v : null);
     }

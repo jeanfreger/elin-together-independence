@@ -30,6 +30,12 @@ public class CharaGiveGiftDelta : ElinDelta
                (Thing.Find()?.GetRootCard() is Chara holder && !OwnsOrCompanion(sender!, holder) ? $"the gift is held by {holder.uid}" : null);
     }
 
+    // what it held or took goes back where the host has it
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Thing);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (From.Find() is not Chara from || To.Find() is not Chara to || Thing.Find() is not Thing thing) {

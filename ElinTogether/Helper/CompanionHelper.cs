@@ -183,8 +183,10 @@ internal static class CompanionHelper
     internal static void TieAgain(IEnumerable<(int Rider, int Carried, bool Parasite)> ties)
     {
         foreach (var (riderUid, carriedUid, parasite) in ties) {
+            // (a rider loaded from a save may still name the one it carried: the same one, tied again)
             if (EClass._map.FindChara(riderUid) is not { } rider || EClass._map.FindChara(carriedUid) is not { } carried ||
-                carried.host is not null || (parasite ? rider.parasite : rider.ride) is not null) {
+                (carried.host is { } other && other.uid != riderUid) ||
+                (parasite ? rider.parasite : rider.ride) is { } taken && taken.uid != carriedUid) {
                 continue;
             }
 

@@ -30,6 +30,8 @@ internal class CoreSynchronizationContext : SynchronizationContext
         SaveDepot.Update();
         EmpServer.Update();
         EmpAutoHost.Update();
+        // (alone on a map of its own the host link is still there: the host still hears it)
+        PlayerIdle.Update();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
             return;
@@ -68,13 +70,17 @@ internal class CoreSynchronizationContext : SynchronizationContext
 
                 if (CanSendDelta) {
                     CanSendDelta = false;
+                    var start = System.Diagnostics.Stopwatch.GetTimestamp();
                     host.WorldStateDeltaUpdate();
+                    NetMetrics.DeltaSend.Add(0, start);
                 }
 
                 return;
             case ElinNetClient client when CanSendDelta:
                 CanSendDelta = false;
+                var sending = System.Diagnostics.Stopwatch.GetTimestamp();
                 client.WorldStateDeltaUpdate();
+                NetMetrics.DeltaSend.Add(0, sending);
                 return;
         }
     }

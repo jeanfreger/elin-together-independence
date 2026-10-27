@@ -35,6 +35,12 @@ public class CharaPickThingDelta : ElinDelta
         return NoCharacter(sender) ?? NotOwned(sender, Owner, "picker");
     }
 
+    // what it held or took goes back where the host has it
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Thing);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         // we do not apply to ourselves

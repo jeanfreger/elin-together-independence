@@ -38,6 +38,11 @@ internal partial class ElinNetHost
                 continue;
             }
 
+            // away from the keyboard: the others do not wait for it (council 2026-10-26)
+            if (Patches.PlayerIdle.IsIdle(peer.Id)) {
+                continue;
+            }
+
             // ponytail: a dead player away from the host still counts, the host is not told it died there
             if (!_departed.Contains(peer.Id) || _guests.ContainsKey(peer.Id) ||
                 !_leases.TryGetValue(peer.Id, out var zones) || zones.Count == 0 ||

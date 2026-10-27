@@ -22,6 +22,24 @@ public class StoryGiftDelta : ElinDelta
     [Key(2)]
     public bool Story { get; init; }
 
+    // a dialog or a wish drops it at the feet of the one talking: a crowded tile pushes it a few cells away
+    private const int MaxReach = 15;
+
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (NoCharacter(sender) is { } none) {
+            return none;
+        }
+
+        // (a sender on another map: OnApply drops it anyway)
+        if (sender!.currentZone != _zone || sender.pos is not { IsValid: true } at) {
+            return null;
+        }
+
+        var reach = System.Math.Max(System.Math.Abs(at.x - Pos.X), System.Math.Abs(at.z - Pos.Z));
+        return reach > MaxReach ? $"a gift {reach} cells away from the sender" : null;
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         // travelling alone, a player creates its own things

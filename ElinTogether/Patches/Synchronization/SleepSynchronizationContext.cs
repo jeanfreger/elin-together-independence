@@ -12,8 +12,9 @@ namespace ElinTogether.Patches;
 ///     Two rules, the host's choice (NetSessionRules.UseOwnSleep) <br />
 ///     Off: a player who goes to bed waits until every player of the map did, then the host's night is everyone's <br />
 ///     On: a player who goes to bed sleeps at once, a night of its own: its body rests, the date of the world
-///     stays. When every living player connected sleeps at the same time, wherever they are, the night of the
-///     host's game becomes the world's: the date moves once and the host wakes everyone
+///     stays. When enough of the living, active players connected sleep at the same time (NightPasses: all, half,
+///     one; idle ones not counted, see PlayerIdle), wherever they are, the night of the host's game becomes the
+///     world's: the date moves once and the host wakes everyone
 /// </summary>
 [HarmonyPatch]
 internal class SleepSynchronizationContext : SynchronizationContext
@@ -138,6 +139,12 @@ internal class SleepSynchronizationContext : SynchronizationContext
                 continue;
             }
 
+            // away from the keyboard (council 2026-10-26): neither holds the night nor counts toward it; one who
+            // went to bed counts, its sleep was its own act
+            if (chara.conSleep is null && PlayerIdle.IsIdle(netPlayer.Index)) {
+                continue;
+            }
+
             alive++;
             if (chara.conSleep is not null) {
                 _ready.Add(netPlayer.Index);
@@ -150,7 +157,7 @@ internal class SleepSynchronizationContext : SynchronizationContext
                 _away[id] = name;
 
                 // a dead player, as on this map, is not waited for
-                if (_awayDead.Contains(id)) {
+                if (_awayDead.Contains(id) || (!_awayAsleep.Contains(id) && PlayerIdle.IsIdle(id))) {
                     continue;
                 }
 
@@ -164,9 +171,15 @@ internal class SleepSynchronizationContext : SynchronizationContext
             _awayDead.RemoveWhere(id => !_away.ContainsKey(id));
         }
 
-        // nobody to wait for when alone (the game's own sleep, as AllowPartySleep)
-        AllPlayersReady = _ready.Count >= alive;
+        // nobody to wait for when alone (the game's own sleep, as AllowPartySleep). Own sleep: the host's share
+        // of sleepers ("Night passes when"); otherwise everyone waits for everyone, as before
+        AllPlayersReady = (own ? session.Rules.NightPasses : NightRule.Everyone) switch {
+            NightRule.One => _ready.Count >= System.Math.Min(1, alive),
+            NightRule.Half => _ready.Count * 2 >= alive,
+            _ => _ready.Count >= alive,
+        };
         Sleepers = _ready.Count;
+
 
         // a player who comes in while others sleep must know it, or it counts nobody (the count is also told
         // at each change, see Announce)
@@ -216,7 +229,8 @@ internal class SleepSynchronizationContext : SynchronizationContext
 
         // the last one closed its eyes while the host sleeps a night of its own: that night becomes the
         // world's, for the hours the last one asked for. A host that goes to bed last: see GateSleepTick
-        if (own && _ownNight && alive >= 2 && AllPlayersReady && session.Transport is ElinNetHost &&
+        // (counted by who is connected: the last awake one may also have just turned idle)
+        if (own && _ownNight && session.CurrentPlayers.Count + _away.Count >= 2 && AllPlayersReady && session.Transport is ElinNetHost &&
             ui.GetLayer<LayerSleep>() is { } layer && _minRef(layer) <= _maxMinRef(layer)) {
             var hours = _nightHours.GetValueOrDefault(last, _hoursRef(layer));
             _ownNight = false;

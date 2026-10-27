@@ -42,6 +42,12 @@ public class NetPeerState
     [Key(11)]
     public bool Talking { get; set; }
 
+    /// <summary>
+    ///     Away from the keyboard, as the host of the world knows it (see PlayerIdle)
+    /// </summary>
+    [Key(12)]
+    public bool Idle { get; set; }
+
     public Chara? FindChara()
     {
         return EClass.pc?.party?.members.Find(c => c?.uid == CharaUid);

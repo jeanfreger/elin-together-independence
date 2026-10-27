@@ -21,6 +21,7 @@ public class TickScheduler
         foreach (var sub in _subscriptions.Where(sub => now >= sub.NextInvokeTime)) {
             sub.NextInvokeTime += sub.TickInterval;
 
+            var start = System.Diagnostics.Stopwatch.GetTimestamp();
             try {
                 sub.Update();
             } catch (Exception ex) {
@@ -28,6 +29,8 @@ public class TickScheduler
                     sub.Update.Method.Name);
                 // noexcept
             }
+
+            sub.Metric.Add(0, start);
         }
 
         IsTicking = false;
@@ -51,6 +54,7 @@ public class TickScheduler
         var interval = 1f / hz;
         _deferredAdd.Enqueue(new(onUpdate, interval) {
             NextInvokeTime = Time.time + interval,
+            Metric = NetMetrics.Named("job", $"{onUpdate.Method.DeclaringType?.Name}.{onUpdate.Method.Name}"),
         });
     }
 
@@ -62,5 +66,6 @@ public class TickScheduler
     private sealed record TickSubscription(Action Update, float TickInterval)
     {
         public float NextInvokeTime;
+        public NetMetric Metric = null!;
     }
 }

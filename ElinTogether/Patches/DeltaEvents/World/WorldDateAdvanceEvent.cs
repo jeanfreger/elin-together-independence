@@ -16,6 +16,15 @@ internal static class WorldDateAdvanceEvent
     /// </summary>
     private const int MaxCatchUpMinutes = Date.MonthToken;
 
+    /// <summary>
+    ///     Council 2026-10-26 (stage 5): a catch-up replays at most this much (a week), what lies before is
+    ///     collapsed: the date jumps over it without its hours and days
+    /// </summary>
+    internal const int MaxReplayMinutes = 7 * Date.DayToken;
+
+    // and replays a day per frame at most: not every hour of a week in one frame, in every game
+    private const int ChunkMinutes = Date.DayToken;
+
     // a player in a fight, loading or in a dialog waits this long at most for a catch-up from someone's trip
     private const float HoldSeconds = 60f;
 
@@ -25,12 +34,16 @@ internal static class WorldDateAdvanceEvent
     // minutes of the AdvanceMin in progress, 0 outside of one
     private static int _advancing;
 
+    // the AdvanceMin in progress was refused: the world is empty (EmptyWorld), nothing to tell
+    private static bool _frozen;
+
     // the catch-up waiting for the next frame: the date to reach (minutes), whose trip it is, since when it waits
     private static int _pendingTarget;
     private static (string Name, int Uid)? _pendingTraveller;
     private static float _pendingSince;
     private static int _pendingLeadOf;
     private static bool _pumping;
+    private static bool _spreading;
 
     // the trip of another player this player is told about once it is over
     private static string? _tripOf;
@@ -55,6 +68,13 @@ internal static class WorldDateAdvanceEvent
     internal static int LeadOf { get; private set; }
 
     /// <summary>
+    ///     The last catch-up (bench): the frames it was spread over, the minutes collapsed without being replayed
+    /// </summary>
+    internal static int LastCatchUpSteps { get; private set; }
+
+    internal static int LastCatchUpCollapsed { get; private set; }
+
+    /// <summary>
     ///     Whether the hour passing now is one this other player of the map lives (what it carries goes off). <br />
     ///     Minute by minute is the time of the map, everyone's on it. A jump is the act of the one who simulates
     ///     it (a step on the world map), not theirs; except a night, which every player of the map sleeps
@@ -68,7 +88,11 @@ internal static class WorldDateAdvanceEvent
     internal static bool OnAdvanceMin(int a)
     {
         _advancing = a;
-        return NetSession.Instance.IsHost;
+
+        // nobody plays: the date of the world stands still (council 2026-10-26, stage 3). A catch-up is the time
+        // a player made pass elsewhere, it still comes
+        _frozen = !IsCatchingUp && NetSession.Instance.IsHost && EmptyWorld.Frozen;
+        return NetSession.Instance.IsHost && !_frozen;
     }
 
     // not in the postfix: it is skipped when the game's own code throws, and the jump would never end
@@ -76,11 +100,16 @@ internal static class WorldDateAdvanceEvent
     internal static void OnAdvanceMinEnd()
     {
         _advancing = 0;
+        _frozen = false;
     }
 
     [HarmonyPostfix]
     internal static void OnAfterAdvanceMin(int a)
     {
+        if (_frozen) {
+            return;
+        }
+
         var session = NetSession.Instance;
 
         // the timer of a quest's map (harvest, music, wedding) is the time of the player who plays it:
@@ -198,7 +227,23 @@ internal static class WorldDateAdvanceEvent
 
             var (target, traveller, leadOf) = (_pendingTarget, _pendingTraveller, _pendingLeadOf);
             (_pendingTarget, _pendingTraveller, _pendingLeadOf) = (0, null, 0);
-            var moved = CatchUp(target, traveller, leadOf);
+            var spreading = _spreading;
+            var moved = CatchUp(target, traveller, leadOf, !spreading);
+
+            // the rest of a long catch-up goes on next frame, a day at a time (council 2026-10-26, stage 5), also
+            // past a frame without a map (a loading)
+            var rest = EClass.core.IsGameStarted ? target - EClass.world.date.GetRaw() : 0;
+            _spreading = rest > 0 && (moved > 0 || (spreading && EClass.game.activeZone is null));
+            if (_spreading && target > _pendingTarget) {
+                _pendingTarget = target;
+                _pendingTraveller ??= traveller;
+                if (_pendingLeadOf == 0) {
+                    _pendingLeadOf = leadOf;
+                }
+
+                Pump();
+            }
+
             if (traveller is { } who && moved > 0 && (leadOf == 0 || leadOf != EClass.pc?.uid)) {
                 NoteTrip(who.Name, moved);
             }
@@ -252,28 +297,66 @@ internal static class WorldDateAdvanceEvent
     ///     Going there tells the others in turn (the host its players, a map holder its visitors)
     /// </summary>
     /// <returns>the minutes advanced, 0 when this game is not behind</returns>
-    private static int CatchUp(int target, (string Name, int Uid)? traveller, int leadOf)
+    private static int CatchUp(int target, (string Name, int Uid)? traveller, int leadOf, bool first)
     {
         var behind = target - EClass.world.date.GetRaw();
         if (behind is <= 0 or > MaxCatchUpMinutes || EClass.game?.activeZone is null) {
             return 0;
         }
 
-        EmpLog.Debug("World time: catching up {Minutes} minute(s)", behind);
+        // council 2026-10-26 (stage 5): a week at most is replayed, the date jumps over what lies before it
+        var collapsed = first ? System.Math.Max(0, behind - MaxReplayMinutes) : 0;
+        if (first) {
+            (LastCatchUpSteps, LastCatchUpCollapsed) = (0, collapsed);
+        }
 
-        PersonalQuests.Postpone(behind);
+        if (collapsed > 0) {
+            Collapse(collapsed);
+        }
+
+        var step = System.Math.Min(behind - collapsed, ChunkMinutes);
+        LastCatchUpSteps++;
+        EmpLog.Debug("World time: catching up {Minutes} minute(s) ({Collapsed} collapsed, {Left} left)",
+            step, collapsed, behind - collapsed - step);
+
+        PersonalQuests.Postpone(collapsed + step);
 
         IsCatchingUp = true;
         Traveller = traveller;
         LeadOf = leadOf;
         try {
-            EClass.world.date.AdvanceMin(behind);
+            EClass.world.date.AdvanceMin(step);
         } finally {
             IsCatchingUp = false;
             Traveller = null;
             LeadOf = 0;
         }
 
-        return behind;
+        return collapsed + step;
+    }
+
+    /// <summary>
+    ///     The date moves this many minutes on without living them: no hour, day or month of them happens (the
+    ///     others hear of the new date with the next minutes told, as hours that came with no word of their own)
+    /// </summary>
+    private static void Collapse(int minutes)
+    {
+        var date = EClass.world.date;
+        // GetRaw counts month and day from 1: from 0 here, back to 1 after
+        var total = date.GetRaw() + minutes - Date.MonthToken - Date.DayToken;
+        var hour = date.hour;
+        date.year = total / Date.YearToken;
+        total %= Date.YearToken;
+        date.month = total / Date.MonthToken + 1;
+        total %= Date.MonthToken;
+        date.day = total / Date.DayToken + 1;
+        total %= Date.DayToken;
+        date.hour = total / Date.HourToken;
+        date.min = total % Date.HourToken;
+
+        EClass.screen.RefreshGrading();
+        if (date.hour != hour) {
+            EClass.scene.OnChangeHour();
+        }
     }
 }

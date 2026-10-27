@@ -87,17 +87,17 @@ internal partial class ElinNetClient : ElinNetBase
     /// <summary>
     ///     The host said it leaves and closed its link, but this end may still read it as open (a close that never
     ///     arrived, seen on the bench 2026-10-26: the guest stayed frozen in a dead game while the host reloaded its
-    ///     world). A few seconds later it is closed here, and the way back starts as after a dropped link
+    ///     world). Two seconds later it is closed here, and the way back starts as after a dropped link
     /// </summary>
     private void UpdateHostLeft()
     {
-        if (HostLeftAt <= 0f || !IsConnected || UnityEngine.Time.realtimeSinceStartup - HostLeftAt < 8f) {
+        if (HostLeftAt <= 0f || !IsConnected || UnityEngine.Time.realtimeSinceStartup - HostLeftAt < 2f) {
             return;
         }
 
         EmpLog.Information("The host left and its link is still open here: closing it");
         HostLeftAt = 0f;
-        NetReconnect.Begin();
+        NetReconnect.Begin(true);
         EndSession(EmpDisconnectInfo.HostShutdown);
     }
 
@@ -278,7 +278,7 @@ internal partial class ElinNetClient : ElinNetBase
         // (the host said it leaves and another guest takes the world over: that game is the one joined again)
         // (the host said it leaves: it may come back, a world reloaded or a game restarted)
         if (EmpDisconnectInfo.IsLinkLost(reason) || WorldHandover.Following || HostLeftAt > 0f) {
-            NetReconnect.Begin();
+            NetReconnect.Begin(HostLeftAt > 0f && !EmpDisconnectInfo.IsLinkLost(reason));
         } else if (reason != EmpDisconnectInfo.HostShutdown) {
             // turned away, kicked, or the player's own way out: no coming back by itself.
             // HostShutdown is not told apart: it is also how any component of ours closes its link

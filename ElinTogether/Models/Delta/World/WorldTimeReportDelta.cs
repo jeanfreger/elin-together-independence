@@ -28,6 +28,12 @@ public class WorldTimeReportDelta : ElinDelta
             return;
         }
 
+        // away from the keyboard: the clock of its map runs on its own, it does not pull the world's date
+        // (council 2026-10-26). A trip is an act of its own, which ends its idleness anyway
+        if (PlayerIdle.IsIdle(OriginPeer)) {
+            return;
+        }
+
         // audit 2026-10-23: the host took any date a player sent, a month ahead at once. It believes what
         // travel can make pass since what it already has (what waits to be caught up included)
         var from = WorldDateAdvanceEvent.AfterPending(0);

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using ElinTogether.Helper;
+using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
 
@@ -49,9 +51,12 @@ public class ZoneDataResponse
             return null;
         }
 
+        var start = Stopwatch.GetTimestamp();
         zone.map?.Save(zone.pathSave);
+        NetMetrics.MapSave.Add(0, start);
 
-        return new() {
+        start = Stopwatch.GetTimestamp();
+        var response = new ZoneDataResponse {
             ZoneFullName = zone.ZoneFullName,
             ZoneUid = zone.uid,
             Zone = LZ4Bytes.Create(zone),
@@ -61,6 +66,14 @@ public class ZoneDataResponse
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
         };
+
+        var packed = (long)response.Zone.Bytes.Length;
+        foreach (var file in response.Map.Values) {
+            packed += file.Bytes.Length;
+        }
+
+        NetMetrics.MapPack.Add(packed, start);
+        return response;
     }
 
     public Zone? FindZone()

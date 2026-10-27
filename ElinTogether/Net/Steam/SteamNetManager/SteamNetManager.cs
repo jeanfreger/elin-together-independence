@@ -51,6 +51,11 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     public IReadOnlyList<ISteamNetPeer> Peers => [.._peers];
 
     /// <summary>
+    ///     The peers without a copy, for NetMetrics
+    /// </summary>
+    internal List<SteamNetPeer> PeerList => _peers;
+
+    /// <summary>
     ///     Any connected peers
     /// </summary>
     public bool IsConnected => _peers.Any(p => p.IsConnected);
@@ -122,8 +127,10 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                         continue;
                     }
 
+                    var start = Stopwatch.GetTimestamp();
                     var packet = _serializer.Deserialize(payload, type);
                     _listener?.OnMessageReceived(packet, peer);
+                    NetMetrics.Received(peer.Id, typeHash, bytes.Length, start);
                 } catch (Exception ex) {
                     // one bad message must not leave the rest of the batch unread and unreleased
                     EmpLog.Warning(ex, "Message dropped");

@@ -29,6 +29,12 @@ public class ActThrowDelta : ElinDelta
                (Thing.Find()?.GetRootCard() is Chara holder && !OwnsOrCompanion(sender!, holder) ? $"the thrown thing is held by {holder.uid}" : null);
     }
 
+    // what it held or took goes back where the host has it
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Thing);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Owner.Find() is not { } owner) {

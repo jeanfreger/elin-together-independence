@@ -38,6 +38,69 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Player chara uid -> the date of the world when it was last seen connected (council 2026-10-26, stage 4):
+    ///     what the date moved while it was gone is not taken from its own quests. Kept with the world, so that a
+    ///     host who closed its game with players still in counts their absence too
+    /// </summary>
+    [ElinGameIOProperty("player_last_seen")]
+    private static Dictionary<int, int> PlayerLastSeen
+    {
+        get => field ??= [];
+        set;
+    }
+
+    // the characters of the players that settled on this map since they connected (their absence is behind them)
+    private readonly HashSet<int> _backFromAbsence = [];
+
+    /// <summary>
+    ///     The players connected and settled are seen now; one who leaves is seen for the last time
+    /// </summary>
+    private void SeePlayers(NetPeerState? leaving = null)
+    {
+        if (IsZoneSession) {
+            return;
+        }
+
+        var now = world.date.GetRaw();
+        foreach (var state in States.Values) {
+            if (state.Index != 0 && _backFromAbsence.Contains(state.CharaUid)) {
+                PlayerLastSeen[state.CharaUid] = now;
+            }
+        }
+
+        if (leaving is not null) {
+            _backFromAbsence.Remove(leaving.CharaUid);
+        }
+    }
+
+    /// <summary>
+    ///     A player back after an absence: the time the world went on without it is added to its own quests'
+    ///     deadlines, bounded by the date it was last seen. Its character waited out of every map: no hunger, no
+    ///     conditions. Nothing punishes being away
+    /// </summary>
+    private void ResumeAfterAbsence(int charaUid)
+    {
+        if (IsZoneSession || !_backFromAbsence.Add(charaUid) || !PlayerLastSeen.TryGetValue(charaUid, out var seen)) {
+            return;
+        }
+
+        var away = world.date.GetRaw() - seen;
+        PlayerLastSeen[charaUid] = world.date.GetRaw();
+        if (away <= 0 || !PersonalQuestLogs.TryGetValue(charaUid, out var log)) {
+            return;
+        }
+
+        foreach (var uid in log.Keys.ToArray()) {
+            if (new LZ4Bytes { Bytes = log[uid] }.Decompress<Quest>() is { deadline: > 0 } quest) {
+                quest.deadline += away;
+                log[uid] = LZ4Bytes.Create(quest).Bytes;
+            }
+        }
+
+        EmpLog.Debug("Player {CharaUid} back after {Minutes} minute(s) of the world: its quests keep their time", charaUid, away);
+    }
+
+    /// <summary>
     ///     The fame a player on this map last told, null when this game keeps none for it
     /// </summary>
     internal int? FameOf(Chara player)
@@ -314,6 +377,8 @@ internal partial class ElinNetHost
     /// </summary>
     private void SendPersonalState(ISteamNetPeer peer, int charaUid)
     {
+        ResumeAfterAbsence(charaUid);
+
         if (IsZoneSession || !Session.Rules.UsePersonalQuests) {
             return;
         }

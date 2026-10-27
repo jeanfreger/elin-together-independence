@@ -26,6 +26,22 @@ internal static class PlayerPeoplePatch
 
     private static bool Active => NetSession.Instance.Connection is not null;
 
+    /// <summary>
+    ///     The adventurers' ranking (the quest board's tab, LayerQuestBoard.RefreshRanking) lists the adventurers and
+    ///     "the player" (TraitChara.ShowAdvRank: owner.IsPC): every player of the world now, in every game (user,
+    ///     2026-10-27)
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(TraitChara), nameof(TraitChara.ShowAdvRank), MethodType.Getter)]
+    internal static void OnShowAdvRank(TraitChara __instance, ref bool __result)
+    {
+        // (in a guest's game the host's character carries no player mark: the session's player list says it)
+        if (!__result && Active && __instance.owner is { } c &&
+            (IsPlayerChara(c) || NetSession.Instance.CurrentPlayers.Any(p => p is not null && p.CharaUid == c.uid))) {
+            __result = true;
+        }
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(LayerPeople), nameof(LayerPeople.OnInit))]
     internal static void OnInit(LayerPeople __instance)
