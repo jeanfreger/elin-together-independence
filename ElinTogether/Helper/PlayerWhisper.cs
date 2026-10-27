@@ -104,7 +104,8 @@ internal static class PlayerWhisper
     [HarmonyPatch(typeof(ActPlan), nameof(ActPlan._Update))]
     internal static void OnUpdatePlan(ActPlan __instance)
     {
-        if (!Enabled) {
+        // (runs at every frame the cursor is on the map: no copy of the list unless there is something to replace)
+        if (!Enabled || !__instance.list.Exists(i => i.act is ActChat && i.tc is Chara { IsRemotePlayer: true })) {
             return;
         }
 

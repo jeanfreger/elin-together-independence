@@ -66,7 +66,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         connection.Delta.RefreshBuffer();
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:
-                if (!EMono.scene.paused) {
+                if (!EMono.scene.paused && ShouldSendGameTime()) {
                     host.Delta.AddRemoteImmediate(new GameDelta {
                         Delta = Core.gameDelta,
                         Turbo = GameSynchronizationContext.WorldTurbo,
@@ -88,5 +88,38 @@ internal class CoreSynchronizationContext : SynchronizationContext
                 NetMetrics.DeltaSend.Add(0, sending);
                 return;
         }
+    }
+
+    // on their own clock the players' games only read the host's fast-forward from it (GameSynchronizationContext,
+    // kept 0.5 s): the game time of every frame went to everyone for nothing, and made every delta flush a message
+    // to every peer even with nothing else to say (efficiency audit 2026-10-27). Told at 5 Hz while the world
+    // fast-forwards, and once when it stops
+    private const float TurboTellSeconds = 0.2f;
+    private static float _turboToldAt;
+    private static bool _turboTold;
+
+    private static bool ShouldSendGameTime()
+    {
+        if (!NetSession.Instance.Rules.OwnClock) {
+            return true;
+        }
+
+        if (GameSynchronizationContext.WorldTurbo <= 1f) {
+            if (!_turboTold) {
+                return false;
+            }
+
+            _turboTold = false;
+            return true;
+        }
+
+        var now = UnityEngine.Time.unscaledTime;
+        if (_turboTold && now - _turboToldAt < TurboTellSeconds) {
+            return false;
+        }
+
+        _turboTold = true;
+        _turboToldAt = now;
+        return true;
     }
 }

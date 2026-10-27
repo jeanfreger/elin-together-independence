@@ -253,6 +253,17 @@ public class ElinDeltaManager
 
     public List<ElinDelta> ApplyOverride(List<ElinDelta> batch)
     {
+        // nearly every flush has only deltas that stack: the grouping below allocated at each one for nothing
+        // (efficiency audit 2026-10-27)
+        var overrides = false;
+        for (var i = 0; i < batch.Count && !overrides; i++) {
+            overrides = batch[i] is { Order: not ElinDelta.OverrideOrder.Stack };
+        }
+
+        if (!overrides) {
+            return batch;
+        }
+
         return [
             ..batch
                 .Select((delta, index) => new { delta, index })

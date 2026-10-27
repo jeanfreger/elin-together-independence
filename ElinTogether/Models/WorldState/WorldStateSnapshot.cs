@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -29,27 +30,98 @@ public class WorldStateSnapshot : EClass
     [Key(4)]
     public required int SharedSpeed { get; init; }
 
+    /// <summary>
+    ///     The zone of the characters whose own <see cref="CharaStateSnapshot.CurrentZoneUid" /> is 0: written once
+    ///     here instead of in every entry (efficiency audit 2026-10-27)
+    /// </summary>
+    [Key(5)]
+    public int ZoneUid { get; init; }
+
+    /// <summary>
+    ///     Only the characters whose state changed since the last snapshot to everyone; every
+    ///     <see cref="ChangeTracker.FullEvery" />th one, and the first on a new map, has them all (efficiency audit
+    ///     2026-10-27: most characters of a map stand still, and every one went to every player 5 times a second).
+    ///     A character missing from a partial one is not gone: only a full one says who left
+    /// </summary>
+    [Key(6)]
+    public bool Partial { get; init; }
+
     [ElinPreLoad]
     private static void ClearSweepStrikes(GameIOContext context)
     {
         _missingLeftOverCharas = [];
     }
 
-    public static WorldStateSnapshot Create()
+    /// <summary>
+    ///     What the snapshots to everyone last said of each character, for the next one to carry only what changed
+    /// </summary>
+    internal sealed class ChangeTracker
+    {
+        // 1 s at 5 Hz
+        internal const int FullEvery = 5;
+
+        private Dictionary<int, int> _sent = [];
+        private Dictionary<int, int> _next = [];
+        private int _zoneUid;
+
+        /// <summary>
+        ///     Whether the entry goes into this snapshot, and remember it for the next one
+        /// </summary>
+        internal bool Keep(CharaStateSnapshot snapshot, bool full)
+        {
+            var key = Key(snapshot);
+            var uid = snapshot.Owner.Uid;
+            _next[uid] = key;
+            return full || !_sent.TryGetValue(uid, out var sent) || sent != key;
+        }
+
+        internal bool Begin(int zoneUid, int tick)
+        {
+            var full = zoneUid != _zoneUid || tick % FullEvery == 0;
+            _zoneUid = zoneUid;
+            _next.Clear();
+            return full;
+        }
+
+        internal void End()
+        {
+            (_sent, _next) = (_next, _sent);
+        }
+
+        private static int Key(CharaStateSnapshot s)
+        {
+            return HashCode.Combine(HashCode.Combine(s.Pos.X, s.Pos.Z, s.CurrentZoneUid, s.Hp, s.IsDead),
+                s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+        }
+    }
+
+    /// <param name="tracker">For a snapshot to everyone: only what changed since the last one, see <see cref="Partial" /></param>
+    internal static WorldStateSnapshot Create(ChangeTracker? tracker = null)
     {
         var selfState = NetSession.Instance.Self;
         if (selfState != null) {
             selfState.Speed = pc.Stub_get_Speed();
         }
 
+        var zoneUid = _zone.uid;
+        var full = tracker?.Begin(zoneUid, NetSession.Instance.Tick) ?? true;
         var snapshots = new Dictionary<int, CharaStateSnapshot>();
         foreach (var chara in _map.charas) {
             if (!chara.IsInActiveMap) {
                 continue;
             }
 
-            snapshots[chara.uid] = CharaStateSnapshot.Create(chara);
+            var snapshot = CharaStateSnapshot.Create(chara);
+            if (snapshot.CurrentZoneUid == zoneUid) {
+                snapshot.CurrentZoneUid = 0;
+            }
+
+            if (tracker?.Keep(snapshot, full) ?? true) {
+                snapshots[chara.uid] = snapshot;
+            }
         }
+
+        tracker?.End();
 
         // (the players' own state, LastAct, speed, turbo, is not attached any more: no game reads it here, the host
         // keeps it from each guest's own report, and it was a quarter of every snapshot to everyone, efficiency audit
@@ -61,6 +133,8 @@ public class WorldStateSnapshot : EClass
             CharaSnapshots = [..snapshots.Values],
             GlobalUidNext = game.cards.uidNext,
             SharedSpeed = NetSession.Instance.SharedSpeed,
+            ZoneUid = zoneUid,
+            Partial = !full,
         };
     }
 
@@ -75,6 +149,8 @@ public class WorldStateSnapshot : EClass
             CharaSnapshots = ImmutableArray<CharaStateSnapshot>.Empty,
             GlobalUidNext = GlobalUidNext,
             SharedSpeed = SharedSpeed,
+            ZoneUid = ZoneUid,
+            Partial = Partial,
         };
     }
 
@@ -82,6 +158,12 @@ public class WorldStateSnapshot : EClass
     {
         if (NetSession.Instance.Connection is not ElinNetClient client) {
             return;
+        }
+
+        foreach (var snapshot in CharaSnapshots) {
+            if (snapshot.CurrentZoneUid == 0) {
+                snapshot.CurrentZoneUid = ZoneUid;
+            }
         }
 
         client.Delta.AddLocal(new DynamicDelta {
@@ -94,7 +176,10 @@ public class WorldStateSnapshot : EClass
                     snapshot.ApplyReconciliation();
                 }
 
-                RemoveLeftOverCharas();
+                // (only a full snapshot names everyone on the map)
+                if (!Partial) {
+                    RemoveLeftOverCharas();
+                }
 
                 // 3
                 game.cards.uidNext = GlobalUidNext;

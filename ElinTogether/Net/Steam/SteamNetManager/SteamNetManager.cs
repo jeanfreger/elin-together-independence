@@ -51,9 +51,13 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     public ISteamNetPeer Broadcast => _broadcast;
 
     /// <summary>
-    ///     All connected peers
+    ///     All connected peers. A copy made once per change of the list, not at every call: it is asked several
+    ///     times per peer per frame (efficiency audit 2026-10-27). Never changed in place, so a caller may go
+    ///     through it while a peer comes or goes
     /// </summary>
-    public IReadOnlyList<ISteamNetPeer> Peers => [.._peers];
+    public IReadOnlyList<ISteamNetPeer> Peers => _peersCopy ??= [.._peers];
+
+    private ISteamNetPeer[]? _peersCopy;
 
     /// <summary>
     ///     The peers without a copy, for NetMetrics
@@ -132,7 +136,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                         bytes = whole;
                     }
 
-                    var (typeHash, payload) = SteamNetSerializer.ExtractTypeAndPayload(bytes);
+                    var typeHash = BitConverter.ToUInt32(bytes, 0);
                     var type = SteamNetTypeRegistry.Resolve(typeHash);
                     if (type == null) {
                         EmpLog.Warning("Failed to parse type hash {TypeHash}",
@@ -141,7 +145,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                     }
 
                     var start = Stopwatch.GetTimestamp();
-                    var packet = _serializer.Deserialize(payload, type);
+                    var packet = _serializer.Deserialize(SteamNetSerializer.Payload(bytes), type);
                     _listener?.OnMessageReceived(packet, peer);
                     NetMetrics.Received(peer.Id, typeHash, bytes.Length, start);
                 } catch (Exception ex) {
@@ -202,6 +206,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         }
 
         _peers.Clear();
+        _peersCopy = null;
         _broadcast.ClearTargets();
         _broadcast.Dispose();
 
@@ -244,6 +249,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             }
 
             _peers.Remove(peer);
+            _peersCopy = null;
             _broadcast.RemoveTarget(peer);
 
             peer.Dispose();
@@ -281,6 +287,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
 
         _peers.Add(peer);
+        _peersCopy = null;
         _broadcast.AddTarget(peer);
 
         NetCompany.Invalidate();

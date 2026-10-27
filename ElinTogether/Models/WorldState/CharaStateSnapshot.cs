@@ -17,8 +17,11 @@ public class CharaStateSnapshot : EClass
     [Key(1)]
     public required Position Pos { get; init; }
 
+    /// <summary>
+    ///     0 inside a <see cref="WorldStateSnapshot" />: the zone of that snapshot (zone uids start at 1)
+    /// </summary>
     [Key(2)]
-    public required int CurrentZoneUid { get; init; }
+    public required int CurrentZoneUid { get; set; }
 
     [Key(3)]
     public required int Hp { get; set; }
@@ -191,9 +194,10 @@ public class CharaStateSnapshot : EClass
             return;
         }
 
-        // seen once: a move delta dropped or deferred, a hitch. Only a second snapshot in a row moves it
+        // seen once: a move delta dropped or deferred, a hitch. Only a second snapshot in a row moves it (a character
+        // standing still on the host is only in the full snapshots, 1 s apart: within 2.2 s, see WorldStateSnapshot.Partial)
         var now = UnityEngine.Time.unscaledTime;
-        if (!_mismatchSeen.Remove(chara.uid, out var seen) || now - seen > 1f) {
+        if (!_mismatchSeen.Remove(chara.uid, out var seen) || now - seen > MismatchWindow) {
             _mismatchSeen[chara.uid] = now;
             return;
         }
@@ -202,6 +206,8 @@ public class CharaStateSnapshot : EClass
             chara.uid, chara.pos.Copy(), (Point)Pos);
         chara.Place(Pos);
     }
+
+    private const float MismatchWindow = 2.2f;
 
     // per character uid, when its tile last differed from the snapshot's by more than the snapshot allows
     private static readonly Dictionary<int, float> _mismatchSeen = [];

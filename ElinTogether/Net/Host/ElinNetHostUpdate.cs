@@ -17,14 +17,17 @@ internal partial class ElinNetHost
     private const int MaxDeltasPerBatch = 2048;
     private bool _pauseUpdate;
 
+    private readonly WorldStateSnapshot.ChangeTracker _snapshotChanges = new();
+
     /// <summary>
     ///     Propagate current world state snapshot
     /// </summary>
-    public WorldStateSnapshot PropagateWorldState()
+    /// <param name="toEveryone">The regular one: only what changed since the last regular one, see WorldStateSnapshot.Partial</param>
+    public WorldStateSnapshot PropagateWorldState(bool toEveryone = false)
     {
         return core.game?.activeZone?.map is null
             ? _lastTick!
-            : WorldStateSnapshot.Create();
+            : WorldStateSnapshot.Create(toEveryone ? _snapshotChanges : null);
     }
 
     /// <summary>
@@ -40,7 +43,7 @@ internal partial class ElinNetHost
         Session.CurrentZone = _zone;
 
         try {
-            _lastTick = PropagateWorldState();
+            _lastTick = PropagateWorldState(true);
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Exception at server tick update");
         }

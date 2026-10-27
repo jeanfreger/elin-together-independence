@@ -1,3 +1,4 @@
+using System;
 using HeathenEngineering.SteamworksIntegration;
 using MessagePack;
 
@@ -27,14 +28,37 @@ public class NetPeerState
     [Key(6)]
     public int LastPingMs { get; set; }
 
+    [IgnoreMember]
+    internal float AvgPingMs { get; set; }
+
+    [IgnoreMember]
+    internal float ConnectionQualityLocal { get; set; }
+
+    [IgnoreMember]
+    internal float ConnectionQualityRemote { get; set; }
+
+    // on the wire a whole millisecond and a whole percent (one or two bytes instead of five per float): this goes
+    // to every player every 2 s, and the panel shows them that way (efficiency audit 2026-10-27)
     [Key(7)]
-    public float AvgPingMs { get; set; }
+    public int AvgPingMsWire
+    {
+        get => (int)Math.Round(AvgPingMs);
+        set => AvgPingMs = value;
+    }
 
     [Key(8)]
-    public float ConnectionQualityLocal { get; set; }
+    public int ConnectionQualityLocalWire
+    {
+        get => (int)Math.Round(ConnectionQualityLocal * 100f);
+        set => ConnectionQualityLocal = value / 100f;
+    }
 
     [Key(9)]
-    public float ConnectionQualityRemote { get; set; }
+    public int ConnectionQualityRemoteWire
+    {
+        get => (int)Math.Round(ConnectionQualityRemote * 100f);
+        set => ConnectionQualityRemote = value / 100f;
+    }
 
     [Key(10)]
     public bool Turbo { get; set; }
