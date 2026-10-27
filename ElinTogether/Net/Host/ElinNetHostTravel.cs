@@ -1333,7 +1333,8 @@ internal partial class ElinNetHost
                 zone.UnloadMap();
             }
 
-            ZoneLeaseState.WriteMap(zone, release.Map);
+            // in the save with the next save of the host's game, which holds the characters that go with it
+            ZoneLeaseState.StageMap(zone, release.Map);
         }
 
         ZoneLeaseState.ApplyState(zone, release.ZoneState, release.IdCurrentSubset);

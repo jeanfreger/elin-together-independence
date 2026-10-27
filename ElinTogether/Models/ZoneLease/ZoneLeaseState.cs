@@ -19,6 +19,7 @@ internal static class ZoneLeaseState
     /// </summary>
     internal static Dictionary<string, LZ4Bytes>? CollectMap(Zone zone)
     {
+        CommitStaged(zone.uid);
         zone.map?.Save(zone.pathSave);
 
         if (!Directory.Exists(zone.pathSave)) {
@@ -62,7 +63,12 @@ internal static class ZoneLeaseState
 
     internal static void WriteMap(Zone zone, Dictionary<string, LZ4Bytes> map)
     {
-        Directory.CreateDirectory(zone.pathSave);
+        WriteFiles(zone.pathSave, map);
+    }
+
+    private static void WriteFiles(string folder, Dictionary<string, LZ4Bytes> map)
+    {
+        Directory.CreateDirectory(folder);
 
         // (the game writes some twenty files for a map)
         foreach (var (id, asset) in map.Take(64)) {
@@ -70,8 +76,101 @@ internal static class ZoneLeaseState
                 continue;
             }
 
-            asset.DecompressToFile(Path.Combine(zone.pathSave, id));
+            // beside it, then swapped: a write cut short (disk full, the game killed) leaves the old file whole
+            var path = Path.Combine(folder, id);
+            asset.DecompressToFile(path + ".part");
+            Swap(path + ".part", path);
         }
+    }
+
+    private static void Swap(string from, string to)
+    {
+        if (File.Exists(to)) {
+            File.Replace(from, to, null);
+        } else {
+            File.Move(from, to);
+        }
+    }
+
+    /// <summary>
+    ///     Zone uid -> folder of a map a player handed back to the host, waiting for the host's next save. Written
+    ///     to the save at once, such a map was ahead of game.txt until that save (up to two minutes after a
+    ///     checkpoint): a crash then left a map that no longer matched the characters (a thing picked up gone from
+    ///     both, one put down in both), and the uid ranges of the lease, kept in game.txt, were handed out again by
+    ///     the next session (reliability audit 2026-10-27, #2). Moved in when the host saves, or before anything
+    ///     reads the map: the host walks in, it is leased again
+    /// </summary>
+    private static readonly Dictionary<int, string> _staged = [];
+
+    private static string StageRoot => GameIO.pathCurrentSave + "_lease/";
+
+    internal static bool IsStaged(int zoneUid)
+    {
+        return _staged.ContainsKey(zoneUid);
+    }
+
+    /// <summary>
+    ///     The host keeps a map a player handed back: in the save with the next save of the host's game
+    /// </summary>
+    internal static void StageMap(Zone zone, Dictionary<string, LZ4Bytes> map)
+    {
+        var folder = StageRoot + zone.uid + "/";
+        if (Directory.Exists(folder)) {
+            Directory.Delete(folder, true);
+        }
+
+        WriteFiles(folder, map);
+        _staged[zone.uid] = folder;
+    }
+
+    /// <summary>
+    ///     The map of that zone, if one waits, goes into the save now
+    /// </summary>
+    internal static void CommitStaged(int zoneUid)
+    {
+        if (_staged.Remove(zoneUid, out var folder)) {
+            Commit(zoneUid, folder);
+        }
+    }
+
+    /// <summary>
+    ///     The host's game is being saved: every map waiting goes in with it. What is left in the folder (a crash
+    ///     before the save it waited for) belongs to no save and goes
+    /// </summary>
+    internal static void CommitAllStaged()
+    {
+        foreach (var (zoneUid, folder) in _staged.ToList()) {
+            try {
+                Commit(zoneUid, folder);
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "The map of zone {ZoneUid} a player handed back could not be put in the save", zoneUid);
+            }
+        }
+
+        _staged.Clear();
+        if (Directory.Exists(StageRoot)) {
+            Directory.Delete(StageRoot, true);
+        }
+    }
+
+    private static void Commit(int zoneUid, string folder)
+    {
+        // staged for another save (the host loaded another game since): not this one's
+        if (!folder.StartsWith(GameIO.pathCurrentSave) || !Directory.Exists(folder)) {
+            return;
+        }
+
+        // a zone destroyed meanwhile (the zone of a quest) has no map to keep
+        if (EClass.game.spatials.Find(zoneUid) is { } zone) {
+            Directory.CreateDirectory(zone.pathSave);
+            foreach (var file in Directory.GetFiles(folder)) {
+                Swap(file, Path.Combine(zone.pathSave, Path.GetFileName(file)));
+            }
+
+            EmpLog.Debug("Map of zone {ZoneUid} handed back by a player is in the save now", zoneUid);
+        }
+
+        Directory.Delete(folder, true);
     }
 
     /// <summary>

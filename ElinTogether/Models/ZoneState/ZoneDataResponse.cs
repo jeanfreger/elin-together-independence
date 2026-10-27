@@ -52,6 +52,7 @@ public class ZoneDataResponse
         }
 
         var start = Stopwatch.GetTimestamp();
+        ZoneLeaseState.CommitStaged(zone.uid);
         zone.map?.Save(zone.pathSave);
         NetMetrics.MapSave.Add(0, start);
 
