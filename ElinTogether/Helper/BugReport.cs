@@ -25,7 +25,7 @@ internal static class BugReport
     private const int ModLogs = 2;
 
     /// <returns>the zip written, or null with the reason logged</returns>
-    /// <param name="pictures">false: without the replay's 30 pictures (a zip too big for the relay), its sheet kept</param>
+    /// <param name="pictures">false: without the replay's video (sent to the relay as a file of its own)</param>
     internal static string? Make(bool pictures = true)
     {
         try {
@@ -38,14 +38,10 @@ internal static class BugReport
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create)) {
                 Add(zip, "info.txt", Encoding.UTF8.GetBytes(Describe()));
                 // the last seconds of the screen (ReplayBuffer), already JPEG: stored as they are
-                foreach (var (name, jpg) in pictures ? ReplayBuffer.Snapshot() : []) {
-                    using var entry = zip.CreateEntry(name, System.IO.Compression.CompressionLevel.NoCompression).Open();
-                    entry.Write(jpg, 0, jpg.Length);
-                }
-
-                if (ReplayBuffer.Sheet() is { } sheet) {
-                    using var entry = zip.CreateEntry("replay_sheet.jpg", System.IO.Compression.CompressionLevel.NoCompression).Open();
-                    entry.Write(sheet, 0, sheet.Length);
+                // the last 30 seconds as a video (sent beside the zip to the relay, kept in it for the local report)
+                if (pictures && ReplayBuffer.Video() is { } video) {
+                    using var entry = zip.CreateEntry("replay.avi", System.IO.Compression.CompressionLevel.NoCompression).Open();
+                    entry.Write(video, 0, video.Length);
                 }
 
                 foreach (var name in new[] { "Player.log", "Player-prev.log" }) {
@@ -156,12 +152,8 @@ internal static class BugReport
     /// </summary>
     internal static void Send(string words, Action<string?> done)
     {
-        var zip = Make();
-        // (a long session's logs and the pictures may pass what the relay takes: the pictures go, the sheet stays)
-        if (zip is not null && new FileInfo(zip).Length > MaxZip) {
-            File.Delete(zip);
-            zip = Make(false);
-        }
+        // (the video goes beside the zip to the relay: not twice)
+        var zip = Make(false);
 
         if (Relay.Length == 0) {
             OpenIssuePage(words, zip);
@@ -183,6 +175,9 @@ internal static class BugReport
                 info = Describe(),
                 zip = bytes is null ? "" : Convert.ToBase64String(bytes),
                 version = ModInfo.BuildVersion,
+                // shown in the issue itself (user, 2026-10-27: everything in the report, public): the replay's sheet and
+                // its last pictures as images, the ends of the two logs as text
+                files = ShownFiles(),
             });
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             EmpLog.Warning(ex, "The bug report could not be read to send it");
@@ -216,6 +211,52 @@ internal static class BugReport
         }
 
         done(url);
+    }
+
+    // what the issue can hold as text: the end of each log (where the bug is; the zip has them whole)
+    private const int LogTail = 24 * 1024;
+
+    private static List<object> ShownFiles()
+    {
+        var files = new List<object>();
+        if (ReplayBuffer.Video() is { } video) {
+            files.Add(new { name = "replay.avi", content = Convert.ToBase64String(video) });
+        }
+
+        // the screen at the moment of the report, shown in the issue
+        if (ReplayBuffer.Snapshot() is { Count: > 0 } pictures) {
+            files.Add(new { name = "last.jpg", content = Convert.ToBase64String(pictures[^1].Jpg) });
+        }
+
+        var data = Application.persistentDataPath;
+        var modLog = new DirectoryInfo(Path.Combine(data, "ElinMP", "Logs")) is { Exists: true } logs
+            ? logs.GetFiles("Session*.log").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()
+            : null;
+        foreach (var (path, name) in new[] { (Path.Combine(data, "Player.log"), "Player.log"), (modLog?.FullName, "ElinTogether.log") }) {
+            if (path is not null && Tail(path) is { } text) {
+                files.Add(new { name, content = Convert.ToBase64String(text) });
+            }
+        }
+
+        return files;
+    }
+
+    private static byte[]? Tail(string path)
+    {
+        try {
+            using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var length = (int)Math.Min(source.Length, LogTail);
+            source.Seek(-length, SeekOrigin.End);
+            var bytes = new byte[length];
+            var read = 0;
+            while (read < length && source.Read(bytes, read, length - read) is > 0 and var n) {
+                read += n;
+            }
+
+            return bytes;
+        } catch (IOException) {
+            return null;
+        }
     }
 
     private static string FirstLine(string words)

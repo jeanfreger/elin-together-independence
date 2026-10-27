@@ -2,22 +2,27 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering;
 
 namespace ElinTogether.Helper;
 
 /// <summary>
-///     The last seconds of the screen, for the bug report (user, 2026-10-27): one small picture a second, the last
-///     thirty kept in memory, sent with the logs. Players rarely record when the bug happens; this did it for them.
-///     The picture is made small on the graphics card (one blit, one read of 640x360), off with Client.RecordReplay
+///     The last seconds of the screen, for the bug report (user, 2026-10-27): three pictures a second, the last 30
+///     seconds kept in memory, sent as a video with the logs. Players rarely record when the bug happens; this did it
+///     for them. The picture is made small on the graphics card (one blit, one read), off with Client.RecordReplay
 /// </summary>
 internal static class ReplayBuffer
 {
-    private const int Frames = 30;
-    private const float Every = 1f;
+    // three pictures a second for 30 seconds: a video (user, 2026-10-27)
+    private const int Fps = 3;
+    private const int Frames = 30 * Fps;
+    private const float Every = 1f / Fps;
     // (sharp enough to read the game's messages and windows: the reports are read by the developers, and by Claude)
     private const int Width = 960;
-    private const int Quality = 70;
+    private const int Quality = 60;
 
     private static readonly Queue<(DateTime At, byte[] Jpg)> _frames = new();
     private static RenderTexture? _small;
@@ -35,7 +40,10 @@ internal static class ReplayBuffer
 
             yield return endOfFrame;
             try {
+                var clock = System.Diagnostics.Stopwatch.StartNew();
                 Capture();
+                _spent += clock.Elapsed.TotalMilliseconds;
+                _taken++;
             } catch (Exception ex) {
                 // (never the game's frame for a picture: one failure is told, and it stops)
                 EmpLog.Warning(ex, "The replay for bug reports could not take a picture, it stops");
@@ -44,8 +52,18 @@ internal static class ReplayBuffer
         }
     }
 
+    // pictures asked of the graphics card and not yet written: past two, the next one waits (a slow card, a game
+    // in the background)
+    private const int MaxPending = 2;
+    private static int _pending;
+    private static int _width, _height;
+
     private static void Capture()
     {
+        if (Volatile.Read(ref _pending) >= MaxPending) {
+            return;
+        }
+
         var height = Mathf.Max(1, Width * Screen.height / Mathf.Max(1, Screen.width));
         var full = RenderTexture.GetTemporary(Screen.width, Screen.height, 0);
         try {
@@ -65,68 +83,70 @@ internal static class ReplayBuffer
             RenderTexture.ReleaseTemporary(full);
         }
 
-        var before = RenderTexture.active;
-        RenderTexture.active = _small;
-        _read!.ReadPixels(new(0, 0, Width, height), 0, 0, false);
-        RenderTexture.active = before;
+        (_width, _height) = (Width, height);
+        var at = DateTime.Now;
+        if (!SystemInfo.supportsAsyncGPUReadback) {
+            // (an old card: read and made here, at the cost of the frame)
+            var before = RenderTexture.active;
+            RenderTexture.active = _small;
+            _read!.ReadPixels(new(0, 0, Width, height), 0, 0, false);
+            RenderTexture.active = before;
+            Keep(at, _read.EncodeToJPG(Quality));
+            return;
+        }
 
-        _frames.Enqueue((DateTime.Now, _read.EncodeToJPG(Quality)));
-        while (_frames.Count > Frames) {
-            _frames.Dequeue();
+        // the game's frame only asks: the card hands the picture over a few frames later, and the JPEG is made on
+        // another thread (36 ms a picture on the frame when read and made here, bench 2026-10-27)
+        Interlocked.Increment(ref _pending);
+        AsyncGPUReadback.Request(_small, 0, TextureFormat.RGBA32, request => {
+            if (request.hasError) {
+                Interlocked.Decrement(ref _pending);
+                return;
+            }
+
+            var (rgba, w, h) = (request.GetData<byte>().ToArray(), (uint)request.width, (uint)request.height);
+            ThreadPool.QueueUserWorkItem(_ => {
+                try {
+                    Keep(at, ImageConversion.EncodeArrayToJPG(rgba, GraphicsFormat.R8G8B8A8_SRGB, w, h, 0, Quality));
+                } catch (Exception ex) {
+                    EmpLog.Debug(ex, "A replay picture could not be made");
+                } finally {
+                    Interlocked.Decrement(ref _pending);
+                }
+            });
+        });
+    }
+
+    private static void Keep(DateTime at, byte[] jpg)
+    {
+        lock (_frames) {
+            _frames.Enqueue((at, jpg));
+            while (_frames.Count > Frames) {
+                _frames.Dequeue();
+            }
         }
     }
 
     /// <summary>
-    ///     All the pictures on one sheet, 6 across and 5 down, oldest top left, read like a page: the whole half
-    ///     minute at one glance, then the sharp pictures of the zip for the seconds that matter. Null without pictures
+    ///     The pictures kept as a video file (AVI, Motion JPEG), null without pictures
     /// </summary>
-    internal static byte[]? Sheet()
+    internal static byte[]? Video()
     {
-        if (_frames.Count == 0) {
-            return null;
+        List<byte[]> jpegs;
+        lock (_frames) {
+            jpegs = _frames.Select(f => f.Jpg).ToList();
         }
 
-        const int columns = 6, cell = 320;
-        var rows = (_frames.Count + columns - 1) / columns;
-        var picture = new Texture2D(2, 2);
-        Texture2D? sheet = null;
-        try {
-            var index = 0;
-            foreach (var (_, jpg) in _frames) {
-                if (!picture.LoadImage(jpg)) {
-                    index++;
-                    continue;
-                }
-
-                var height = cell * picture.height / picture.width;
-                if (sheet is null) {
-                    sheet = new(cell * columns, height * rows, TextureFormat.RGB24, false);
-                    sheet.SetPixels32(new Color32[sheet.width * sheet.height]);
-                }
-
-                var pixels = picture.GetPixels32();
-                var small = new Color32[cell * height];
-                for (var y = 0; y < height; y++) {
-                    var sy = y * picture.height / height * picture.width;
-                    for (var x = 0; x < cell; x++) {
-                        small[y * cell + x] = pixels[sy + x * picture.width / cell];
-                    }
-                }
-
-                // (the texture's rows go up: the first picture's row is the top one)
-                var (col, row) = (index % columns, index / columns);
-                sheet.SetPixels32(col * cell, (rows - 1 - row) * height, cell, height, small);
-                index++;
-            }
-
-            return sheet?.EncodeToJPG(80);
-        } finally {
-            UnityEngine.Object.Destroy(picture);
-            if (sheet is not null) {
-                UnityEngine.Object.Destroy(sheet);
-            }
-        }
+        return jpegs.Count == 0 ? null : AviWriter.Write(_width, _height, Fps, jpegs);
     }
+
+    /// <summary>
+    ///     How long a picture takes on the game's frame, on average (ms): for the bench
+    /// </summary>
+    internal static double AverageMs => _taken == 0 ? 0 : _spent / _taken;
+
+    private static double _spent;
+    private static int _taken;
 
     /// <summary>
     ///     The pictures kept, oldest first, named by their time
@@ -134,8 +154,10 @@ internal static class ReplayBuffer
     internal static List<(string Name, byte[] Jpg)> Snapshot()
     {
         var list = new List<(string, byte[])>();
-        foreach (var (at, jpg) in _frames) {
-            list.Add(($"replay/{at:HH-mm-ss}.jpg", jpg));
+        lock (_frames) {
+            foreach (var (at, jpg) in _frames) {
+                list.Add(($"replay/{at:HH-mm-ss-fff}.jpg", jpg));
+            }
         }
 
         return list;
