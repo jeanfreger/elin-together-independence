@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -58,6 +59,9 @@ public class CardOnUseDelta : ElinDelta
         if (RootCard?.Find() != card.GetRootCard()) {
             return;
         }
+
+        // what the use earns (a Steam achievement) is its user's, not this game's player's (H5-10)
+        using var earned = PlayerAchievements.For(user);
 
         if (Equip is { } equip && card.trait is TraitEquipItem item) {
             if (net is ElinNetHost equipHost &&

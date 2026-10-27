@@ -92,6 +92,7 @@ internal static class TownLifePatch
         __state = (_target, _speaker, _owner);
         _target = null;
         _speaker = null;
+        LastPatient = null;
         // only with company (Host): alone, the step never reads it
         _owner = Host is not null && IdleOfStep?.GetValue(__instance) is AI_Idle idle ? idle.owner : null;
     }
@@ -159,8 +160,14 @@ internal static class TownLifePatch
             bestWounded = wounded;
         }
 
-        return best ?? EClass.pc;
+        return LastPatient = best ?? EClass.pc;
     }
+
+    /// <summary>
+    ///     The player the priest of this idle step looked after: the achievement of its heal is that player's (see
+    ///     PlayerAchievements). Null outside a priest's step
+    /// </summary>
+    internal static Chara? LastPatient { get; private set; }
 
     /// <summary>
     ///     The idle boss's prey: the nearest player of the map
