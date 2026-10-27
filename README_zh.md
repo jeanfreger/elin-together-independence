@@ -1,6 +1,6 @@
 # Elin Together ——「独立」分支
 
-**当前版本：0.26.1056**（压缩包 `ElinTogether-independence.zip`）。
+**当前版本：0.26.1067**（压缩包 `ElinTogether-independence.zip`）。
 
 [English](README.md) | [Français](README_fr.md) | 中文 | [日本語](README_ja.md)
 
