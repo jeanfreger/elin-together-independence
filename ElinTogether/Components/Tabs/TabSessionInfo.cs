@@ -46,6 +46,39 @@ internal class TabSessionInfo : TabEmpBase
         }
 
         BuildBannedList();
+        BuildSavedCharacters();
+    }
+
+    /// <summary>
+    ///     The host: the characters players made in this world, each with Delete when nobody plays it (upstream
+    ///     1f932a8: a character left by someone who will not come back stayed in the world for good)
+    /// </summary>
+    private void BuildSavedCharacters()
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host ||
+            host.SavedCharacters() is not { Count: > 0 } saved) {
+            return;
+        }
+
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_saved_chars_title".lang());
+        card.TextSmall("emp_ui_saved_chars_desc".lang());
+        foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
+            var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
+            card.Text("emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV) + (chara.isDead ? " †" : ""));
+            if (playing) {
+                card.TextSmall("emp_ui_saved_chars_playing".lang());
+                continue;
+            }
+
+            var target = chara;
+            card.ButtonRow().RowButton("emp_ui_saved_chars_delete".lang(), () => {
+                Dialog.YesNo("emp_ui_saved_chars_confirm".Loc(target.Name, account), () => {
+                    host.HostDeletes(user, target.uid);
+                    LayerElinTogether.Instance?.Reopen();
+                });
+            });
+        }
     }
 
     /// <summary>

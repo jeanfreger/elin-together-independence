@@ -463,6 +463,13 @@ internal partial class EmpConfig
             "Minutes a kicked player cannot come back. 0: it may come back at once\n" +
             "被踢出的玩家在多少分钟内不能重新加入。0：可以立即重新加入");
 
+        Server.MaxCharacters = config.Bind(
+            "Server",
+            "MaxCharacters",
+            3,
+            "How many characters one player may have in this world: past it, it cannot make or bring another until it deletes one. Characters already made are kept. 0: no limit\n" +
+            "每名玩家在这个世界中最多可以拥有多少个角色：达到上限后，在删除一个之前不能再创建或导入角色。已有的角色会保留。0：不限");
+
         Server.MembersOnly = config.Bind(
             "Server",
             "MembersOnly",
@@ -789,6 +796,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> OwnSleep { get; set; } = null!;
         internal static ConfigEntry<int> IdleMinutes { get; set; } = null!;
         internal static ConfigEntry<int> KickKeepOutMinutes { get; set; } = null!;
+        internal static ConfigEntry<int> MaxCharacters { get; set; } = null!;
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;

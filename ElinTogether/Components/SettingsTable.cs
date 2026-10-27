@@ -166,6 +166,14 @@ internal static class SettingsTable
         source => source.Raw(EmpConfig.Server.KickKeepOutMinutes) is int minutes ? Array.IndexOf(KeepOutSteps, minutes) : -1,
         i => [(EmpConfig.Server.KickKeepOutMinutes, KeepOutSteps[i])]);
 
+    // characters per player (user, 2026-10-27), 0 no limit
+    private static readonly int[] CharaSteps = [1, 3, 5, 10, 0];
+
+    internal static Choice MaxCharacters => new("max_characters", [..CharaSteps.Select(n => n.ToString())],
+        () => [EmpConfig.Server.MaxCharacters],
+        source => source.Raw(EmpConfig.Server.MaxCharacters) is int count ? Array.IndexOf(CharaSteps, count) : -1,
+        i => [(EmpConfig.Server.MaxCharacters, CharaSteps[i])]);
+
     internal static Choice IdleMinutes => new("idle_minutes", [..IdleSteps.Select(m => m.ToString())],
         () => [EmpConfig.Server.IdleMinutes],
         source => source.Raw(EmpConfig.Server.IdleMinutes) is int minutes ? Array.IndexOf(IdleSteps, minutes) : -1,
@@ -267,6 +275,7 @@ internal static class SettingsTable
         yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
+        yield return new("max_characters", "joining", true, Choice: MaxCharacters);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
@@ -326,7 +335,7 @@ internal static class SettingsTable
         ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
-        EmpConfig.Server.KickKeepOutMinutes,
+        EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its

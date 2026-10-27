@@ -525,5 +525,19 @@
     "LangGeneral.emp_ui_lobby_official.text": "★ Elin Together 官方服务器",
     "LangGeneral.emp_ui_lobby_official_join.text": "加入官方服务器",
     "LangGeneral.emp_ui_lobby_public.text": "任何人都可以加入",
-    "LangGeneral.emp_ui_lobby_friends.text": "仅限主机的好友和受邀玩家"
+    "LangGeneral.emp_ui_lobby_friends.text": "仅限主机的好友和受邀玩家",
+    "LangGeneral.emp_ui_saved_chars_title.text": "玩家的角色",
+    "LangGeneral.emp_ui_saved_chars_desc.text": "玩家在这个世界中创建的角色。不会再回来的玩家的角色可以删除（连同其携带的物品，无法撤销）。",
+    "LangGeneral.emp_ui_saved_chars_line.text": "{0}：{1}（等级 {2}）",
+    "LangGeneral.emp_ui_saved_chars_playing.text": "正在游戏中（要删除请先踢出该玩家）",
+    "LangGeneral.emp_ui_saved_chars_delete.text": "删除",
+    "LangGeneral.emp_ui_saved_chars_confirm.text": "删除 {1} 的角色 {0} 及其携带的物品吗？此操作无法撤销。",
+    "LangGeneral.emp_ui_sv_cfg_max_characters.text": "每名玩家的角色数",
+    "LangGeneral.emp_ui_sv_desc_max_characters.text": "每名玩家在这个世界中可以拥有的角色数量。达到上限后，在删除一个之前不能再创建或导入角色。已有的角色会保留。",
+    "LangGeneral.emp_ui_sv_opt_max_characters_1.text": "1",
+    "LangGeneral.emp_ui_sv_opt_max_characters_3.text": "3",
+    "LangGeneral.emp_ui_sv_opt_max_characters_5.text": "5",
+    "LangGeneral.emp_ui_sv_opt_max_characters_10.text": "10",
+    "LangGeneral.emp_ui_sv_opt_max_characters_0.text": "不限",
+    "LangGeneral.emp_ui_chara_limit.text": "你的角色数量已达到这个世界的上限：删除一个后才能创建或导入新角色。"
 }

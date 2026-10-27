@@ -202,6 +202,11 @@ internal partial class ElinNetHost
         }
 
         if (response.Uid == 0) {
+            if (AtCharacterLimit(peer.User)) {
+                PreparePlayerJoin(peer, "emp_ui_chara_limit");
+                return;
+            }
+
             EmpLog.Debug("Player {@Peer} asks for a new character", peer);
             peer.Send(new SessionNewPlayerRequest());
             return;
@@ -230,6 +235,59 @@ internal partial class ElinNetHost
 
         SavedRemoteCharas[peer.User] = chara.uid;
         SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, false));
+    }
+
+    /// <summary>
+    ///     This player has as many characters in this world as the host allows (MaxCharacters, user 2026-10-27):
+    ///     it makes or brings no other until it deletes one. Those it has are kept even past a lowered limit
+    /// </summary>
+    private bool AtCharacterLimit(ulong user)
+    {
+        var max = EmpConfig.Server.MaxCharacters.Value;
+        if (max <= 0) {
+            return false;
+        }
+
+        RosterOf(user);
+        return PlayerRosters[user].Count(uid => game.cards.globalCharas.Find(uid) is not null) >= max;
+    }
+
+    /// <summary>
+    ///     Every character the players made in this world, for the host's list (upstream 1f932a8, remote characters
+    ///     tab): its account, the character, and whether someone plays it now. The world's own player is not one
+    /// </summary>
+    internal List<(ulong User, Chara Chara, bool Playing)> SavedCharacters()
+    {
+        var list = new List<(ulong, Chara, bool)>();
+        foreach (var user in PlayerRosters.Keys.Union(SavedRemoteCharas.Keys).ToList()) {
+            var uids = PlayerRosters.TryGetValue(user, out var roster) ? roster.ToList() : [];
+            if (SavedRemoteCharas.TryGetValue(user, out var current) && !uids.Contains(current)) {
+                uids.Add(current);
+            }
+
+            foreach (var uid in uids) {
+                if (game.cards.globalCharas.Find(uid) is { } chara && chara != pc) {
+                    list.Add((user, chara, ActiveRemoteCharas.ContainsValue(chara)));
+                }
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>
+    ///     The host deletes a player's character from its world (upstream 1f932a8): one nobody plays right now, the
+    ///     same way as its player would (<see cref="DeleteCharacter" />)
+    /// </summary>
+    internal bool HostDeletes(ulong user, int uid)
+    {
+        if (SavedCharacters().Find(s => s.User == user && s.Chara.uid == uid) is not { Chara: { } chara, Playing: false }) {
+            return false;
+        }
+
+        AdminLog($"delete character {uid} ({chara.Name}, Lv {chara.LV}) of {user}");
+        DeleteCharacter(user, chara);
+        return true;
     }
 
     /// <summary>
@@ -269,6 +327,11 @@ internal partial class ElinNetHost
         if (IsZoneSession || !EmpConfig.Server.ImportCharacter.Value) {
             EmpLog.Warning("Player {@Peer} sent a character while bringing one is not allowed", peer);
             PreparePlayerJoin(peer);
+            return;
+        }
+
+        if (AtCharacterLimit(peer.User)) {
+            PreparePlayerJoin(peer, "emp_ui_chara_limit");
             return;
         }
 
@@ -431,6 +494,13 @@ internal partial class ElinNetHost
 
         // sent twice: the character it plays would stay on the map with nobody playing it
         if (ActiveRemoteCharas.ContainsKey(peer.Id)) {
+            return;
+        }
+
+        // (the choice screen asks the host first: a game that sends one anyway is past the limit)
+        if (AtCharacterLimit(peer.User)) {
+            EmpLog.Warning("Player {@Peer} sent a new character past the limit of {Max}", peer, EmpConfig.Server.MaxCharacters.Value);
+            PreparePlayerJoin(peer, "emp_ui_chara_limit");
             return;
         }
 
