@@ -11,7 +11,7 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class ThingRequest : ElinDelta
 {
-    private static readonly Dictionary<int, (Action<Thing>, Action?)> _callbackList = [];
+    private static readonly Dictionary<int, (Action<Thing>, Action?, DateTime Asked)> _callbackList = [];
     private static readonly Dictionary<int, (WeakReference<Thing> thing, Card? origin, DateTime since)> _dangling = [];
     private static readonly TimeSpan _danglingTimeout = TimeSpan.FromSeconds(10);
 
@@ -36,8 +36,12 @@ public class ThingRequest : ElinDelta
             if (_callbackList.Remove(Id, out var value)) {
                 IsReplayingIntent = true;
                 try {
-                    var (onSuccess, onFail) = value;
-                    if (thing is not null) {
+                    var (onSuccess, onFail, asked) = value;
+                    if (thing is not null && DateTime.Now - asked > _answerTimeout) {
+                        EmpLog.Warning("ThingRequest {RequestId} answered after {Seconds:F1}s, not taken: the host puts {Uid} back",
+                            Id, (DateTime.Now - asked).TotalSeconds, thing.uid);
+                        onFail?.Invoke();
+                    } else if (thing is not null) {
                         onSuccess(thing);
                     } else {
                         onFail?.Invoke();
@@ -105,18 +109,46 @@ public class ThingRequest : ElinDelta
 
         var result = thing.Split(num);
         result.parent?.RemoveCard(result);
-        if (whole is not null) {
-            // as this game's own gesture, so that the stack reaches the players like any change made here
-            using var _ = Simulate();
-            LimitedStockPatch.Lay(result == thing ? null : thing, whole);
-        }
-
-        CardCache.KeepAlive(result);
+        // at once: a throw from here on lost the thing, out of its chest and in nobody's hands (reliability audit
+        // 2026-10-27, #11). Recorded, it goes back where it was if the asker never takes it
         RecordDangling(result, origin);
+
+        try {
+#if DEBUG
+            if (BenchThrowAfterTake) {
+                throw new InvalidOperationException("bench: thrown after the thing was taken");
+            }
+#endif
+
+            if (whole is not null) {
+                // as this game's own gesture, so that the stack reaches the players like any change made here
+                using var _ = Simulate();
+                LimitedStockPatch.Lay(result == thing ? null : thing, whole);
+            }
+
+            CardCache.KeepAlive(result);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "ThingRequest {RequestId} from peer {PeerIndex} failed after taking {Uid}, it goes back where it was",
+                Id, OriginPeer, result.uid);
+            Respond(net, null);
+            return;
+        }
 
         Thing = result;
         Respond(net, result);
     }
+
+#if DEBUG
+    // the bench makes the step after the take throw, bench/thing_request_check.py
+    internal static bool BenchThrowAfterTake;
+#endif
+
+    /// <summary>
+    ///     How long an answer of the host is waited for. Later, what it gave back is not taken here (a drag or a
+    ///     purchase starting long after the click, the player elsewhere by then): the host puts it back where it was
+    ///     after 10 s (InvalidateDangling), a little more than this. Never answered, a request was kept for good
+    /// </summary>
+    private static readonly TimeSpan _answerTimeout = TimeSpan.FromSeconds(8);
 
     private void Respond(ElinNetBase net, Thing? thing)
     {
@@ -151,7 +183,15 @@ public class ThingRequest : ElinDelta
 
     public void Then(Action<Thing> onSuccess, Action? onFail = null)
     {
-        _callbackList[Id] = (onSuccess, onFail);
+        // requests never answered (the host threw, the link changed) are not kept for good
+        var now = DateTime.Now;
+        foreach (var (id, (_, _, asked)) in _callbackList.ToArray()) {
+            if (now - asked > TimeSpan.FromMinutes(1)) {
+                _callbackList.Remove(id);
+            }
+        }
+
+        _callbackList[Id] = (onSuccess, onFail, now);
     }
 
     internal static void Clear()
