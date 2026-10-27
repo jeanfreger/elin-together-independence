@@ -506,5 +506,8 @@
     "LangGeneral.emp_ui_unban.text": "解除封禁",
     "LangGeneral.emp_ui_make_admin.text": "设为管理员",
     "LangGeneral.emp_ui_admin_tag.text": "（管理员）",
-    "LangGeneral.emp_ui_banned_title.text": "已封禁的玩家"
+    "LangGeneral.emp_ui_banned_title.text": "已封禁的玩家",
+    "LangGeneral.emp_dc_members_only.text": "现在只有此世界的玩家可以加入。",
+    "LangGeneral.emp_ui_sv_cfg_members_only.text": "仅限成员",
+    "LangGeneral.emp_ui_sv_desc_members_only.text": "只有在这里有角色的玩家、管理员和被放行的玩家可以加入；Steam 好友和公开游戏的陌生人会被拒绝。关闭：和以前一样。"
 }

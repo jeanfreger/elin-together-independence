@@ -265,6 +265,7 @@ internal static class SettingsTable
         yield return new("shared_marriages", "friends", true, EmpConfig.Server.SharedMarriages);
         yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
+        yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);

@@ -48,6 +48,41 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     Steam ids let in by the host or the operator (allow) while MembersOnly is ticked, besides the players of
+    ///     this world
+    /// </summary>
+    [ElinGameIOProperty("mod_members")]
+    internal static Dictionary<ulong, int> Members
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     A player of this world (it has a character here, or played the host's), an admin, or one let in
+    /// </summary>
+    internal static bool IsMember(ulong user)
+    {
+        return SavedRemoteCharas.ContainsKey(user) || PlayerRosters.ContainsKey(user) || PcOwners.ContainsKey(user) ||
+               Admins.ContainsKey(user) || Members.ContainsKey(user);
+    }
+
+    /// <summary>
+    ///     Members only (box MembersOnly): nobody new comes in, a Steam friend or a public game's stranger alike
+    /// </summary>
+    internal static bool MembersOnlyRefuses(ulong user)
+    {
+        return EmpConfig.Server.MembersOnly.Value && !IsMember(user);
+    }
+
+    internal static string Allow(ulong user)
+    {
+        Members[user] = 1;
+        AdminLog($"allow {user}");
+        return $"{user} may come in";
+    }
+
     // Steam id -> until when a kicked player is kept out (real time; forgotten at a restart)
     private static readonly Dictionary<ulong, float> KeptOut = [];
 
@@ -58,6 +93,10 @@ internal partial class ElinNetHost
     {
         if (Bans.TryGetValue(user, out var why)) {
             return EmpDisconnectInfo.With(EmpDisconnectInfo.Banned, why);
+        }
+
+        if (MembersOnlyRefuses(user)) {
+            return EmpDisconnectInfo.MembersOnly;
         }
 
         if (KeptOut.TryGetValue(user, out var until)) {
@@ -250,6 +289,7 @@ internal partial class ElinNetHost
             "unban" => Unban(user),
             "mute" => Mute(user, reason),
             "unmute" => Unmute(user),
+            "allow" => Allow(user),
             "admin" => MakeAdmin(user, true),
             "unadmin" => MakeAdmin(user, false),
             _ => "error: unknown order " + words[0],

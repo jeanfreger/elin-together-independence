@@ -455,6 +455,13 @@ internal partial class EmpConfig
             "Minutes a kicked player cannot come back. 0: it may come back at once\n" +
             "被踢出的玩家在多少分钟内不能重新加入。0：可以立即重新加入");
 
+        Server.MembersOnly = config.Bind(
+            "Server",
+            "MembersOnly",
+            false,
+            "Only the players of this world come in: those who have a character here, its admins, and those let in with allow. Steam friends and a public game's strangers too are refused\n" +
+            "只有此世界的玩家可以加入：在这里有角色的玩家、管理员以及用 allow 放行的玩家。Steam 好友和公开游戏的陌生人也会被拒绝");
+
         Server.NightPasses = config.Bind(
             "Server",
             "NightPasses",
@@ -774,6 +781,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> OwnSleep { get; set; } = null!;
         internal static ConfigEntry<int> IdleMinutes { get; set; } = null!;
         internal static ConfigEntry<int> KickKeepOutMinutes { get; set; } = null!;
+        internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;

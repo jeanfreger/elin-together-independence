@@ -21,6 +21,7 @@ public static class EmpDisconnectInfo
     public const string ActMappingMismatch = "emp_dc_act_mismatch";
     public const string Banned = "emp_dc_banned";
     public const string KickWait = "emp_dc_kick_wait";
+    public const string MembersOnly = "emp_dc_members_only";
 
     /// <summary>
     ///     A reason with words of its own (the host's, a count): "key|words", told as "key_why" with them. Steam takes
