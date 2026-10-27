@@ -73,6 +73,11 @@ public class MsgSayDelta : ElinDelta
             return;
         }
 
+        // a muted player's line goes no further than its own game
+        if (Chat && net is ElinNetHost from && from.FromMuted(OriginPeer)) {
+            return;
+        }
+
         if (net is ElinNetHost host) {
             // relay to every connected player, including those travelling alone
             // (they are not in CurrentPlayers while away). Global chat off: player chat only to the players

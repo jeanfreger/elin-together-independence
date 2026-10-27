@@ -498,5 +498,6 @@
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_0.text": "关闭",
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_5.text": "5 分钟",
     "LangGeneral.emp_ui_sv_opt_kick_keep_out_15.text": "15 分钟",
-    "LangGeneral.emp_ui_sv_opt_kick_keep_out_60.text": "60 分钟"
+    "LangGeneral.emp_ui_sv_opt_kick_keep_out_60.text": "60 分钟",
+    "LangGeneral.emp_ui_muted.text": "你在此世界中不能发言（已被管理员禁言）。"
 }

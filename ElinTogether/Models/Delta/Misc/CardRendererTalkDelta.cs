@@ -23,6 +23,11 @@ public class CardRendererTalkDelta : ElinDelta
             return;
         }
 
+        // the bubble of a muted player's line (not what the characters of its map say)
+        if (card is Chara { IsPlayer: true } && net is ElinNetHost from && from.FromMuted(OriginPeer)) {
+            return;
+        }
+
         // relay
         if (net.IsHost) {
             net.Delta.AddRemote(this);

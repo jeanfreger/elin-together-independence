@@ -4,6 +4,7 @@ using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
+using HeathenEngineering.SteamworksIntegration;
 using Random = UnityEngine.Random;
 
 namespace ElinTogether.Patches;
@@ -63,6 +64,13 @@ internal class ChatBubbleEvent
         var away = NetSession.Instance.IsAway ? NetSession.Instance.Transport as ElinNetClient : null;
         var connection = NetSession.Instance.Connection;
         if (connection is null && away is null) {
+            return;
+        }
+
+        // muted (admin tools): its line stays in its own game, which tells it why
+        // (as the host knows this player: a test instance on the bench plays under an identity of its own)
+        if (ModerationDelta.IsMuted(NetSession.Instance.Self?.User ?? UserData.Me)) {
+            Msg.Say("emp_ui_muted".lang());
             return;
         }
 

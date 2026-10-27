@@ -178,6 +178,8 @@ namespace ElinTogether.Models;
 [Union(982, typeof(TeamSpawnDelta))]
 // World time (council 2026-10-26)
 [Union(983, typeof(PlayerIdleDelta))]
+// Admin tools (council 2026-10-27)
+[Union(985, typeof(ModerationDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass

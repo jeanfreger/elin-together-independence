@@ -49,6 +49,18 @@ internal class EmpConsole
         return NetSession.Instance.Transport is ElinNetHost host ? host.Ban(steamId, reason) : "Only the host can ban players";
     }
 
+    [ConsoleCommand("mute")]
+    internal static string MutePlayer(ulong steamId, string reason = "")
+    {
+        return NetSession.Instance.Transport is ElinNetHost host ? host.Mute(steamId, reason) : "Only the host can mute players";
+    }
+
+    [ConsoleCommand("unmute")]
+    internal static string UnmutePlayer(ulong steamId)
+    {
+        return NetSession.Instance.Transport is ElinNetHost host ? host.Unmute(steamId) : "Only the host can unmute players";
+    }
+
     [ConsoleCommand("unban")]
     internal static string UnbanPlayer(ulong steamId)
     {

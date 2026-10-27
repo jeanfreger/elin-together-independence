@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ElinTogether.Common;
+using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
 using UnityEngine;
@@ -21,6 +22,16 @@ internal partial class ElinNetHost
     /// </summary>
     [ElinGameIOProperty("mod_bans")]
     internal static Dictionary<ulong, string> Bans
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     Steam id -> why it is muted (may be empty)
+    /// </summary>
+    [ElinGameIOProperty("mod_mutes")]
+    internal static Dictionary<ulong, string> Mutes
     {
         get => field ??= [];
         set;
@@ -90,6 +101,52 @@ internal partial class ElinNetHost
         return $"Banned {user}";
     }
 
+    internal string Mute(ulong user, string? reason = null)
+    {
+        ulong me = UserData.Me;
+        if (user == me) {
+            return "The host cannot mute itself";
+        }
+
+        Mutes[user] = reason?.Trim() ?? "";
+        AdminLog($"mute {user} ({reason})");
+        TellModeration();
+        return $"Muted {user}";
+    }
+
+    internal string Unmute(ulong user)
+    {
+        if (!Mutes.Remove(user)) {
+            return $"{user} was not muted";
+        }
+
+        AdminLog($"unmute {user}");
+        TellModeration();
+        return $"Unmuted {user}";
+    }
+
+    /// <summary>
+    ///     Every game learns who is muted: at each change and when a player comes in (SendJoinCopies)
+    /// </summary>
+    internal void TellModeration()
+    {
+        if (IsZoneSession) {
+            return;
+        }
+
+        ModerationDelta.Muted.Clear();
+        ModerationDelta.Muted.UnionWith(Mutes.Keys);
+        Delta.AddRemote(new ModerationDelta { Mutes = [..Mutes.Keys] });
+    }
+
+    /// <summary>
+    ///     A line that came from a muted player (hard check, whatever EnforceOwnership says)
+    /// </summary>
+    internal bool FromMuted(int peerId)
+    {
+        return Socket.Peers.FirstOrDefault(p => p.Id == peerId) is { } peer && ModerationDelta.IsMuted(peer.User);
+    }
+
     internal static string Unban(ulong user)
     {
         KeptOut.Remove(user);
@@ -119,7 +176,7 @@ internal partial class ElinNetHost
 
     /// <summary>
     ///     An order of the server's operator (ElinMP/server.cmd, see EmpServer), one line:
-    ///     kick|ban|unban &lt;Steam id or exact name&gt; [reason]. Returns what was done
+    ///     kick|ban|unban|mute|unmute &lt;Steam id or exact name&gt; [reason]. Returns what was done
     /// </summary>
     internal string RunOrder(string line)
     {
@@ -139,6 +196,8 @@ internal partial class ElinNetHost
             "kick" => peer is null ? "error: " + words[1] + " is not playing" : Kick(peer.Id, reason),
             "ban" => Ban(user, reason),
             "unban" => Unban(user),
+            "mute" => Mute(user, reason),
+            "unmute" => Unmute(user),
             _ => "error: unknown order " + words[0],
         };
         AdminLog($"order \"{line.Trim()}\": {done}");

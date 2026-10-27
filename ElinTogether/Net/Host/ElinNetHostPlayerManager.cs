@@ -395,6 +395,7 @@ internal partial class ElinNetHost
 
         TellMarriages();
         TellTeams();
+        TellModeration();
 
         foreach (var join in joins) {
             join.After?.Invoke();
