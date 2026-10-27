@@ -509,5 +509,8 @@
     "LangGeneral.emp_ui_banned_title.text": "已封禁的玩家",
     "LangGeneral.emp_dc_members_only.text": "现在只有此世界的玩家可以加入。",
     "LangGeneral.emp_ui_sv_cfg_members_only.text": "仅限成员",
-    "LangGeneral.emp_ui_sv_desc_members_only.text": "只有在这里有角色的玩家、管理员和被放行的玩家可以加入；Steam 好友和公开游戏的陌生人会被拒绝。关闭：和以前一样。"
+    "LangGeneral.emp_ui_sv_desc_members_only.text": "只有在这里有角色的玩家、管理员和被放行的玩家可以加入；Steam 好友和公开游戏的陌生人会被拒绝。关闭：和以前一样。",
+    "LangGeneral.emp_permadeath_wait.text": "你的角色正在等待同伴在酒保处将其复活。若要使用其他角色，请从菜单退出游戏。",
+    "LangGeneral.emp_ui_sv_cfg_permadeath_revive.text": "在酒保处复活（永久死亡）",
+    "LangGeneral.emp_ui_sv_desc_permadeath_revive.text": "仅限永久死亡世界：死亡玩家的角色会留在世界中，任何人都可以在酒保处支付费用将其复活，不会删除任何内容。关闭：游戏原本的永久死亡（主机死亡会删除世界）。"
 }

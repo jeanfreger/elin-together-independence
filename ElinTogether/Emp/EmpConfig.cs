@@ -305,6 +305,14 @@ internal partial class EmpConfig
             "Otherwise the game's own menu opens the other player's bag, as for an ally\n" +
             "相邻的玩家可以通过双方确认的窗口交换物品和金币");
 
+        Server.PermadeathRevive = config.Bind(
+            "Server",
+            "PermadeathRevive",
+            true,
+            "Permadeath worlds only: a dead player's character stays in the world and any player can revive it at a bartender, for the game's price; nothing is deleted.\n" +
+            "Off: the game's own permadeath ending (the host's death deletes the world)\n" +
+            "仅限永久死亡世界：死亡玩家的角色留在世界中，任何玩家都可以在酒保处支付游戏价格将其复活，不会删除任何存档。关闭：游戏原本的永久死亡结局（主机死亡会删除世界）");
+
         // not the "ChooseCharacter" key of earlier versions: every settings file already written holds it as true,
         // and a player who comes back is no longer asked at every connection
         Server.ChooseCharacter = config.Bind(
@@ -810,6 +818,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> DeleteCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> EnforceOwnership { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerTrade { get; set; } = null!;
+        internal static ConfigEntry<bool> PermadeathRevive { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerCombatTime { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerClock { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerStepPace { get; set; } = null!;

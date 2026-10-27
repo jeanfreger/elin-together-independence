@@ -304,6 +304,7 @@ internal partial class ElinNetHost
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
         chara.SetBool("remote_chara", true);
+        chara.SetStr(PlayerRevive.PlayerKey, peer.User.Name ?? "?");
         GiveAxeToRemotePlayer(chara);
 
         var state = States[peer.Id] = new() {

@@ -23,8 +23,10 @@ public class CharaReviveRequestDelta : ElinDelta
         if (net is not ElinNetHost host || host.IsAwayPeer(OriginPeer) ||
             !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
             Target.Find() is not Chara { isDead: true, isSummon: false, IsGlobal: true } dead || !dead.CanRevive() ||
-            dead.faction != pc.faction || dead.IsPC || dead.IsRemotePlayer) {
-            // a dead player is not on the barman's list of a solo game: it has its own way back
+            (dead.faction != pc.faction && !PlayerRevive.IsPlayerChara(dead)) ||
+            ((dead.IsPC || dead.IsRemotePlayer || PlayerRevive.IsPlayerChara(dead)) && !PlayerRevive.Active) || dead == sender) {
+            // a dead player is not on the barman's list of a solo game: it has its own way back (but in permadeath
+            // with PermadeathRevive, see PlayerRevive)
             return;
         }
 
@@ -39,8 +41,16 @@ public class CharaReviveRequestDelta : ElinDelta
         }
 
         // as the host's own gesture, the purse of the sender reaches its game as any other change made here to its things
+        using (Simulate()) {
+            sender.ModCurrency(-cost);
+        }
+
+        if (PlayerRevive.IsPlayerChara(dead)) {
+            PlayerRevive.ReviveOnHost(dead, sender);
+            return;
+        }
+
         using var simulate = Simulate();
-        sender.ModCurrency(-cost);
         dead.GetRevived();
     }
 }

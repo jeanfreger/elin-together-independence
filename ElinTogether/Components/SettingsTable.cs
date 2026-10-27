@@ -238,6 +238,7 @@ internal static class SettingsTable
         yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
         yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
         yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Apply: "join", Under: "characters");
+        yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive, Under: "characters");
 
         // Playing together
         yield return new("travel", "together", false, Choice: Travel);
@@ -443,6 +444,7 @@ internal static class SettingsTable
             [EmpConfig.Server.Duels] = r.AllowDuels,
             [EmpConfig.Server.PlayerKill] = r.AllowPlayerKill,
             [EmpConfig.Server.PlayerTrade] = r.AllowPlayerTrade,
+            [EmpConfig.Server.PermadeathRevive] = r.PermadeathRevive,
             [EmpConfig.Server.WorldCopy] = r.KeepWorldCopy,
             [EmpConfig.Server.Takeover] = r.AllowTakeover,
             [EmpConfig.Server.NightPasses] = r.NightPasses,

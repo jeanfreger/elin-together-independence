@@ -56,6 +56,11 @@ public class CharaReviveDelta : ElinDelta
         }
 
         if (net is ElinNetHost host) {
+            // permadeath with PermadeathRevive: a dead player waits for a friend at a bartender, never stands up by itself
+            if (PlayerRevive.Active && chara.isDead && PlayerRevive.IsPlayerChara(chara) && !PlayerRevive.Reviving) {
+                return;
+            }
+
             // only the game that simulates the map says so
             Penalty = false;
 
@@ -127,6 +132,8 @@ public class CharaReviveDelta : ElinDelta
             // recursion
             if (chara.IsPC) {
                 player.deathDialog = false;
+                // (permadeath: its next death is told again, see PermadeathPatch)
+                chara.SetBool(PlayerRevive.DeadFlag, false);
 
                 // the gold was taken where the map is simulated; the experience of its attributes is its own
                 if (Penalty) {

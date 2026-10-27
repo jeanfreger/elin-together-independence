@@ -315,6 +315,13 @@ public class NetSessionRules
     [Key(120)]
     public bool TimeStopsWhenEmpty { get; set; }
 
+    /// <summary>
+    ///     Permadeath worlds only: a dead player's character waits for a revive at a bartender instead of the game
+    ///     ending (council 2026-10-27, GitHub issue 9)
+    /// </summary>
+    [Key(121)]
+    public bool PermadeathRevive { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -347,6 +354,7 @@ public class NetSessionRules
         IdleMinutes = System.Math.Max(0, EmpConfig.Server.IdleMinutes.Value),
         NightPasses = EmpConfig.Server.NightPasses.Value,
         TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
+        PermadeathRevive = EmpConfig.Server.PermadeathRevive.Value,
         TimeJumpsTogether = EmpConfig.Server.WorldMapTime.Value == WorldMapTime.TravelTogether,
         WorldMapTime = EmpConfig.Server.WorldMapTime.Value,
         DumpSparesBelt = EmpConfig.Server.DumpSparesBelt.Value,

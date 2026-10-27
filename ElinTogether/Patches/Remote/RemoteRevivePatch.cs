@@ -46,8 +46,18 @@ internal static class RemoteRevivePatch
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ListPeopleRevive), nameof(ListPeopleRevive.OnClick))]
-    internal static bool OnReviveClick(Chara c)
+    internal static bool OnReviveClick(ListPeopleRevive __instance, Chara c)
     {
+        // the host revives a player (permadeath, PermadeathRevive): not into its own party, not next to "the player"
+        if (NetSession.Instance.Connection is ElinNetHost && PlayerRevive.Active && PlayerRevive.IsPlayerChara(c)) {
+            if (EClass.pc.TryPay(CalcMoney.Revive(c))) {
+                PlayerRevive.ReviveOnHost(c, EClass.pc);
+                __instance.list.List();
+            }
+
+            return false;
+        }
+
         if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
             return true;
         }
@@ -64,5 +74,24 @@ internal static class RemoteRevivePatch
         });
         SE.Click();
         return false;
+    }
+
+    /// <summary>
+    ///     Permadeath with PermadeathRevive: the dead players of the world are on the barman's list too, played now or
+    ///     not (the game lists the dead of its faction only)
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ListPeopleRevive), nameof(ListPeopleRevive.OnList))]
+    internal static void OnReviveList(ListPeopleRevive __instance)
+    {
+        if (!PlayerRevive.Active) {
+            return;
+        }
+
+        foreach (var chara in EClass.game.cards.globalCharas.Values) {
+            if (chara.isDead && chara != EClass.pc && PlayerRevive.IsPlayerChara(chara) && !__instance.list.objects.Contains(chara)) {
+                __instance.list.Add(chara);
+            }
+        }
     }
 }

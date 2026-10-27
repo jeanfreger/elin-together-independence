@@ -117,6 +117,11 @@ internal static class CharaReviveEvent
     [HarmonyPatch(typeof(Chara), nameof(Chara.ApplyDeathPenalty))]
     internal static bool OnApplyDeathPenalty()
     {
+        // (a permadeath revive at the bartender: its price was the cost, see PlayerRevive)
+        if (PlayerRevive.Reviving) {
+            return false;
+        }
+
         return NetSession.Instance.Connection is not ElinNetClient || !ElinDelta.IsApplying;
     }
 
