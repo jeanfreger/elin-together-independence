@@ -130,6 +130,11 @@ internal static class CharaExport
         }
     }
 
+    internal static SessionCharaExportData ReadIncoming(string file)
+    {
+        return MessagePackSerializer.Deserialize<SessionCharaExportData>(File.ReadAllBytes(file), FileOptions);
+    }
+
     // the swap of the last load, until a save holds it
     private static (string File, string Token)? _applied;
 
@@ -154,7 +159,7 @@ internal static class CharaExport
 
         string name;
         try {
-            name = Swap(__instance, MessagePackSerializer.Deserialize<SessionCharaExportData>(File.ReadAllBytes(file), FileOptions), file);
+            name = Swap(__instance, ReadIncoming(file), file);
         } catch (Exception ex) {
             // the file stays for the next load, the save as it was
             EmpLog.Warning(ex, "Could not bring the incoming character {File} into save {Id}", file, Game.id);
@@ -212,7 +217,7 @@ internal static class CharaExport
             }
         }
 
-        // what ties the player character to this world stays this world's: zone, home, party, faction, mount
+        // what ties the player character to this world stays this world's: zone, home, party, faction (mount below)
         chara._cints[1] = old._cints[1];
         chara._cints[2] = old._cints[2];
         chara.party = old.party;
@@ -222,6 +227,17 @@ internal static class CharaExport
         chara.orgPos = old.orgPos;
         chara.pos.Set(old.pos);
         chara.SetBool(CINT.IsPC, old.GetBool(CINT.IsPC));
+
+        if (chara.isDead || chara.hp <= 0) {
+            chara.isDead = false;
+            chara.hp = 1;
+        }
+
+        // (everything above only touched the character that arrives: a failure there leaves the save as it was)
+        game.cards.globalCharas.Remove(old.uid);
+        game.cards.globalCharas.Add(chara);
+
+        // its mount stays this world's too
         chara.ride = old.ride;
         if (chara.ride is { } ride) {
             ride.host = chara;
@@ -230,11 +246,6 @@ internal static class CharaExport
         chara.parasite = old.parasite;
         if (chara.parasite is { } parasite) {
             parasite.host = chara;
-        }
-
-        if (chara.isDead || chara.hp <= 0) {
-            chara.isDead = false;
-            chara.hp = 1;
         }
 
         // the hotbar points at the old character's things, which stay in the backup only
@@ -248,8 +259,6 @@ internal static class CharaExport
             }
         }
 
-        game.cards.globalCharas.Remove(old.uid);
-        game.cards.globalCharas.Add(chara);
         game.player.fame = data.Fame;
         game.player.karma = data.Karma;
 
