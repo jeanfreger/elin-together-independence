@@ -50,7 +50,52 @@ internal partial class ElinNetHost
             return;
         }
 
-        Broadcast(_lastTick);
+        var tick = _lastTick;
+        SendByMap(tick, () => tick.Lean());
+    }
+
+    // a player who just left still takes the last results of its stay (DepartFromHostMap sends them after marking it)
+    private const float OffMapGraceSeconds = 2f;
+
+    /// <summary>
+    ///     Interest by map (council 2026-10-27): a player away from the host map, whose game drops what is about
+    ///     that map (ElinNetClient.ShouldReceiveWhileAway, ReachesAwayPlayer). A zone session sends as before
+    /// </summary>
+    internal bool IsOffHostMap(ISteamNetPeer peer)
+    {
+        return !IsZoneSession && _departed.Contains(peer.Id) &&
+               UnityEngine.Time.realtimeSinceStartup - _departedAt.GetValueOrDefault(peer.Id) > OffMapGraceSeconds;
+    }
+
+    /// <summary>
+    ///     To everyone, as Broadcast, except that a player away from the host map gets the other packet (none when
+    ///     null). Each one serialized once; the same reliable link per player, so the order does not change
+    /// </summary>
+    private void SendByMap<T>(T onMap, Func<T?> offMap) where T : class
+    {
+        var peers = Socket.Peers;
+        if (!peers.Any(IsOffHostMap)) {
+            Broadcast(onMap);
+            return;
+        }
+
+        byte[]? full = null;
+        byte[]? lean = null;
+        var leanBuilt = false;
+        foreach (var peer in peers) {
+            if (IsOffHostMap(peer)) {
+                if (!leanBuilt) {
+                    leanBuilt = true;
+                    lean = offMap() is { } packet ? Socket.Serializer.Serialize(packet) : null;
+                }
+
+                if (lean is not null) {
+                    peer.Send(lean);
+                }
+            } else {
+                peer.Send(full ??= Socket.Serializer.Serialize(onMap));
+            }
+        }
     }
 
     /// <summary>
@@ -72,9 +117,12 @@ internal partial class ElinNetHost
             return;
         }
 
-        Broadcast(new WorldStateDeltaList {
-            DeltaList = deltaList,
-        });
+        SendByMap(new WorldStateDeltaList {
+                DeltaList = deltaList,
+            },
+            () => deltaList.Where(ElinNetClient.ReachesAwayPlayer).ToList() is { Count: > 0 } kept
+                ? new WorldStateDeltaList { DeltaList = kept }
+                : null);
     }
 
     /// <summary>
@@ -319,7 +367,7 @@ internal partial class ElinNetHost
 
         SeePlayers();
 
-        Broadcast(SessionPlayersSnapshot.Create());
+        SendByMap(SessionPlayersSnapshot.Create(), () => null);
     }
 
 #region Scheduler Jobs

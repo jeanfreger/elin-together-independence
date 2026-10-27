@@ -21,6 +21,8 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     private readonly List<SteamNetPeer> _peers = [];
     private readonly ISteamNetSerializer _serializer = serializer ?? new SteamNetSerializer();
 
+    internal ISteamNetSerializer Serializer => _serializer;
+
     private bool _disposed;
     private HSteamListenSocket _listenSocket;
     private ISteamNetListener? _listener;

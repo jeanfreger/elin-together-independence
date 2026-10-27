@@ -1131,13 +1131,22 @@ internal partial class ElinNetClient
     }
 
     /// <summary>
+    ///     What a player away from the host map takes of its deltas (the host sends it nothing else, see
+    ///     ElinNetHost.SendByMap)
+    /// </summary>
+    internal static bool ReachesAwayPlayer(ElinDelta delta)
+    {
+        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta;
+    }
+
+    /// <summary>
     ///     Delta lists reaching an away client are about the host map, except chat
     /// </summary>
     private void ApplyChatWhileAway(WorldStateDeltaList response)
     {
         foreach (var delta in response.DeltaList) {
             // chat and the quest log are the world's, the rest is about the host map
-            if (delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta) {
+            if (ReachesAwayPlayer(delta)) {
                 // the regular delta loop does not run while away, see CoreSynchronizationContext
                 delta.Apply(this);
             } else {

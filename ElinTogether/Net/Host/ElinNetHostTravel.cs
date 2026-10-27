@@ -68,6 +68,9 @@ internal partial class ElinNetHost
     /// </summary>
     private readonly HashSet<int> _departed = [];
 
+    // peer id -> when it left the host map, see IsOffHostMap
+    private readonly Dictionary<int, float> _departedAt = [];
+
     /// <summary>
     ///     Guest peer id -> zone it joins and the peer holding it, before and after the holder expects it
     /// </summary>
@@ -863,6 +866,8 @@ internal partial class ElinNetHost
             return false;
         }
 
+        _departedAt[peer.Id] = UnityEngine.Time.realtimeSinceStartup;
+
         // walking out of a harvest alone, before the one who took the quest: its bag is searched now, as the
         // game does on the way out (ZoneEventHarvest.OnLeaveZone), the taker's will be when it leaves
         if (_zone is { instance: ZoneInstanceRandomQuest } questZone && questZone.events.GetEvent<ZoneEventHarvest>() is not null &&
@@ -1197,6 +1202,7 @@ internal partial class ElinNetHost
 
             _leases.Remove(peer.Id);
             _departed.Remove(peer.Id);
+            _departedAt.Remove(peer.Id);
             _checkpointUidNext.Remove(peer.Id);
 
             if (chara is { isDead: false } && soft) {
@@ -1635,6 +1641,7 @@ internal partial class ElinNetHost
 
         _settled.Remove(peer.Id);
         _departed.Remove(peer.Id);
+        _departedAt.Remove(peer.Id);
         _pendingGuests.Remove(peer.Id);
         _guests.Remove(peer.Id);
         _softRejoins.Remove(peer.Id);

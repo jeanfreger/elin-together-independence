@@ -72,6 +72,20 @@ public class WorldStateSnapshot : EClass
         };
     }
 
+    /// <summary>
+    ///     The same tick for a player away from the host map: its game drops the characters of a map it is not on
+    /// </summary>
+    internal WorldStateSnapshot Lean()
+    {
+        return new() {
+            ServerTick = ServerTick,
+            GameDate = GameDate,
+            CharaSnapshots = ImmutableArray<CharaStateSnapshot>.Empty,
+            GlobalUidNext = GlobalUidNext,
+            SharedSpeed = SharedSpeed,
+        };
+    }
+
     public void ApplyReconciliation()
     {
         if (NetSession.Instance.Connection is not ElinNetClient client) {
