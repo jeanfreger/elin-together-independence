@@ -65,6 +65,14 @@ internal static class Bench
 
         Section("WorldStateDeltaList, one step of every player (CharaMoveDelta)");
         Compare(Old(OldMoves(charas.Take(players))), Size(Moves(charas.Take(players))));
+
+        Section("Game time on an idle map (players on their own clock, the default)");
+        // a WorldStateDeltaList with one GameDelta, sent at every 50 Hz flush (the host makes one per frame), plus
+        // the 4-byte type hash; now only while the host's world fast-forwards (5 Hz) and once when it stops
+        var idle = 4 + Size(new WorldStateDeltaList { DeltaList = [new GameDelta { Delta = 0.0167f, Turbo = 0f }] });
+        Console.WriteLine($"   one message {idle} bytes + Steam's per-message overhead; before: up to 50 messages/s " +
+                          $"per peer ({idle * 50 / 1024.0:0.0} KB/s, {50 * (players - 1)} sends/s for the host), after: 0 " +
+                          "when nothing happens, 5/s while fast-forwarding");
     }
 
     // ---- what a map holds: players first, then the others
