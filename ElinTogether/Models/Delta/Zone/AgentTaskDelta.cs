@@ -91,8 +91,11 @@ public class AgentTaskDelta : ElinDelta
             _ => false,
         };
         if (!can) {
-            if (Paid > 0) {
-                sender.ModCurrency(Math.Min(Paid, MaxPaid));
+            // (given back only what was really paid for it on a server that enforces trust: a failing task told
+            // to have cost 10 farmed 10 gold each; security audit 2026-10-27, item 6)
+            var refund = TrustEnforced ? (int)CardModCurrencyDelta.TakeSpent(OriginPeer, Math.Min(Paid, MaxPaid)) : Math.Min(Paid, MaxPaid);
+            if (refund > 0) {
+                sender.ModCurrency(refund);
             }
 
             return;

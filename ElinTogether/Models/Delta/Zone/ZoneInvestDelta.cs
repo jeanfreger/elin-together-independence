@@ -26,6 +26,16 @@ public class ZoneInvestDelta : ElinDelta
     [Key(1)]
     public RemoteCard? Merchant { get; init; }
 
+    /// <summary>
+    ///     Security audit 2026-10-27 (item 6): each investment raises the town's development and influence whatever
+    ///     it cost; the sender must have just paid that gold (its own currency request, CardModCurrencyDelta)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        var paid = CardModCurrencyDelta.TakeSpent(OriginPeer, Cost);
+        return paid < Cost ? $"an investment of {Cost} with {paid} gold paid" : null;
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         // a cost from the network: no more than the game's own counter can take, and only from a player standing here
