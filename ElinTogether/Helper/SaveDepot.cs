@@ -633,8 +633,8 @@ internal static class SaveDepot
     ///     One request to the server application: password, command and who asks on the first lines, then the
     ///     length and the bytes of a world when one is sent. The answer has the same shape
     /// </summary>
-    // ponytail: on the game's thread, the game waits while a world of a few megabytes travels; a thread when
-    // worlds get big or the link slow.
+    // ponytail: on the game's thread for what the player just clicked (Take, Put, "Join by address"); what happens
+    // while playing (each save, the beat) goes through Later
     private static (bool Ok, string Text, byte[]? Body) Ask(string command, byte[]? body = null, string? descends = null)
     {
         if (GitHub) {
@@ -646,12 +646,27 @@ internal static class SaveDepot
                 descends, MyJoin);
         }
 
-        var at = Root.LastIndexOf(':');
+        // after what was sent in the background (a save on its way): not before. Not for a question (the Lobby tab
+        // asks who holds the world each time it opens)
+        if (command != "WHO") {
+            Settle();
+        }
+
+        return AskServer(Root, EmpConfig.Client.DepotPassword.Value, command, MyName, body);
+    }
+
+    /// <summary>
+    ///     The request itself, to Elin Together Server: reads nothing of the game, so that it runs in the background
+    /// </summary>
+    private static (bool Ok, string Text, byte[]? Body) AskServer(string root, string password, string command, string name,
+        byte[]? body)
+    {
+        var at = root.LastIndexOf(':');
         using var client = new TcpClient();
         // a refused connection (no server there) comes wrapped by the task: told as the depot not answering, which
         // every caller expects; it reached the player as an error at the title screen (GitHub issue 8)
         try {
-            if (!client.ConnectAsync(Root.Substring(0, at), int.Parse(Root.Substring(at + 1))).Wait(5000)) {
+            if (!client.ConnectAsync(root.Substring(0, at), int.Parse(root.Substring(at + 1))).Wait(5000)) {
                 throw new IOException("the depot does not answer");
             }
         } catch (AggregateException ex) {
@@ -660,7 +675,7 @@ internal static class SaveDepot
 
         using var stream = client.GetStream();
         stream.ReadTimeout = stream.WriteTimeout = 60000;
-        var head = $"{EmpConfig.Client.DepotPassword.Value}\n{command}\n{Me}\n{MyName}\n{body?.Length ?? 0}\n";
+        var head = $"{password}\n{command}\n{Me}\n{name}\n{body?.Length ?? 0}\n";
         var bytes = Encoding.UTF8.GetBytes(head);
         stream.Write(bytes, 0, bytes.Length);
         if (body is not null) {
@@ -700,19 +715,26 @@ internal static class SaveDepot
     }
 
     /// <summary>
-    ///     GitHub answers in a second or more (seven for the first request of the game): what happens while
-    ///     playing is asked in the background, in order, and the answer is given on the game's thread (Update)
+    ///     GitHub answers in a second or more (seven for the first request of the game), the server application as
+    ///     fast as a world travels: what happens while playing is asked in the background, in order, and the answer
+    ///     is given on the game's thread (Update). The server's were asked on the game's thread, which froze while
+    ///     each save travelled, and up to 5 s each minute with the server away (reliability audit 2026-10-27, #9)
     /// </summary>
-    /// <param name="sent">called in the background as soon as GitHub accepted (the game may be closing)</param>
+    /// <param name="sent">called in the background as soon as the depot accepted (the game may be closing)</param>
     private static void Later(string command, byte[]? body, Action<(bool Ok, string Text, byte[]? Body)> then,
         Action? sent = null)
     {
-        var (root, key, name, join) = (Root, EmpConfig.Client.DepotPassword.Value, MyName, MyJoin);
+        var (root, key, name, join, github) = (Root, EmpConfig.Client.DepotPassword.Value, MyName, MyJoin, GitHub);
         _asking = _asking.ContinueWith(_ => {
             (bool Ok, string Text, byte[]? Body) reply;
             try {
-                GitHubDepot.ModListText ??= () => ModList.Text;
-                reply = GitHubDepot.Ask(root.Substring(7), key, command, Me, name, body, join: join);
+                if (github) {
+                    GitHubDepot.ModListText ??= () => ModList.Text;
+                    reply = GitHubDepot.Ask(root.Substring(7), key, command, Me, name, body, join: join);
+                } else {
+                    reply = AskServer(root, key, command, name, body);
+                }
+
                 if (reply.Ok) {
                     sent?.Invoke();
                 }
@@ -780,10 +802,8 @@ internal static class SaveDepot
     private static void Beat()
     {
         _nextBeat = Time.unscaledTime + BeatSeconds;
-        if (GitHub) {
+        if (Asked) {
             Later("BEAT", null, reply => Lost(reply.Text));
-        } else if (Remote) {
-            Lost(Ask("BEAT").Text);
         } else {
             File.WriteAllLines(LockFile, [Me, MyName, MyJoin]);
         }
@@ -809,13 +829,61 @@ internal static class SaveDepot
             return;
         }
 
+        if (Remote) {
+            SendToServer();
+            return;
+        }
+
         if (Copy(Local)) {
-            if (!Remote) {
-                Beat();
-            }
+            Beat();
         } else if (!Lost(_refused)) {
             EmpPop.Information("emp_ui_depot_unsaved".lang());
         }
+    }
+
+    /// <summary>
+    ///     The save just made goes to Elin Together Server in the background. As safe as it was on the game's thread:
+    ///     the archive is made here, of the save as it was just written; the marker says "not sent" until the server
+    ///     took it (a game closed meanwhile offers to send it next time, see Take); a refusal is told as before, and
+    ///     the next save goes again
+    /// </summary>
+    private static void SendToServer()
+    {
+        int saved;
+        lock (_markGate) {
+            saved = ++_saves;
+            Mark(true);
+        }
+
+        byte[] world;
+        try {
+            world = Zip(Local);
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            EmpLog.Warning("Could not send the world to the depot {Root}: {Why}", Root, ex.Message);
+            EmpPop.Information("emp_ui_depot_unsaved".lang());
+            return;
+        }
+
+        Later("PUT", world, reply => {
+            _refused = reply.Text;
+            if (reply.Ok) {
+                EmpLog.Information("World sent to the depot {Root}", Root);
+                return;
+            }
+
+            EmpLog.Warning("The depot {Root} refused the world: {Reason}", Root, reply.Text);
+            if (!Lost(reply.Text)) {
+                EmpPop.Information("emp_ui_depot_unsaved".lang());
+            }
+        }, () => {
+            // the server has this save: no marker, unless the game saved again meanwhile (in the background: the
+            // game's thread no longer runs when the game is closing)
+            lock (_markGate) {
+                if (saved == _saves) {
+                    Marker(null);
+                }
+            }
+        });
     }
 
     /// <summary>
@@ -902,7 +970,8 @@ internal static class SaveDepot
 
                 Later("RELEASE", null, _ => { });
             } else if (Remote) {
-                Ask("RELEASE");
+                // behind the last save, still on its way
+                Later("RELEASE", null, _ => { });
             } else if (File.Exists(LockFile) && File.ReadAllLines(LockFile) is { Length: > 0 } lines && lines[0] == Me) {
                 File.Delete(LockFile);
             }
