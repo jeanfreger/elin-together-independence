@@ -14,8 +14,10 @@ internal class TabLobbyBrowser : TabEmpBase
 {
     public override void OnLayout()
     {
+        // (first on the title screen: the project's own public game, one click, user 2026-10-27; filled when the list answers)
+        var officialCard = EClass.core.IsGameStarted ? null : this.MakeCard();
         BuildNetButtons();
-        BuildLobbyList();
+        BuildLobbyList(officialCard);
     }
 
     private void BuildNetButtons()
@@ -114,7 +116,7 @@ internal class TabLobbyBrowser : TabEmpBase
     }
 #endif
 
-    private void BuildLobbyList()
+    private void BuildLobbyList(YKVertical? officialCard)
     {
         var card = this.MakeCard();
         var totalPlayers = card.HeaderSmall("");
@@ -130,12 +132,20 @@ internal class TabLobbyBrowser : TabEmpBase
             }
 
             var total = 0;
+            if (officialCard is not null) {
+                BuildOfficialEntry(officialCard, lobbies);
+            }
+
             // the project's own public game first (user, 2026-10-27), checked by its signature, not by its name
             var official = lobbies.Select(l => (Lobby: l, Official: OfficialServer.IsOfficial(l)))
                 .OrderByDescending(l => l.Official).ToArray();
             foreach (var (lobby, isOfficial) in official) {
                 var count = lobby.MemberCount;
                 total += count;
+                if (isOfficial && officialCard is not null) {
+                    // (already shown above with its own Join)
+                    continue;
+                }
 
                 // one group per game: its description, what it runs with, and Join (from the title screen: one click
                 // joins that game; in a game, the player leaves it first)
@@ -173,6 +183,27 @@ internal class TabLobbyBrowser : TabEmpBase
             UIHelper.WrapTexts(this);
             this.RebuildLayout(true);
         }
+    }
+
+    /// <summary>
+    ///     "Join the official server" with its player count when its signed lobby is in the list, a quiet line when
+    ///     it is not open: never a dialog
+    /// </summary>
+    internal static void BuildOfficialEntry(YKVertical card, LobbyData[] lobbies)
+    {
+        var found = lobbies.Where(OfficialServer.IsOfficial).Cast<LobbyData?>().FirstOrDefault();
+        if (found is not { } lobby) {
+            card.TextSmall("emp_ui_official_closed".lang());
+            return;
+        }
+
+        var game = card.RowGroup();
+        game.HeaderSmall("emp_ui_lobby_official".lang());
+        game.Text("emp_ui_official_players".Loc(lobby.MemberCount));
+        game.ButtonRow().RowButton("emp_ui_lobby_official_join".lang(), () => {
+            LayerElinTogether.Instance?.Close();
+            NetSession.Instance.Lobby.ConnectLobby(lobby);
+        });
     }
 
     private void StartServerFromPanel()

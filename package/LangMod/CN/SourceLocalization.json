@@ -540,5 +540,8 @@
     "LangGeneral.emp_ui_sv_opt_max_characters_10.text": "10",
     "LangGeneral.emp_ui_sv_opt_max_characters_0.text": "不限",
     "LangGeneral.emp_ui_chara_limit.text": "你的角色数量已达到这个世界的上限：删除一个后才能创建或导入新角色。",
-    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面"
+    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面",
+    "LangGeneral.emp_ui_official_players.text": "当前在线 {0} 人",
+    "LangGeneral.emp_ui_official_closed.text": "官方服务器目前未开放",
+    "LangGeneral.emp_ui_sv_import_official.text": "官方服务器不接受导入角色"
 }
