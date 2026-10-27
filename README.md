@@ -1,6 +1,6 @@
 # Elin Together — "independence" fork
 
-**Current version: 0.26.1047** (zip `ElinTogether-independence.zip`).
+**Current version: 0.26.1056** (zip `ElinTogether-independence.zip`).
 
 English | [Français](README_fr.md) | [中文](README_zh.md) | [日本語](README_ja.md)
 
