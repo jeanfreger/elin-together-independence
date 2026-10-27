@@ -32,6 +32,9 @@ internal class CoreSynchronizationContext : SynchronizationContext
         EmpAutoHost.Update();
         // (alone on a map of its own the host link is still there: the host still hears it)
         PlayerIdle.Update();
+        // (alone too: the host's own team's knowledge is put in place after a load, given back to the world when the
+        // box is unticked)
+        TeamKnowledge.Update();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
             return;

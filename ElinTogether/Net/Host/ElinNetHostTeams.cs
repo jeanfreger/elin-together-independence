@@ -62,6 +62,27 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     Host option "Teams learn on their own" (<see cref="TeamKnowledge" />): team id -> what that team knows, as
+    ///     text (<see cref="TeamLore" />). The Wanderers (team 0) too. Empty while the box was never on
+    /// </summary>
+    [ElinGameIOProperty("team_lore")]
+    internal static Dictionary<int, string> TeamLoreBook
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     [the ledger's schema version, 1 once every team was given a copy of the world's knowledge]
+    /// </summary>
+    [ElinGameIOProperty("team_lore_state")]
+    internal static int[] TeamLoreState
+    {
+        get => field is { Length: 2 } ? field : field = new int[2];
+        set;
+    }
+
     // the players sent to the spawn zone in this hosting: a reconnect finds them where they were
     private readonly HashSet<ulong> _spawned = [];
 

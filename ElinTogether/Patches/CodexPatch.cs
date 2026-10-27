@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -8,7 +10,8 @@ namespace ElinTogether.Patches;
 ///     The codex is shared, see <see cref="CodexDelta" />. A card collected, a weak spot read in a book, a card
 ///     given once, a creature that appeared: known only to the game where it happened, told to everyone. A kill
 ///     is counted by every game of the map where it happened (the blow is played again in each): the game that
-///     keeps that map tells only those who are not on it
+///     keeps that map tells only those who are not on it. Teams learning on their own (<see cref="TeamKnowledge" />):
+///     told to the player's team only, and a kill counted only by the games of the killer's team
 /// </summary>
 [HarmonyPatch]
 internal static class CodexPatch
@@ -51,6 +54,50 @@ internal static class CodexPatch
         Tell(__instance, CodexKind.CardDrop, id, 1);
     }
 
+    // who deals the blow being settled (Card.DamageHP counts the kill), innermost last
+    private static readonly Stack<Card?> _blows = [];
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.DamageHP), typeof(long), typeof(int), typeof(int), typeof(AttackSource), typeof(Card),
+        typeof(bool), typeof(Thing), typeof(Chara), typeof(int))]
+    internal static void OnBlowBegin(Card origin)
+    {
+        _blows.Push(origin);
+    }
+
+    // a finalizer: a throw does not leave the blow on the stack
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(Card), nameof(Card.DamageHP), typeof(long), typeof(int), typeof(int), typeof(AttackSource), typeof(Card),
+        typeof(bool), typeof(Thing), typeof(Chara), typeof(int))]
+    internal static void OnBlowEnd()
+    {
+        if (_blows.Count > 0) {
+            _blows.Pop();
+        }
+    }
+
+    /// <summary>
+    ///     The player whose blow (its own, its companion's, its summon's) is being settled; 0 for none
+    /// </summary>
+    private static int Killer => _blows.Count > 0 && PlayerKarma.PlayerBehind(_blows.Peek()) is { } player ? player.uid : 0;
+
+    /// <summary>
+    ///     Teams learning on their own: a kill counts in the games of the killer's team only. The game that keeps the
+    ///     book writes another team's in that team's ledger
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CodexManager), nameof(CodexManager.AddKill))]
+    internal static bool OnAddKillBegin(CodexManager __instance, string id)
+    {
+        if (!TeamKnowledge.On || string.IsNullOrEmpty(id) || !ReferenceEquals(__instance, EClass.player?.codex) ||
+            TeamKnowledge.Shares(Killer, EClass.pc.uid)) {
+            return true;
+        }
+
+        TeamKnowledge.Noted(Killer, CodexKind.Kill, id, 1);
+        return false;
+    }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(CodexManager), nameof(CodexManager.AddKill))]
     internal static void OnAddKill(CodexManager __instance, string id)
@@ -59,21 +106,24 @@ internal static class CodexPatch
             return;
         }
 
+        var killer = Killer;
         switch (NetSession.Instance.Connection) {
             // not the game that keeps this map: the kill is counted here when the blow is played again
             case ElinNetClient:
                 return;
-            // the host of the world: the players away did not see it
+            // the host of the world: the players away did not see it (teams learning on their own: the killer's team)
             case ElinNetHost { IsZoneSession: false } host:
-                var seen = new CodexDelta { Id = id, Num = 1, Kind = CodexKind.Kill };
+                var seen = new CodexDelta { Id = id, Num = 1, Kind = CodexKind.Kill, Learner = killer };
                 foreach (var (peer, _) in host.AwayPeers) {
-                    host.SendDeltaTo(peer, seen);
+                    if (host.ActiveRemoteCharas.TryGetValue(peer, out var away) && TeamKnowledge.Shares(killer, away.uid)) {
+                        host.SendDeltaTo(peer, seen);
+                    }
                 }
 
                 return;
             // alone on a map, or keeping it for visitors: the world is told, it tells those on the host's map
             default:
-                QuestAwaySync.Send(new CodexDelta { Id = id, Num = 1, Kind = CodexKind.Kill, Relayed = true });
+                QuestAwaySync.Send(new CodexDelta { Id = id, Num = 1, Kind = CodexKind.Kill, Relayed = true, Learner = killer });
                 return;
         }
     }
@@ -85,6 +135,7 @@ internal static class CodexPatch
         }
 
         var session = NetSession.Instance;
+        var learner = EClass.pc.uid;
 
         // travelling alone, or keeping a map for visitors: the codex is the world's, the host tells the others
         // (not our visitors again, they hear it from us below)
@@ -93,11 +144,21 @@ internal static class CodexPatch
             Num = num,
             Kind = kind,
             Relayed = session.Connection is ElinNetHost { IsZoneSession: true },
+            Learner = learner,
         });
-        session.Connection?.Delta.AddRemote(new CodexDelta {
+
+        var told = new CodexDelta {
             Id = id,
             Num = num,
             Kind = kind,
-        });
+            Learner = learner,
+        };
+        // teams learning on their own: a host tells only this player's team
+        if (TeamKnowledge.On && session.Connection is ElinNetHost host) {
+            TeamKnowledge.Tell(host, told, learner, int.MinValue);
+            return;
+        }
+
+        session.Connection?.Delta.AddRemote(told);
     }
 }

@@ -15,6 +15,13 @@ public class SaveDataProbe
     [Key(1)]
     public required int RemoteCharaUid { get; init; }
 
+    /// <summary>
+    ///     Host option "Teams learn on their own": what this player's team knows, in place of what the copy of the
+    ///     world holds (the host's own team's). None when the box is off, and from a zone hosted by a client
+    /// </summary>
+    [Key(2)]
+    public TeamLore? Lore { get; init; }
+
     public Game MakeGameSave()
     {
         return Game.Decompress<Game>();

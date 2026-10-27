@@ -134,6 +134,15 @@ internal class EmpConsole
         return Teams.Describe();
     }
 
+    /// <summary>
+    ///     Bench: what each team knows in the host's ledger (host option "Teams learn on their own")
+    /// </summary>
+    [ConsoleCommand("team.lore")]
+    internal static string TeamLore()
+    {
+        return TeamKnowledge.Describe();
+    }
+
     [ConsoleCommand("team.found")]
     internal static string TeamFound(int charaUid, string name)
     {

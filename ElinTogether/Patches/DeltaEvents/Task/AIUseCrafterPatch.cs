@@ -181,14 +181,18 @@ internal static class AIUseCrafterPatch
 
         act.owner.Pick(ThingGen.Create("ticket_fortune").SetNum(num));
 
+        // teams learning on their own: the list of recipes made is the crafter's team's, its teammates' games and
+        // the host's book note it too
+        var team = TeamKnowledge.On;
         foreach (var (peerId, chara) in host.ActiveRemoteCharas) {
-            if (chara == act.owner) {
+            if (chara == act.owner || (team && TeamKnowledge.Shares(act.owner.uid, chara.uid))) {
                 host.SendDeltaTo(peerId, new CraftFirstTimeDelta {
                     RecipeId = recipe.id,
                 });
-                break;
             }
         }
+
+        TeamKnowledge.Crafted(act.owner.uid, recipe.id);
     }
 
     /// <summary>
