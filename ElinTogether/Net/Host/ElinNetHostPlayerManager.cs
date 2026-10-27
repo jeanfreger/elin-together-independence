@@ -120,13 +120,20 @@ internal partial class ElinNetHost
 
         var roster = RosterOf(peer.User);
         var import = EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting;
-        var known = SavedRemoteCharas.TryGetValue(peer.User, out var played) && game.cards.globalCharas.Find(played) is not null;
+        // (a character taken to a solo save is not played here until it comes back)
+        var known = SavedRemoteCharas.TryGetValue(peer.User, out var played) &&
+                    game.cards.globalCharas.Find(played) is { } last && !CharaExport.IsAway(last);
         // no question at every connection: a player who comes back gets the character it played last. Asked only
         // when nothing says which one (several characters, none of them played last), when it has nobody here
         // and may bring someone, or when the host wants every joining player asked
         var ask = EmpConfig.Server.ChooseCharacter.Value
             ? roster.Count > 0 || import
             : !known && (roster.Count > 1 || (roster.Count == 0 && import));
+        // one of them is in a solo save: the list is where it comes back, or is brought back unchanged
+        if (roster.Any(CharaExport.IsAway)) {
+            ask = true;
+        }
+
         // a player whose link dropped comes back as the one it was playing, never asked: it did not leave
         if (known && LinkLostAt.Remove(peer.User, out var lost) && Time.realtimeSinceStartup - lost < LinkLostGraceSeconds) {
             ask = false;
@@ -142,12 +149,14 @@ internal partial class ElinNetHost
             peer.Send(new SessionCharaSelectRequest {
                 AllowImport = import,
                 AllowDelete = EmpConfig.Server.DeleteCharacter.Value,
+                AllowExport = ExportAllowed,
                 Notice = notice,
                 Charas = roster
                     .Select(c => new SessionCharaEntry {
                         Uid = c.uid,
                         Label = $"{c.Name} - {c.race.GetName()} {c.job.GetName()}, Lv {c.LV}",
                         Dead = PlayerRevive.Active && c.isDead,
+                        Away = CharaExport.IsAway(c) ? c.GetStr(CharaExport.AwaySaveKey) ?? "" : null,
                     })
                     .ToList(),
             });
@@ -215,6 +224,13 @@ internal partial class ElinNetHost
         if (RosterOf(peer.User).Find(c => c.uid == response.Uid) is not { } chara) {
             EmpLog.Warning("Player {@Peer} picked chara {Uid} which is not one of its own", peer, response.Uid);
             PreparePlayerJoin(peer);
+            return;
+        }
+
+        // in a solo save: neither played nor deleted here until it comes back (or is brought back unchanged)
+        if (CharaExport.IsAway(chara)) {
+            EmpLog.Warning("Player {@Peer} picked chara {Uid}, which is in a solo save", peer, chara.uid);
+            PreparePlayerJoin(peer, "emp_ui_chara_away");
             return;
         }
 
@@ -330,28 +346,56 @@ internal partial class ElinNetHost
             return;
         }
 
-        if (AtCharacterLimit(peer.User)) {
-            PreparePlayerJoin(peer, "emp_ui_chara_limit");
-            return;
-        }
-
-        // one copy of a save's character per player: a second one would be the same items twice
-        RosterOf(peer.User);
-        if (PlayerRosters[peer.User].Any(uid =>
-                game.cards.globalCharas.Find(uid)?.GetStr(CharaImport.SourceKey) == response.Source)) {
-            EmpLog.Information("Player {@Peer} already brought the character of {Source}", peer, response.Source);
-            PreparePlayerJoin(peer, "emp_ui_chara_import_twice");
-            return;
-        }
-
         Chara chara;
         try {
             chara = response.Chara.Decompress<Chara>();
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not read the character brought by player {@Peer}", peer);
+            PreparePlayerJoin(peer, "emp_ui_chara_import_fail");
+            return;
+        }
+
+        // a character that left this world for a solo save: it comes back only with the token of its trip, in the
+        // place of the one waiting here (council 2026-10-27), never as a plain import (a copy of the solo save
+        // would bring it twice)
+        RosterOf(peer.User);
+        var stamp = chara.GetStr(CharaExport.StampKey);
+        Chara? away = null;
+        if (!stamp.IsEmpty()) {
+            away = PlayerRosters[peer.User]
+                .Select(uid => game.cards.globalCharas.Find(uid))
+                .FirstOrDefault(c => c is not null && c.GetStr(CharaExport.AwayKey) == stamp);
+            if (away is null) {
+                EmpLog.Information("Player {@Peer} brings {Name} with a token that is not of a trip under way", peer, chara.Name);
+                AdminLog($"refused return of {chara.Name} by {peer.User}: its trip is over or not from this world");
+                PreparePlayerJoin(peer, "emp_ui_chara_export_stale");
+                return;
+            }
+        } else {
+            if (AtCharacterLimit(peer.User)) {
+                PreparePlayerJoin(peer, "emp_ui_chara_limit");
+                return;
+            }
+
+            // one copy of a save's character per player: a second one would be the same items twice
+            if (PlayerRosters[peer.User].Any(uid =>
+                    game.cards.globalCharas.Find(uid)?.GetStr(CharaImport.SourceKey) == response.Source)) {
+                EmpLog.Information("Player {@Peer} already brought the character of {Source}", peer, response.Source);
+                PreparePlayerJoin(peer, "emp_ui_chara_import_twice");
+                return;
+            }
+        }
+
+        try {
             CharaImport.Adopt(chara, response.Source);
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Could not take in the character brought by player {@Peer}", peer);
             PreparePlayerJoin(peer, "emp_ui_chara_import_fail");
             return;
+        }
+
+        if (away is not null) {
+            ReplaceAway(peer.User, away, chara);
         }
 
         EmpLog.Information("Player {@Peer} brings {Name} (Lv {Level}) from its save {Source}",
@@ -363,7 +407,9 @@ internal partial class ElinNetHost
         // adds the character now played to the roster
         RosterOf(peer.User);
 
-        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, true));
+        // (one back from a solo save is no newcomer: its team's base, if any, is where it goes)
+        var isNew = away is null;
+        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, isNew));
     }
 
     /// <summary>
