@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Wire sizes of the mod's messages, before/after the efficiency changes. Not shipped: a dev console only.
+         Build the mod first with -o ..\..\_out (see the parallel rules), then: dotnet run -c Release -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <NoWarn>MSB3277</NoWarn>
+        <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+        <LangVersion>preview</LangVersion>
+        <ElinManaged Condition="'$(ElinGamePath)' != ''">$(ElinGamePath)\Elin_Data\Managed</ElinManaged>
+        <ElinManaged Condition="'$(ElinGamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Elin\Elin_Data\Managed</ElinManaged>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="MessagePack" Version="3.1.12"/>
+        <PackageReference Include="System.Collections.Immutable" Version="11.0.0-preview.6.26359.118"/>
+        <Reference Include="ElinTogether">
+            <HintPath>..\..\_out\ElinTogether.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="Elin">
+            <HintPath>$(ElinManaged)\Elin.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+</Project>

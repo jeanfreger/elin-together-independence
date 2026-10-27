@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using ElinTogether.Net;
 using MessagePack;
+using MessagePack.Formatters;
 
 namespace ElinTogether.Models;
 
@@ -10,6 +11,7 @@ namespace ElinTogether.Models;
 ///     Card surrogate
 /// </summary>
 [MessagePackObject]
+[MessagePackFormatter(typeof(RemoteCardFormatter))]
 public class RemoteCard : IEquatable<RemoteCard>
 {
     public enum CardType : byte
@@ -165,5 +167,91 @@ public class RemoteCard : IEquatable<RemoteCard>
     public override int GetHashCode()
     {
         return HashCode.Combine(Uid, Type);
+    }
+}
+
+/// <summary>
+///     A card with no parent, no data and a count of 1 (nearly every character, most items) is one integer,
+///     uid * 2 + type, instead of an array of five fields: a quarter of every delta list and a fifth of every snapshot
+///     (efficiency audit 2026-10-27). Anything else is the array as before, and the array is always read, so a
+///     message written the old way (empload) still reads
+/// </summary>
+public sealed class RemoteCardFormatter : IMessagePackFormatter<RemoteCard?>
+{
+    public void Serialize(ref MessagePackWriter writer, RemoteCard? value, MessagePackSerializerOptions options)
+    {
+        if (value is null) {
+            writer.WriteNil();
+            return;
+        }
+
+        if (value is { Parent: null, Data: null, Num: 1 }) {
+            writer.Write(((long)value.Uid << 1) | (byte)value.Type);
+            return;
+        }
+
+        writer.WriteArrayHeader(5);
+        writer.Write(value.Uid);
+        writer.Write((byte)value.Type);
+        Serialize(ref writer, value.Parent, options);
+        options.Resolver.GetFormatterWithVerify<LZ4Bytes?>().Serialize(ref writer, value.Data, options);
+        writer.Write(value.Num);
+    }
+
+    public RemoteCard? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+    {
+        if (reader.TryReadNil()) {
+            return null;
+        }
+
+        if (reader.NextMessagePackType == MessagePackType.Integer) {
+            var packed = reader.ReadInt64();
+            return new() {
+                Uid = checked((int)(packed >> 1)),
+                Type = (RemoteCard.CardType)(packed & 1),
+                Num = 1,
+            };
+        }
+
+        options.Security.DepthStep(ref reader);
+        try {
+            var count = reader.ReadArrayHeader();
+            int uid = 0, num = 0;
+            var type = RemoteCard.CardType.Thing;
+            RemoteCard? parent = null;
+            LZ4Bytes? data = null;
+            for (var i = 0; i < count; i++) {
+                switch (i) {
+                    case 0:
+                        uid = reader.ReadInt32();
+                        break;
+                    case 1:
+                        type = (RemoteCard.CardType)reader.ReadByte();
+                        break;
+                    case 2:
+                        parent = Deserialize(ref reader, options);
+                        break;
+                    case 3:
+                        data = options.Resolver.GetFormatterWithVerify<LZ4Bytes?>().Deserialize(ref reader, options);
+                        break;
+                    case 4:
+                        num = reader.ReadInt32();
+                        break;
+                    default:
+                        reader.Skip();
+                        break;
+                }
+            }
+
+            return new() {
+                Uid = uid,
+                Type = type,
+                Parent = parent,
+                Data = data,
+                Num = num,
+            };
+        } finally {
+            reader.Depth--;
+        }
     }
 }
