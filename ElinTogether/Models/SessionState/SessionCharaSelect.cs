@@ -26,6 +26,12 @@ public class SessionCharaSelectRequest
 
     [Key(3)]
     public bool AllowDelete { get; init; }
+
+    /// <summary>
+    ///     The host lets players take one of these characters to one of their own solo saves (ExportCharacter)
+    /// </summary>
+    [Key(4)]
+    public bool AllowExport { get; init; }
 }
 
 [MessagePackObject]
@@ -45,6 +51,13 @@ public class SessionCharaEntry
     /// </summary>
     [Key(2)]
     public bool Dead { get; set; }
+
+    /// <summary>
+    ///     Taken to a solo save (CharaExport): which one, as the player named it. Shown, not playable, until it comes
+    ///     back through the import or is brought back unchanged
+    /// </summary>
+    [Key(3)]
+    public string? Away { get; set; }
 }
 
 /// <summary>
@@ -86,4 +99,68 @@ public class SessionCharaImportResponse
     /// </summary>
     [Key(3)]
     public required string Source { get; init; }
+}
+
+
+/// <summary>
+///     Net packet: Client -> Host, take that character to one of the player's own solo saves, or bring one that is
+///     there back unchanged (council 2026-10-27, character export)
+/// </summary>
+[MessagePackObject]
+public class SessionCharaExportRequest
+{
+    [Key(0)]
+    public required int Uid { get; init; }
+
+    /// <summary>
+    ///     The save it goes to, as the player's list words it (for the list and the admin log only)
+    /// </summary>
+    [Key(1)]
+    public string? Save { get; init; }
+
+    /// <summary>
+    ///     Not to take it: to bring it back as it left, the copy in the solo save can no longer come back
+    /// </summary>
+    [Key(2)]
+    public bool Recall { get; init; }
+}
+
+/// <summary>
+///     Net packet: Host -> Client, the host's own copy of the character that leaves, with its one-time token. Also
+///     what the player's game keeps in ElinMP/Incoming until the solo save is loaded
+/// </summary>
+[MessagePackObject]
+public class SessionCharaExportData
+{
+    [Key(0)]
+    public required int Uid { get; init; }
+
+    [Key(1)]
+    public required LZ4Bytes Chara { get; init; }
+
+    [Key(2)]
+    public required int Fame { get; init; }
+
+    [Key(3)]
+    public required int Karma { get; init; }
+
+    [Key(4)]
+    public required string Token { get; init; }
+}
+
+/// <summary>
+///     Net packet: Client -> Host, whether the character was written beside the solo save. Not written: the host
+///     releases it, it never left
+/// </summary>
+[MessagePackObject]
+public class SessionCharaExportResult
+{
+    [Key(0)]
+    public required int Uid { get; init; }
+
+    [Key(1)]
+    public required string Token { get; init; }
+
+    [Key(2)]
+    public required bool Written { get; init; }
 }

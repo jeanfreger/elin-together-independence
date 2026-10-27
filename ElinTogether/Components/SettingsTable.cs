@@ -261,6 +261,9 @@ internal static class SettingsTable
         yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
         yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
         yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Requires: () => !OfficialServer.Hosting, Apply: "join", Under: "characters");
+        // (the way back is the import: without it a character that left could only be brought back unchanged)
+        yield return new("export_chara", "joining", true, EmpConfig.Server.ExportCharacter,
+            Requires: () => EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting, Apply: "join", Under: "characters");
         yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive, Under: "characters");
 
         // Playing together

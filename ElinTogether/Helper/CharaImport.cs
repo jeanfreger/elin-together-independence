@@ -62,7 +62,7 @@ internal static class CharaImport
         return File.Exists(packed) ? packed : null;
     }
 
-    private static bool IsCloud(GameIndex index)
+    internal static bool IsCloud(GameIndex index)
     {
         return Path.GetFullPath(index.path).StartsWith(Path.GetFullPath(CorePath.RootSaveCloud), StringComparison.OrdinalIgnoreCase);
     }
@@ -174,7 +174,7 @@ internal static class CharaImport
     ///     Cuts what ties the character to its own world, so that only the character is sent: fields only, there
     ///     is no game around it here
     /// </summary>
-    private static void Detach(Chara chara)
+    internal static void Detach(Chara chara)
     {
         chara.party = null;
         chara.ride = null;
