@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.LangMod;
@@ -1031,6 +1032,55 @@ internal partial class ElinNetClient
         }
 
         EInput.haltInput = true;
+    }
+
+    /// <summary>
+    ///     A travel whose answer never comes (the host threw in the middle of it, the player we go to went quiet) left
+    ///     this game waiting for good, with no checkpoint meanwhile (reliability audit 2026-10-27, #3). After that
+    ///     long it comes back to the host the way every return does; a return that gets no world either joins the
+    ///     game again, as a lost link does
+    /// </summary>
+    private const float TravelStuckSeconds = 45f;
+
+    // the world of a return is the biggest message there is: more time for it
+    private const float RejoinStuckSeconds = 90f;
+
+    private float _travelSince;
+
+    private void UpdateTravelWatchdog()
+    {
+        // the waits that have a deadline of their own are left to it (a zone handed over, a soft return, a world asked)
+        var waiting = (_pendingTravel is not null || _pendingGrant is not null || _rejoining) && _handoffDeadline <= 0 &&
+                      !IsAwaitingSoftRejoin && _softReturnZone == 0 && _worldAskDeadline <= 0 && IsConnected;
+        var now = Time.realtimeSinceStartup;
+        if (!waiting) {
+            _travelSince = 0;
+            return;
+        }
+
+        if (_travelSince <= 0) {
+            _travelSince = now;
+            return;
+        }
+
+        if (!_rejoining && now - _travelSince >= TravelStuckSeconds) {
+            EmpLog.Warning("Travel to {ZoneUid} got no answer for {Seconds:F0}s (lease {Granted}), returning to the host",
+                _pendingTravel?.Zone.uid ?? _pendingGrant?.ZoneUid ?? -1, now - _travelSince, _pendingGrant is not null);
+            _pendingTravel = null;
+            _pendingGrant = null;
+            _travelSince = now;
+            SendRejoin();
+            EmpPop.Debug("emp_travel_returning".lang());
+            return;
+        }
+
+        if (_rejoining && now - _travelSince >= RejoinStuckSeconds) {
+            EmpLog.Warning("No world {Seconds:F0}s after handing back our place, joining the game again", now - _travelSince);
+            _travelSince = 0;
+            if (Host is not null) {
+                Socket.Disconnect(Host, EmpDisconnectInfo.RemoteClosed);
+            }
+        }
     }
 
     private void HandBackAwayZone(bool rejoin, ZoneArrival? arrival = null)

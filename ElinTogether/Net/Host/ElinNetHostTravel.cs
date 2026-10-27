@@ -1136,10 +1136,18 @@ internal partial class ElinNetHost
     private void OnZoneLeaseRelease(ZoneLeaseRelease release, ISteamNetPeer peer)
     {
         if (!_departed.Contains(peer.Id)) {
-            // stale or repeated release, the player is already back on the host map
-            EmpLog.Warning("Player {@Peer} released zone {ZoneUid} while not away, ignoring",
-                peer, release.ZoneUid);
-            return;
+            // a return asked by a player still on our map: its travel never went through (an answer lost, a throw
+            // in the middle of it) and it waits for the world, for good if nothing answers (reliability audit
+            // 2026-10-27, #3). Off the map, then back as any return
+            if (release.Rejoin && !release.Checkpoint && ActiveRemoteCharas.ContainsKey(peer.Id)) {
+                EmpLog.Warning("Player {@Peer} asks to come back while on the host map, sending it the world", peer);
+                DepartFromHostMap(peer);
+            } else {
+                // stale or repeated release, the player is already back on the host map
+                EmpLog.Warning("Player {@Peer} released zone {ZoneUid} while not away, ignoring",
+                    peer, release.ZoneUid);
+                return;
+            }
         }
 
         if (release.Checkpoint) {
@@ -1214,6 +1222,8 @@ internal partial class ElinNetHost
             _departed.Remove(peer.Id);
             _departedAt.Remove(peer.Id);
             _checkpointUidNext.Remove(peer.Id);
+            // on its way to another player's map that never expected it: that answer, if it comes, is for nobody
+            _pendingGuests.Remove(peer.Id);
 
             if (chara is { isDead: false } && soft) {
                 // no copy of the world: it stays on the map it handed back, see CompleteSoftRejoin
