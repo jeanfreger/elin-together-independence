@@ -15,8 +15,9 @@ internal static class ReplayBuffer
 {
     private const int Frames = 30;
     private const float Every = 1f;
-    private const int Width = 640;
-    private const int Quality = 60;
+    // (sharp enough to read the game's messages and windows: the reports are read by the developers, and by Claude)
+    private const int Width = 960;
+    private const int Quality = 70;
 
     private static readonly Queue<(DateTime At, byte[] Jpg)> _frames = new();
     private static RenderTexture? _small;
@@ -76,56 +77,55 @@ internal static class ReplayBuffer
     }
 
     /// <summary>
-    ///     The pictures kept, as one animated GIF (twice as fast as played), null without pictures. Decoded here on the
-    ///     main thread, made smaller (480 wide) for the page that shows it
+    ///     All the pictures on one sheet, 6 across and 5 down, oldest top left, read like a page: the whole half
+    ///     minute at one glance, then the sharp pictures of the zip for the seconds that matter. Null without pictures
     /// </summary>
-    private static (DateTime Last, byte[]? Gif) _made;
-
-    internal static byte[]? Gif()
+    internal static byte[]? Sheet()
     {
         if (_frames.Count == 0) {
             return null;
         }
 
-        // (asked for the zip and for the report's own files: made once for the same pictures)
-        var last = _frames.Last().At;
-        if (_made.Last == last) {
-            return _made.Gif;
-        }
-
-        const int width = 480;
-        var frames = new List<byte[]>();
-        var height = 0;
-        var texture = new Texture2D(2, 2);
+        const int columns = 6, cell = 320;
+        var rows = (_frames.Count + columns - 1) / columns;
+        var picture = new Texture2D(2, 2);
+        Texture2D? sheet = null;
         try {
+            var index = 0;
             foreach (var (_, jpg) in _frames) {
-                if (!texture.LoadImage(jpg)) {
+                if (!picture.LoadImage(jpg)) {
+                    index++;
                     continue;
                 }
 
-                height = width * texture.height / texture.width;
-                var pixels = texture.GetPixels32();
-                var rgb = new byte[width * height * 3];
+                var height = cell * picture.height / picture.width;
+                if (sheet is null) {
+                    sheet = new(cell * columns, height * rows, TextureFormat.RGB24, false);
+                    sheet.SetPixels32(new Color32[sheet.width * sheet.height]);
+                }
+
+                var pixels = picture.GetPixels32();
+                var small = new Color32[cell * height];
                 for (var y = 0; y < height; y++) {
-                    // (the texture's first row is the bottom one)
-                    var sy = (texture.height - 1 - y * texture.height / height) * texture.width;
-                    for (var x = 0; x < width; x++) {
-                        var c = pixels[sy + x * texture.width / width];
-                        var i = (y * width + x) * 3;
-                        rgb[i] = c.r;
-                        rgb[i + 1] = c.g;
-                        rgb[i + 2] = c.b;
+                    var sy = y * picture.height / height * picture.width;
+                    for (var x = 0; x < cell; x++) {
+                        small[y * cell + x] = pixels[sy + x * picture.width / cell];
                     }
                 }
 
-                frames.Add(rgb);
+                // (the texture's rows go up: the first picture's row is the top one)
+                var (col, row) = (index % columns, index / columns);
+                sheet.SetPixels32(col * cell, (rows - 1 - row) * height, cell, height, small);
+                index++;
             }
-        } finally {
-            UnityEngine.Object.Destroy(texture);
-        }
 
-        _made = (last, frames.Count == 0 ? null : GifWriter.Write(width, height, frames, 50));
-        return _made.Gif;
+            return sheet?.EncodeToJPG(80);
+        } finally {
+            UnityEngine.Object.Destroy(picture);
+            if (sheet is not null) {
+                UnityEngine.Object.Destroy(sheet);
+            }
+        }
     }
 
     /// <summary>
