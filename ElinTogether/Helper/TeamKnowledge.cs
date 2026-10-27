@@ -32,8 +32,16 @@ internal static class TeamKnowledge
         ? EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamKnowledge.Value
         : NetSession.Instance.Rules is { UseTeams: true, TeamKnowledge: true };
 
-    // the game the ledger was read against, and whether every team was given its copy in it
+    // the game the ledger was read against, and the team whose knowledge its Player object holds (none: the world's,
+    // as the save has it)
     private static Game? _game;
+    private static int? _team;
+
+    /// <summary>
+    ///     The team whose knowledge the local Player object holds, in the game that keeps the book; none while it holds
+    ///     the world's
+    /// </summary>
+    internal static int? LocalTeam => KeepsBook && ReferenceEquals(EClass.game, _game) ? _team : null;
 
     private static bool Seeded => ElinNetHost.TeamLoreState[1] != 0;
 
@@ -48,7 +56,9 @@ internal static class TeamKnowledge
         }
 
         if (!ReferenceEquals(EClass.game, _game)) {
+            // (a save just read: its Player object knows what every team knew)
             _game = EClass.game;
+            _team = null;
             if (ElinNetHost.TeamLoreState[0] > Schema) {
                 EmpLog.Warning("The teams' knowledge was written by a newer version of the mod ({Schema}): left as it is",
                     ElinNetHost.TeamLoreState[0]);
@@ -63,6 +73,40 @@ internal static class TeamKnowledge
             Seed();
         } else if (!On && Seeded) {
             MergeBack();
+        }
+
+        // the host plays its team's knowledge like any player, and another team's when it changes team
+        if (On && Seeded && Teams.TeamOf(EClass.pc.uid) is var team && team != _team) {
+            Hold(team);
+        }
+    }
+
+    /// <summary>
+    ///     The local Player object holds what that team knows: what it held goes back to its team first
+    /// </summary>
+    private static void Hold(int team)
+    {
+        if (_team is { } was) {
+            Store(was, Take(EClass.player));
+        }
+
+        var lore = Stored(team) ?? WorldUnion();
+        Rebuild(lore);
+        Put(EClass.player, lore);
+        _team = team;
+        EmpLog.Information("The host plays with the knowledge of team {TeamId}: {Recipes} recipes, {Creatures} creatures",
+            team, lore.Known.Count, lore.Codex.Count);
+    }
+
+    /// <summary>
+    ///     What the game itself writes in the recipes as a save is read (Game.OnLoad, older saves): written in the
+    ///     world's list, each team gets the same from its own
+    /// </summary>
+    private static void Rebuild(TeamLore lore)
+    {
+        // (Game.cs, below 0.23.100: the heavy training dummy got a second recipe id)
+        if (lore.Known.TryGetValue("trainingDummy_heavy", out var times) && times != 0 && !lore.Known.ContainsKey("trainingDummy_heavy1")) {
+            lore.Known["trainingDummy_heavy1"] = times;
         }
     }
 
@@ -89,6 +133,7 @@ internal static class TeamKnowledge
     {
         var all = WorldUnion();
         Put(EClass.player, all);
+        _team = null;
         ElinNetHost.TeamLoreBook.Clear();
         ElinNetHost.TeamLoreState = [Schema, 0];
         EmpLog.Information("Teams learn together again: the world knows all the teams knew ({Recipes} recipes, {Creatures} creatures)",
@@ -103,6 +148,14 @@ internal static class TeamKnowledge
         return Union(ElinNetHost.TeamLoreBook.Keys.Select(Stored).OfType<TeamLore>().Prepend(Take(EClass.player)));
     }
 
+    /// <summary>
+    ///     What that team knows now: the local Player object's for the team it holds, the ledger's for another
+    /// </summary>
+    internal static TeamLore Of(int team)
+    {
+        return team == LocalTeam ? Take(EClass.player) : Stored(team) ?? WorldUnion();
+    }
+
     // ---- the save: the union, then the local team's again
 
     /// <summary>
@@ -114,10 +167,12 @@ internal static class TeamKnowledge
     private static void BeforeSave(out (Dictionary<string, int>, HashSet<string>, Dictionary<string, CodexCreature>)? __state)
     {
         __state = null;
-        if (!KeepsBook || !Seeded || EClass.game?.player?.recipes is not { } recipes || EClass.player.codex is not { } codex) {
+        if (LocalTeam is not { } team || EClass.game?.player?.recipes is not { } recipes || EClass.player.codex is not { } codex) {
             return;
         }
 
+        // (the ledger is written with this save: the local team's as it is now)
+        Store(team, Take(EClass.player));
         __state = (recipes.knownRecipes, recipes.craftedRecipes, codex.creatures);
         Put(EClass.player, WorldUnion());
     }
