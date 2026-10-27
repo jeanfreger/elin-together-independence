@@ -644,5 +644,7 @@ Le mod est l'œuvre de l'équipe Elin Together : [DK](https://github.com/gottydu
 [Han](https://github.com/chuahan), Omega, [InuiDame](https://github.com/InuiDame),
 [Drakeny](https://github.com/Drakeny) (tests), noa (Elin). Licence MIT, voir [LICENSE](LICENSE).
 
+Tests de cette version : lemiwinks, nardole, 梦天冰, fartcreature.
+
 Fait par jeanfreger avec Claude (Anthropic). Les changements de ce fork ont été écrits avec un assistant de programmation (Claude Code), dirigé par le
 propriétaire du fork. Aucun fichier du jeu ni code décompilé du jeu n'est dans ce dépôt.

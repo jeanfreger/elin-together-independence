@@ -264,6 +264,8 @@ dotnet build ./ElinTogether -c ReleaseNightly
 
 MOD は Elin Together チームの作品です：[DK](https://github.com/gottyduke) と [Redgeioz](https://github.com/Redgeioz)（コード、フレームワーク）、[105gun](https://github.com/105gun)（コード）、[Han](https://github.com/chuahan)、Omega、[InuiDame](https://github.com/InuiDame)、[Drakeny](https://github.com/Drakeny)（テスト）、noa（Elin）。MIT ライセンス、[LICENSE](LICENSE) を参照。
 
+このフォークのテスト：lemiwinks, nardole, 梦天冰, fartcreature。
+
 jeanfreger が Claude（Anthropic）と共に作りました。このフォークの変更は、フォークの所有者の指示のもと、AI コーディングアシスタント（Claude Code）を使って書かれました。それぞれの変更には、コミットメッセージに記載されたゲーム内テストがあります。このリポジトリには、ゲームのファイルも、逆コンパイルしたゲームのコードも含まれていません。
 
 元の MOD の日本語の説明は、[元のプロジェクト](https://github.com/ElinTogether/ElinTogether)にあります。

@@ -264,6 +264,8 @@ dotnet build ./ElinTogether -c ReleaseNightly
 
 Mod 是 Elin Together 团队的作品：[DK](https://github.com/gottyduke) 和 [Redgeioz](https://github.com/Redgeioz)（代码、框架）、[105gun](https://github.com/105gun)（代码）、[Han](https://github.com/chuahan)、Omega、[InuiDame](https://github.com/InuiDame)、[Drakeny](https://github.com/Drakeny)（测试）、noa（Elin）。MIT 许可证，见 [LICENSE](LICENSE)。
 
+本分支的测试：lemiwinks, nardole, 梦天冰, fartcreature。
+
 由 jeanfreger 与 Claude（Anthropic）共同制作。本分支的修改是在 AI 编程助手（Claude Code）的帮助下、由本分支的所有者指导完成的；每项修改都有对应的游戏内测试，写在提交信息里。本仓库不包含任何游戏文件，也不包含反编译出来的游戏代码。
 
 原版 Mod 的中文说明在[原项目](https://github.com/ElinTogether/ElinTogether)里。

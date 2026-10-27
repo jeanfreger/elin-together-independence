@@ -615,5 +615,7 @@ The mod is the work of the Elin Together team: [DK](https://github.com/gottyduke
 [Han](https://github.com/chuahan), Omega, [InuiDame](https://github.com/InuiDame),
 [Drakeny](https://github.com/Drakeny) (testing), noa (Elin). MIT license, see [LICENSE](LICENSE).
 
+Testing of this fork: lemiwinks, nardole, 梦天冰, fartcreature.
+
 Made by jeanfreger together with Claude (Anthropic). The fork's changes were written with an AI coding assistant (Claude Code), directed by the fork's owner. No game
 file and no decompiled game code is in this repository.
