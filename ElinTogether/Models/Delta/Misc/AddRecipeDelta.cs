@@ -24,6 +24,12 @@ public class AddRecipeDelta : ElinDelta
     public int Learner { get; init; }
 
     /// <summary>
+    ///     Learnt from the story (a story quest, a dialog): every team learns it
+    /// </summary>
+    [Key(3)]
+    public bool Story { get; init; }
+
+    /// <summary>
     ///     True while a recipe that came from someone else is being learnt here, or one that is told another way
     /// </summary>
     internal static bool IsLanding { get; set; }
@@ -31,8 +37,8 @@ public class AddRecipeDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         // who learnt it: the sender itself on the host of the world, else as told (the visitor of a zone the sender
-        // keeps)
-        var learner = net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
+        // keeps); nobody in particular for the story, every team learns it
+        var learner = Story ? 0 : net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
                 ? sender.uid
                 : Learner;
 
@@ -43,7 +49,7 @@ public class AddRecipeDelta : ElinDelta
             case ElinNetHost { IsZoneSession: true } zone:
                 TeamKnowledge.Tell(zone, this, learner, OriginPeer);
                 if (NetSession.Instance.Transport is ElinNetClient main) {
-                    main.SendWhileAway(new AddRecipeDelta { RecipeId = RecipeId, Relayed = true, Learner = learner });
+                    main.SendWhileAway(new AddRecipeDelta { RecipeId = RecipeId, Relayed = true, Learner = learner, Story = Story });
                 }
 
                 break;

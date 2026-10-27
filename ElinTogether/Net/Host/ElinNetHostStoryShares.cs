@@ -277,9 +277,10 @@ internal partial class ElinNetHost
 
     private static bool Multiplied(Thing reward)
     {
-        // known by every player already, or the world's
+        // known by every player already, or the world's (teams learning on their own: a recipe is not known by the
+        // other teams, each player gets its own to read)
         var kind = reward.trait.GetType().Name;
-        if (kind.Contains("Recipe") || kind.Contains("Deed") || kind.Contains("License")) {
+        if ((kind.Contains("Recipe") && !TeamKnowledge.On) || kind.Contains("Deed") || kind.Contains("License")) {
             return false;
         }
 
