@@ -32,6 +32,7 @@ internal static class EmpServer
     private static bool _loading;
     private static string _saved = "-";
     private static string _order = "";
+    private static readonly DateTime _started = DateTime.Now;
 
     internal static bool Requested => _save is not null;
 
@@ -185,6 +186,9 @@ internal static class EmpServer
                 // (the Steam ids in the same order, for the operator's orders)
                 "ids=" + string.Join("|", playing.Select(p => (ulong)p.User)),
                 "order=" + _order,
+                // (the banned accounts of this world, id and reason, for the app's list with Unban)
+                "banned=" + string.Join("|", ElinNetHost.Bans.Select(b => b.Key + ":" + b.Value.Replace("|", " "))),
+                "started=" + _started.ToString("yyyy-MM-dd HH:mm:ss"),
                 "date=" + (state == "running" ? EClass.world.date.GetText(Date.TextFormat.Log) : ""),
                 "saved=" + _saved,
                 "time=" + DateTime.Now.ToString("HH:mm:ss"),

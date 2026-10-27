@@ -267,10 +267,32 @@ internal partial class ElinNetHost
 
     /// <summary>
     ///     An order of the server's operator (ElinMP/server.cmd, see EmpServer), one line:
-    ///     kick|ban|unban|mute|unmute &lt;Steam id or exact name&gt; [reason]. Returns what was done
+    ///     say &lt;text&gt;, or kick|ban|unban|mute|unmute &lt;Steam id or exact name&gt; [reason]. Returns what was done
     /// </summary>
     internal string RunOrder(string line)
     {
+        // a line to every player, wherever they are, from the server's operator
+        if (line.TrimStart().StartsWith("say ", StringComparison.OrdinalIgnoreCase)) {
+            var text = line.Trim().Substring(4).Trim();
+            if (text.Length == 0) {
+                return "error: nothing to say";
+            }
+
+            SendDeltaToAllExcept(int.MinValue, new MsgSayDelta {
+                Text = text.Length > 300 ? text.Substring(0, 300) : text,
+                R = 1,
+                G = 1,
+                B = 1,
+                A = 1,
+                Chat = true,
+                ChatId = UnityEngine.Random.Range(1, int.MaxValue),
+                SpeakerUid = 0,
+                Name = "[Server]",
+            });
+            AdminLog($"say {text}");
+            return "Said to everyone";
+        }
+
         var words = line.Trim().Split([' '], 3, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 2) {
             return "error: " + line;
