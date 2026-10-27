@@ -39,6 +39,19 @@ public class SpatialGenDelta : ElinDelta
     [Key(7)]
     public int IdPrefix { get; init; }
 
+    /// <summary>
+    ///     A random site (nefia) has its level and expires: without these the guest's copy had the level of its
+    ///     source and never expired, whoever the site was drawn for (H5-04)
+    /// </summary>
+    [Key(8)]
+    public bool IsRandomSite { get; init; }
+
+    [Key(9)]
+    public int DangerLv { get; init; }
+
+    [Key(10)]
+    public int DateExpire { get; init; }
+
     public static SpatialGenDelta Create(Zone zone)
     {
         return new() {
@@ -51,6 +64,9 @@ public class SpatialGenDelta : ElinDelta
             IsInstance = zone.IsInstance,
             IsKnown = zone.isKnown,
             IdPrefix = zone.idPrefix,
+            IsRandomSite = zone.isRandomSite,
+            DangerLv = zone._dangerLv,
+            DateExpire = zone.dateExpire,
         };
     }
 
@@ -101,5 +117,10 @@ public class SpatialGenDelta : ElinDelta
     {
         zone.isKnown |= IsKnown;
         zone.idPrefix = IdPrefix;
+        if (IsRandomSite) {
+            zone.isRandomSite = true;
+            zone._dangerLv = DangerLv;
+            zone.dateExpire = DateExpire;
+        }
     }
 }

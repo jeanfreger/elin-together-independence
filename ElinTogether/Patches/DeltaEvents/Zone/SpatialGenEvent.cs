@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -56,6 +57,25 @@ internal static class SpatialGenEvent
         // host propagates all zone creation for clients to hold references
         // must defer this because dungeon levels are assigned after creation
         CoroutineHelper.Deferred(() => host.Delta.AddRemote(SpatialGenDelta.Create(__result as Zone)));
+    }
+
+    /// <summary>
+    ///     A new random site (nefia) whose level the game draws from "the player" (not a treasure map's level): drawn
+    ///     for a player in turn, see PlayerInTurn (H5-04)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Region), nameof(Region.CreateRandomSite), typeof(Point), typeof(string), typeof(bool), typeof(int))]
+    internal static void OnRandomSite(int lv, out ScopeExit? __state)
+    {
+        __state = lv <= 0 ? PlayerInTurn.World() : null;
+    }
+
+    // a finalizer: the host is "the player" again even if the game's own method throws
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(Region), nameof(Region.CreateRandomSite), typeof(Point), typeof(string), typeof(bool), typeof(int))]
+    internal static void OnRandomSiteDone(ScopeExit? __state)
+    {
+        __state?.Dispose();
     }
 
     [ElinPostLoad]
