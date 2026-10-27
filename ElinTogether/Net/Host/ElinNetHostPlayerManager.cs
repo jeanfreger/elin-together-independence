@@ -131,6 +131,11 @@ internal partial class ElinNetHost
         if (known && LinkLostAt.Remove(peer.User, out var lost) && Time.realtimeSinceStartup - lost < LinkLostGraceSeconds) {
             ask = false;
         }
+
+        // permadeath: the character it played waits for a revive, it may play another one meanwhile
+        if (PlayerRevive.Active && known && game.cards.globalCharas.Find(played) is { isDead: true }) {
+            ask = true;
+        }
         // not for the guests of a zone hosted by a player: they come with the character they are playing
         if (!IsZoneSession && ask) {
             // the player picks who to play, brings someone from its own saves, or makes someone new
@@ -142,6 +147,7 @@ internal partial class ElinNetHost
                     .Select(c => new SessionCharaEntry {
                         Uid = c.uid,
                         Label = $"{c.Name} - {c.race.GetName()} {c.job.GetName()}, Lv {c.LV}",
+                        Dead = PlayerRevive.Active && c.isDead,
                     })
                     .ToList(),
             });
@@ -213,6 +219,12 @@ internal partial class ElinNetHost
             }
 
             PreparePlayerJoin(peer, EmpConfig.Server.DeleteCharacter.Value ? "emp_ui_chara_deleted" : null);
+            return;
+        }
+
+        // dead in a permadeath world: it waits for a revive at a bartender
+        if (PlayerRevive.Active && chara.isDead) {
+            PreparePlayerJoin(peer, "emp_ui_chara_dead");
             return;
         }
 

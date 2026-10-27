@@ -75,7 +75,10 @@ internal partial class ElinNetClient
     private void ShowCharaChoice(SessionCharaSelectRequest request, string? notice = null)
     {
         var rows = request.Charas
-            .Select(c => new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid })))
+            // (dead in a permadeath world: shown, waiting for a revive at a bartender, not playable)
+            .Select(c => c.Dead
+                ? new ChoiceRow(c.Label + " " + "emp_ui_chara_dead_tag".lang(), null)
+                : new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid })))
             .ToList();
 
         // then, in this order: a character from one of my saves (if the host allows it), a new character

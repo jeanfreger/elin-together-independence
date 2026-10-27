@@ -39,6 +39,12 @@ public class SessionCharaEntry
     /// </summary>
     [Key(1)]
     public required string Label { get; init; }
+
+    /// <summary>
+    ///     Dead in a permadeath world, waiting for a revive at a bartender (PermadeathRevive): shown, not playable
+    /// </summary>
+    [Key(2)]
+    public bool Dead { get; set; }
 }
 
 /// <summary>
