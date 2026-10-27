@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using ElinTogether.Net;
 using Newtonsoft.Json;
+using Steamworks;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -59,6 +60,8 @@ internal static class BugReport
         var text = new StringBuilder();
         text.AppendLine($"Elin Together {ModInfo.BuildVersion}");
         text.AppendLine($"Elin {EClass.core.version.GetText()}");
+        // who sent it, to ask them more (user, 2026-10-27; the player is told it is public)
+        text.AppendLine($"Player (Steam): {SteamName()}");
         text.AppendLine($"Written {DateTime.Now:yyyy-MM-dd HH:mm:ss} (local), {DateTime.UtcNow:HH:mm:ss} UTC");
         text.AppendLine($"Role: {(session.Transport is null ? "no session" : session.Transport.GetType().Name)}, away: {session.IsAway}, guest: {session.IsGuest}");
         text.AppendLine($"Players: {session.CurrentPlayers.Count}");
@@ -86,6 +89,16 @@ internal static class BugReport
         }
 
         return text.ToString();
+    }
+
+    private static string SteamName()
+    {
+        try {
+            return SteamFriends.GetPersonaName();
+        } catch (Exception) {
+            // (Steam not running)
+            return "-";
+        }
     }
 
     private static void Add(ZipArchive zip, string name, byte[] bytes)
