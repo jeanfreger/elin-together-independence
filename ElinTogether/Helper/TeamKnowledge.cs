@@ -194,6 +194,99 @@ internal static class TeamKnowledge
         return team == LocalTeam ? Take(EClass.player) : Stored(team) ?? WorldUnion();
     }
 
+    // ---- learning
+
+    /// <summary>
+    ///     What that player learnt, the other learns: same team, or the box off. Learner 0: the world (the story),
+    ///     every team
+    /// </summary>
+    internal static bool Shares(int learner, int other)
+    {
+        return learner == 0 || !On || Teams.TeamOf(learner) == Teams.TeamOf(other);
+    }
+
+    /// <summary>
+    ///     The players of that game (the host of the world, or a zone a player keeps) who learn what that player
+    ///     learnt, but the one it came from; <paramref name="mapOnly" />: not those away from that map (they get it
+    ///     with their next copy of the world). The box off: everyone, as before
+    /// </summary>
+    internal static void Tell(ElinNetHost host, ElinDelta delta, int learner, int except, bool mapOnly = false)
+    {
+        if (!mapOnly && (!On || learner == 0)) {
+            host.SendDeltaToAllExcept(except, delta);
+            return;
+        }
+
+        foreach (var (peer, chara) in host.ActiveRemoteCharas) {
+            if (peer != except && (!mapOnly || !host.IsAwayPeer(peer)) && Shares(learner, chara.uid)) {
+                host.SendDeltaTo(peer, delta);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: a recipe that player learnt is in its team's ledger (learner 0: every
+    ///     team's). Not the local team's: its Player object learns it the game's way
+    /// </summary>
+    internal static void Learnt(int learner, string recipeId)
+    {
+        if (LocalTeam is not { } local || string.IsNullOrEmpty(recipeId)) {
+            return;
+        }
+
+        var of = learner == 0 ? (int?)null : Teams.TeamOf(learner);
+        foreach (var team in ElinNetHost.TeamLoreBook.Keys.ToArray()) {
+            if (team == local || (of is { } only && team != only)) {
+                continue;
+            }
+
+            var lore = Stored(team) ?? WorldUnion();
+            AddKnown(lore.Known, recipeId);
+            Store(team, lore);
+        }
+    }
+
+    // RecipeManager.Add without the messages: once more, and the variants of a block learnt with it (pillar, bridge)
+    private static void AddKnown(Dictionary<string, int> known, string id)
+    {
+        if (RecipeManager.Get(id) is not { } source) {
+            return;
+        }
+
+        known[id] = known.GetValueOrDefault(id) + 1;
+        string[] variants = source.row?.category == "floor"
+            ? [id + "-p", id.Replace("-p", ""), id + "-b", id.Replace("-b", "")]
+            : [id + "-p", id.Replace("-p", "")];
+        foreach (var variant in variants) {
+            if (variant != id && !known.ContainsKey(variant) && RecipeManager.Get(variant) is not null) {
+                AddKnown(known, variant);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: that player crafted that recipe for the first time, its team gets no
+    ///     first-time bonus for it again (the local team's Player object, another team's ledger)
+    /// </summary>
+    internal static void Crafted(int crafter, string recipeId)
+    {
+        if (LocalTeam is not { } local) {
+            return;
+        }
+
+        var team = Teams.TeamOf(crafter);
+        if (team == local) {
+            EClass.player.recipes.craftedRecipes.Add(recipeId);
+            return;
+        }
+
+        var lore = Stored(team) ?? WorldUnion();
+        if (!lore.Crafted.Contains(recipeId)) {
+            lore.Crafted.Add(recipeId);
+            Store(team, lore);
+        }
+    }
+
     // ---- the save: the union, then the local team's again
 
     /// <summary>

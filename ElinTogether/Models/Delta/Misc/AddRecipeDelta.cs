@@ -17,36 +17,54 @@ public class AddRecipeDelta : ElinDelta
     public bool Relayed { get; init; }
 
     /// <summary>
+    ///     The character of the player who learnt it (host option "Teams learn on their own": only its team learns
+    ///     it). 0 from an older game
+    /// </summary>
+    [Key(2)]
+    public int Learner { get; init; }
+
+    /// <summary>
     ///     True while a recipe that came from someone else is being learnt here, or one that is told another way
     /// </summary>
     internal static bool IsLanding { get; set; }
 
     protected override void OnApply(ElinNetBase net)
     {
+        // who learnt it: the sender itself on the host of the world, else as told (the visitor of a zone the sender
+        // keeps)
+        var learner = net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
+                ? sender.uid
+                : Learner;
+
         // never back to the player it came from, never twice to anyone: learning a known recipe again counts
         // it twice
         switch (net) {
             // the game that keeps a map for visitors: they hear it from here, the world from its own link
             case ElinNetHost { IsZoneSession: true } zone:
-                zone.SendDeltaToAllExcept(OriginPeer, this);
+                TeamKnowledge.Tell(zone, this, learner, OriginPeer);
                 if (NetSession.Instance.Transport is ElinNetClient main) {
-                    main.SendWhileAway(new AddRecipeDelta { RecipeId = RecipeId, Relayed = true });
+                    main.SendWhileAway(new AddRecipeDelta { RecipeId = RecipeId, Relayed = true, Learner = learner });
                 }
 
                 break;
             // the players of that map know already: the others, on this map, hear it now; those alone elsewhere
             // get the recipes with their next world copy
             case ElinNetHost host when Relayed:
-                foreach (var peer in host.ActiveRemoteCharas.Keys) {
-                    if (peer != OriginPeer && !host.IsAwayPeer(peer)) {
-                        host.SendDeltaTo(peer, this);
-                    }
-                }
-
+                TeamKnowledge.Tell(host, this, learner, OriginPeer, true);
                 break;
             case ElinNetHost host:
-                host.SendDeltaToAllExcept(OriginPeer, this);
+                TeamKnowledge.Tell(host, this, learner, OriginPeer);
                 break;
+        }
+
+        // teams learning on their own: the host keeps it in the learner's team's book, and learns it only for its own
+        // team (a guest is told only its team's)
+        if (net is ElinNetHost) {
+            TeamKnowledge.Learnt(learner, RecipeId);
+            if (!TeamKnowledge.Shares(learner, pc.uid)) {
+                EmpLog.Debug("Recipe {RecipeId} learnt by player {Learner} of another team", RecipeId, learner);
+                return;
+            }
         }
 
         EmpLog.Debug("Recipe {RecipeId} learnt from peer {Peer}, relayed {Relayed}", RecipeId, OriginPeer, Relayed);

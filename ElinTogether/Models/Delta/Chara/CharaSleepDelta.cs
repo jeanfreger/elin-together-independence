@@ -218,11 +218,17 @@ public class CharaSleepDelta : ElinDelta
             return;
         }
 
-        // learnt here, and by the other guests as any recipe: the sender has it already
+        // learnt here, and by the other guests as any recipe: the sender has it already (teams learning on their own:
+        // its team only, the host's game when it is the host's team)
         EmpLog.Debug("Recipe {RecipeId} of the night of peer {Peer}", Recipe, OriginPeer);
-        player.recipes.Add(Recipe, !player.recipes.IsKnown(Recipe));
-        host.SendDeltaToAllExcept(OriginPeer, new AddRecipeDelta {
+        TeamKnowledge.Learnt(sender.uid, Recipe);
+        if (TeamKnowledge.Shares(sender.uid, pc.uid)) {
+            player.recipes.Add(Recipe, !player.recipes.IsKnown(Recipe));
+        }
+
+        TeamKnowledge.Tell(host, new AddRecipeDelta {
             RecipeId = Recipe,
-        });
+            Learner = sender.uid,
+        }, sender.uid, OriginPeer);
     }
 }

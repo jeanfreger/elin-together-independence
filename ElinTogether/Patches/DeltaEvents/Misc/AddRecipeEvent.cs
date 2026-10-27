@@ -39,6 +39,7 @@ internal class AddRecipeEvent
         // the recipe a player comes up with while harvesting, digging or mining is found when the end of its
         // own task is replayed here: the host, for whom that character is not "the player", never rolls for it
         var ownTask = CharaProgressCompleteDelta.Current?.Owner.Find() is Chara { IsPC: true };
+        var learner = EClass.pc.uid;
         if (ElinDelta.IsApplying && !ownTask) {
             return;
         }
@@ -49,9 +50,16 @@ internal class AddRecipeEvent
         QuestAwaySync.Send(new AddRecipeDelta {
             RecipeId = id,
             Relayed = NetSession.Instance.Connection is ElinNetHost { IsZoneSession: true },
+            Learner = learner,
         });
-        NetSession.Instance.Connection?.Delta.AddRemote(new AddRecipeDelta {
-            RecipeId = id,
-        });
+
+        var told = new AddRecipeDelta { RecipeId = id, Learner = learner };
+        // teams learning on their own: a host tells only the learner's team
+        if (TeamKnowledge.On && NetSession.Instance.Connection is ElinNetHost host) {
+            TeamKnowledge.Tell(host, told, learner, int.MinValue);
+            return;
+        }
+
+        NetSession.Instance.Connection?.Delta.AddRemote(told);
     }
 }
