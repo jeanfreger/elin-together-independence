@@ -156,6 +156,14 @@ internal static class DialogFlagSync
         }
     }
 
+    /// <summary>
+    ///     What this game holds under that id now, null when it holds nothing there
+    /// </summary>
+    internal static int? ValueOf(string id)
+    {
+        return EClass.player is { } player && Read(player).TryGetValue(id, out var value) ? value : null;
+    }
+
     internal static void Learn(string id, int value)
     {
         if (EClass.player is not { } player) {

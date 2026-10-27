@@ -27,6 +27,11 @@ public class CardModCurrencyDelta : ElinDelta
             return;
         }
 
+        if (CurrencyId == "money" && Amount < 0) {
+            Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount));
+            Spent.RemoveAll(s => UnityEngine.Time.realtimeSinceStartup - s.At > SpentWindow);
+        }
+
         EmpLog.Debug("Mod currency {CurrencyId} by {CurrencyAmount} on chara {Uid}",
             CurrencyId, Amount, chara.uid);
 
@@ -41,6 +46,31 @@ public class CardModCurrencyDelta : ElinDelta
     };
 
     private static readonly System.Collections.Generic.Dictionary<(int Peer, string Id), (float Since, long Gained)> Gains = [];
+
+    // the gold each player paid lately: what it says it paid elsewhere (its debt) must have left its purse
+    private const float SpentWindow = 120f;
+    private static readonly System.Collections.Generic.List<(int Peer, float At, long Amount)> Spent = [];
+
+    /// <summary>
+    ///     Gold this player paid in the last two minutes, and forgets it (one payment pays one thing)
+    /// </summary>
+    internal static long TakeSpent(int peer, long wanted)
+    {
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        long found = 0;
+        for (var i = 0; i < Spent.Count && found < wanted; i++) {
+            if (Spent[i].Peer != peer || now - Spent[i].At > SpentWindow) {
+                continue;
+            }
+
+            var take = System.Math.Min(Spent[i].Amount, wanted - found);
+            found += take;
+            Spent[i] = (Spent[i].Peer, Spent[i].At, Spent[i].Amount - take);
+        }
+
+        Spent.RemoveAll(s => s.Amount <= 0);
+        return found;
+    }
 
     /// <summary>
     ///     A guest says what it gained or spent of its own currency (it trades and loots on its own maps). On a public
