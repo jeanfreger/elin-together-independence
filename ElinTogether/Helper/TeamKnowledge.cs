@@ -266,6 +266,18 @@ internal static class TeamKnowledge
     // ---- learning
 
     /// <summary>
+    ///     On the host, for a recipe or a codex change a guest relays for a player of the map it keeps: the player it
+    ///     names decides whose team's book it goes in, so it must be a player of this world (or the sender itself)
+    /// </summary>
+    internal static string? CheckLearner(int learner, Chara? sender)
+    {
+        return learner == 0 || learner == sender?.uid ||
+               EClass.game.cards.globalCharas.Find(learner) is { } chara && (chara.IsPC || chara.GetBool("remote_chara"))
+            ? null
+            : "the learner it names is no player";
+    }
+
+    /// <summary>
     ///     What that player learnt, the other learns: same team, or the box off. Learner 0: the world (the story),
     ///     every team
     /// </summary>
@@ -338,6 +350,36 @@ internal static class TeamKnowledge
                 Store(team, lore);
             }
         }
+    }
+
+    /// <summary>
+    ///     A recipe scroll another player reads is read twice: in its own game, which learns it and tells this one
+    ///     whose team it is, and in the game that runs its map, where it was "the player" (this game's team) who
+    ///     learnt it. There it only uses the scroll up
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitRecipe), nameof(TraitRecipe.OnRead))]
+    private static bool OnReadRecipe(TraitRecipe __instance, Chara c)
+    {
+        return ReadHere(__instance, c);
+    }
+
+    // (a random recipe of a kind: the reader's own game draws it)
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitRecipeCat), nameof(TraitRecipeCat.OnRead))]
+    private static bool OnReadRecipeCat(TraitRecipeCat __instance, Chara c)
+    {
+        return ReadHere(__instance, c);
+    }
+
+    private static bool ReadHere(Trait scroll, Chara reader)
+    {
+        if (!On || reader.IsPC || !reader.IsRemotePlayer || NetSession.Instance.Connection is not ElinNetHost) {
+            return true;
+        }
+
+        scroll.owner.ModNum(-1);
+        return false;
     }
 
     // RecipeManager.Add without the messages: once more, and the variants of a block learnt with it (pillar, bridge)

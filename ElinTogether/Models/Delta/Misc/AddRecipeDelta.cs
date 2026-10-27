@@ -34,6 +34,11 @@ public class AddRecipeDelta : ElinDelta
     /// </summary>
     internal static bool IsLanding { get; set; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return TeamKnowledge.CheckLearner(Learner, sender);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         // who learnt it: the sender itself on the host of the world, else as told (the visitor of a zone the sender

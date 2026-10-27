@@ -51,6 +51,11 @@ public class CodexDelta : ElinDelta
     [Key(4)]
     public int Learner { get; init; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return TeamKnowledge.CheckLearner(Learner, sender);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (string.IsNullOrEmpty(Id) || Num == 0 || Num is > 9999 or < -9999 || Kind > CodexKind.CardDrop || player?.codex is not { } codex) {
