@@ -304,6 +304,14 @@ internal partial class EmpConfig
             "Story quests stay shared. Otherwise there is one quest log and one fame for the whole group\n" +
             "随机任务、名声与业力归接任务的玩家所有，每人5个；主线任务仍然共享");
 
+        Server.OwnJournal = config.Bind(
+            "Server",
+            "OwnJournal",
+            true,
+            "Each player's journal tells about that player: its own message history and its own records (digging, deaths, nights slept) stay with it from trip to trip\n" +
+            "Otherwise a guest's journal shows the host's after each trip. The codex, kills and the world's dates stay shared\n" +
+            "每位玩家的日志记录自己的经历：自己的消息记录与个人纪录（挖掘、死亡、睡眠次数）在旅途中保留；图鉴、击杀数与世界日期仍然共享");
+
         Server.PlayerTrade = config.Bind(
             "Server",
             "PlayerTrade",
@@ -834,6 +842,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> DeleteCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> EnforceOwnership { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerTrade { get; set; } = null!;
+        internal static ConfigEntry<bool> OwnJournal { get; set; } = null!;
         internal static ConfigEntry<bool> PermadeathRevive { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerCombatTime { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerClock { get; set; } = null!;

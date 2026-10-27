@@ -86,7 +86,7 @@ internal static class SettingsTable
         EmpConfig.Server.SharedTax, EmpConfig.Server.TownLife, EmpConfig.Server.TownBoards,
         EmpConfig.Server.ShopsFromEveryPlayer, EmpConfig.Server.NearestSpawns, EmpConfig.Server.ActivitiesFromActor,
         EmpConfig.Server.AutoCombatPerPlayer, EmpConfig.Server.PlayersAtBase, EmpConfig.Server.SummonsFollowMaster,
-        EmpConfig.Server.GlobalChat,
+        EmpConfig.Server.GlobalChat, EmpConfig.Server.OwnJournal,
     ];
 
     internal static Choice WhoJoins => new("who_joins", ["anyone", "mods", "data", "both"],
@@ -305,6 +305,7 @@ internal static class SettingsTable
         yield return new("players_at_base", "fallbacks", true, EmpConfig.Server.PlayersAtBase);
         yield return new("summons_follow_master", "fallbacks", true, EmpConfig.Server.SummonsFollowMaster);
         yield return new("global_chat", "fallbacks", true, EmpConfig.Server.GlobalChat);
+        yield return new("own_journal", "fallbacks", true, EmpConfig.Server.OwnJournal);
 
         yield return new("world_time", "time_details", true, EmpConfig.Server.SharedWorldTime);
         yield return new("world_keeper", "time_details", true, EmpConfig.Server.WorldKeeper);
@@ -454,6 +455,7 @@ internal static class SettingsTable
             [EmpConfig.Server.PlayerKill] = r.AllowPlayerKill,
             [EmpConfig.Server.PlayerTrade] = r.AllowPlayerTrade,
             [EmpConfig.Server.PermadeathRevive] = r.PermadeathRevive,
+            [EmpConfig.Server.OwnJournal] = r.OwnJournal,
             [EmpConfig.Server.WorldCopy] = r.KeepWorldCopy,
             [EmpConfig.Server.Takeover] = r.AllowTakeover,
             [EmpConfig.Server.NightPasses] = r.NightPasses,

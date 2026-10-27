@@ -322,6 +322,13 @@ public class NetSessionRules
     [Key(121)]
     public bool PermadeathRevive { get; set; }
 
+    /// <summary>
+    ///     Each player's journal tells about that player: its message history and its own records stay its own over
+    ///     world copies (OwnSettings). An older host sends none: the guest shows the host's, as it did
+    /// </summary>
+    [Key(150)]
+    public bool OwnJournal { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -355,6 +362,7 @@ public class NetSessionRules
         NightPasses = EmpConfig.Server.NightPasses.Value,
         TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
         PermadeathRevive = EmpConfig.Server.PermadeathRevive.Value,
+        OwnJournal = EmpConfig.Server.OwnJournal.Value,
         TimeJumpsTogether = EmpConfig.Server.WorldMapTime.Value == WorldMapTime.TravelTogether,
         WorldMapTime = EmpConfig.Server.WorldMapTime.Value,
         DumpSparesBelt = EmpConfig.Server.DumpSparesBelt.Value,
