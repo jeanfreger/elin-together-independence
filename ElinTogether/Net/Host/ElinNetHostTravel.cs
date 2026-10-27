@@ -1060,18 +1060,36 @@ internal partial class ElinNetHost
         }
     }
 
+    /// <summary>
+    ///     Guest peer id -> the map it asked to join and the number its game knows it by, while the player holding
+    ///     that map is asked first, see GrantGuestLease
+    /// </summary>
+    private readonly Dictionary<int, (int ZoneUid, int RequestedUid)> _guestAsks = [];
+
     private void GrantGuestLease(Zone zone, ZoneLeaseRequest request, ISteamNetPeer peer, ISteamNetPeer holder)
     {
         _guests.Remove(peer.Id);
         _pendingGuests[peer.Id] = (zone.uid, holder.Id);
+        _guestAsks[peer.Id] = (zone.uid, request.ZoneUid);
 
-        EmpLog.Information("Player {@Peer} joins zone {ZoneFullName} held by {@Holder}",
+        EmpLog.Information("Player {@Peer} asks to join zone {ZoneFullName} held by {@Holder}",
             peer, zone.ZoneFullName, holder);
 
-        // the guest leaves its current place first (ack or release), then the holder expects it
-        peer.Send(new ZoneLeaseGrant {
+        // the holder is asked first, the guest still where it is: refused, it stays there. It used to leave its place
+        // first, and a refusal brought it back with the whole world (RefuseGuest, then SendRejoin). Asked again once
+        // the guest left its place, with where it stands, see OnZoneLeaseAck
+        SendGuestRequest(peer, zone.uid, holder.Id);
+    }
+
+    /// <summary>
+    ///     The holder expects the guest: the guest leaves its current place (ack or release), then the holder is told
+    ///     where it arrives
+    /// </summary>
+    private void SendGuestGrant(ISteamNetPeer guest, Zone zone, int requestedUid)
+    {
+        guest.Send(new ZoneLeaseGrant {
             ZoneUid = zone.uid,
-            RequestedUid = request.ZoneUid,
+            RequestedUid = requestedUid,
             UidRangeStart = 0,
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
@@ -1125,6 +1143,17 @@ internal partial class ElinNetHost
             return;
         }
 
+        // the first answer, the guest still where it was: now it goes
+        if (_guestAsks.Remove(guest.Id, out var ask)) {
+            if (game.spatials.Find(ask.ZoneUid) is not { } zone) {
+                RefuseGuest(guest, ready.ZoneUid);
+                return;
+            }
+
+            SendGuestGrant(guest, zone, ask.RequestedUid);
+            return;
+        }
+
         _guests[guest.Id] = _pendingGuests[guest.Id];
         _visitedHolder[guest.User] = _guests[guest.Id].HolderId;
         _pendingGuests.Remove(guest.Id);
@@ -1147,6 +1176,8 @@ internal partial class ElinNetHost
     private void RefuseGuest(ISteamNetPeer guest, int zoneUid)
     {
         _pendingGuests.Remove(guest.Id);
+        // still where it was (refused at the first question): it only hears no, see ElinNetClient.OnZoneLeaseDenied
+        _guestAsks.Remove(guest.Id);
 
         EmpLog.Information("Zone {ZoneUid} refused player {@Peer}, it returns to the host",
             zoneUid, guest);
@@ -1251,6 +1282,7 @@ internal partial class ElinNetHost
             _checkpointUidNext.Remove(peer.Id);
             // on its way to another player's map that never expected it: that answer, if it comes, is for nobody
             _pendingGuests.Remove(peer.Id);
+            _guestAsks.Remove(peer.Id);
 
             if (chara is { isDead: false } && soft) {
                 // no copy of the world: it stays on the map it handed back, see CompleteSoftRejoin
@@ -1322,7 +1354,12 @@ internal partial class ElinNetHost
     /// </summary>
     private void OnZoneLeaseDecline(ZoneLeaseDecline decline, ISteamNetPeer peer)
     {
-        _pendingGuests.Remove(peer.Id);
+        // only a visit of that very map: a player declining a map it was handed meanwhile is still on its way to the
+        // one it asked for
+        if (_pendingGuests.TryGetValue(peer.Id, out var going) && going.ZoneUid == decline.ZoneUid) {
+            _pendingGuests.Remove(peer.Id);
+            _guestAsks.Remove(peer.Id);
+        }
 
         if (!_leases.TryGetValue(peer.Id, out var zones) || !zones.Remove(decline.ZoneUid)) {
             return;
@@ -1696,6 +1733,7 @@ internal partial class ElinNetHost
         _departed.Remove(peer.Id);
         _departedAt.Remove(peer.Id);
         _pendingGuests.Remove(peer.Id);
+        _guestAsks.Remove(peer.Id);
         _guests.Remove(peer.Id);
         _softRejoins.Remove(peer.Id);
 
