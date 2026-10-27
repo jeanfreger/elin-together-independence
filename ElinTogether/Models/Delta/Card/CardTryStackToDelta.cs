@@ -17,6 +17,16 @@ public class CardTryStackToDelta : ElinDelta
     [Key(2)]
     public required RemoteCard? Parent { get; init; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return NoCharacter(sender) ?? NotReachable(sender, Card) ?? NotReachable(sender, To);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Card);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Card.Find() is not { isDestroyed: false } card) {

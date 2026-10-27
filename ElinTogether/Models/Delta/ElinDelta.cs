@@ -250,6 +250,35 @@ public abstract class ElinDelta : EClass
     }
 
     /// <summary>
+    ///     A thing the sender may move, take, wear or put away (security audit 2026-10-27: other bags, merchants and
+    ///     chests were open from anywhere): in its own bag or a companion's, or on this map within a few steps of it,
+    ///     on the floor or in a container there. A thing not found, or kept outside every map (the world's boxes), is
+    ///     left to the delta
+    /// </summary>
+    protected static string? NotReachable(Chara? sender, RemoteCard? card)
+    {
+        if (sender is null || card?.Find() is not Thing thing) {
+            return null;
+        }
+
+        var root = thing.GetRootCard();
+        if (root is Chara holder) {
+            return OwnsOrCompanion(sender, holder) ? null : $"thing {thing.uid} is held by {holder.uid}";
+        }
+
+        if (root?.parent is not Zone || root.pos is not { IsValid: true } at) {
+            return null;
+        }
+
+        return sender.currentZone == root.parent && sender.pos.Distance(at) <= ReachTiles
+            ? null
+            : $"thing {thing.uid} is out of the sender's reach";
+    }
+
+    // what a player reaches on a map: next to it, plus the steps a lagging game may not have shown yet
+    private const int ReachTiles = 6;
+
+    /// <summary>
     ///     The target is the sender itself, its companion, or the summon of one of them
     /// </summary>
     internal static bool OwnsOrCompanion(Chara sender, Chara target)

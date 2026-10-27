@@ -21,6 +21,16 @@ public class CharaEquipDelta : ElinDelta
     [Key(4)]
     public required bool Equip { get; init; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return NoCharacter(sender) ?? NotOwned(sender, Owner, "wearer") ?? NotReachable(sender, Thing);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Thing);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Owner.Find() is not Chara chara || Thing.Find() is not Thing { isDestroyed: false } thing) {

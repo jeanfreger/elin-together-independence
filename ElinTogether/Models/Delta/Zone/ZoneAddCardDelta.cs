@@ -16,6 +16,31 @@ public class ZoneAddCardDelta : ElinDelta
     [Key(2)]
     public required Position Pos { get; init; }
 
+    /// <summary>
+    ///     A guest puts down what it holds or what it reaches, on the map it is on; never a character but its own or
+    ///     its companions', never into another zone (security audit 2026-10-27: any card went anywhere, gone in an
+    ///     unloaded zone)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (NoCharacter(sender) is { } none) {
+            return none;
+        }
+
+        if (ZoneUid != _zone.uid) {
+            return $"card {Card.Uid} sent to zone {ZoneUid}, not this map";
+        }
+
+        return Card.Find() is Chara target
+            ? OwnsOrCompanion(sender!, target) ? null : $"character {target.uid} is not the sender's"
+            : NotReachable(sender, Card);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Card);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (game?.activeZone?.map is null) {

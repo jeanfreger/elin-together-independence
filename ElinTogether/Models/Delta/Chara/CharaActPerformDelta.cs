@@ -92,6 +92,24 @@ public class CharaActPerformDelta : ElinDelta
         };
     }
 
+    /// <summary>
+    ///     A guest acts as itself or its companions, with an act the actor has (or one of the game's own built-in acts,
+    ///     or with a tool): any character, any act, a Wish nobody had, were taken (security audit 2026-10-27)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if ((NoCharacter(sender) ?? NotOwned(sender, Owner, "actor")) is { } why) {
+            return why;
+        }
+
+        if (Tool is not null || _builtInMapping.ContainsKey(ActId) || Owner.Find() is not Chara actor ||
+            actor.elements.GetElement(ActId) is not null) {
+            return null;
+        }
+
+        return $"act {ActId} is not one of {actor.uid}'s";
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         ApplyBuiltInMapping();

@@ -29,6 +29,22 @@ public class CardAddThingDelta : ElinDelta
     [Key(5)]
     public int Shipper { get; set; }
 
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        // (already where it is put: the gift or trade that moved it was checked on its own, this is the sender's game
+        // telling the same move after it)
+        if (Thing.Find() is Thing { } moved && Parent.Find() is { } into && moved.GetRootCard() == into.GetRootCard()) {
+            return null;
+        }
+
+        return NoCharacter(sender) ?? NotReachable(sender, Thing) ?? NotReachable(sender, Parent);
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        SendBack(host, Thing);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         var found = Thing.Find();
