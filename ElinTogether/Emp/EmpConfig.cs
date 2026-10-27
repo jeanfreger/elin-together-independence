@@ -500,8 +500,8 @@ internal partial class EmpConfig
             "Server",
             "TimeStopsWhenEmpty",
             true,
-            "While no player is connected and active (the host counts unless it is away from the keyboard; a -empserver game never does), the date of the world stands still. Otherwise time goes on as before\n" +
-            "没有在线且未离开的玩家时（房主未离开也算；-empserver 服务器本身不算），世界的日期停止；关闭时时间照常流逝");
+            "While no player is connected and active (the host counts unless it is away from the keyboard; a -empserver game never does), the date of the world stands still; so does the map of a player alone there and away from the keyboard. Otherwise time goes on as before\n" +
+            "没有在线且未离开的玩家时（房主未离开也算；-empserver 服务器本身不算），世界的日期停止；独自在自己地图上的玩家离开时，那张地图的时间也停止；关闭时时间照常流逝");
         // a config from before this rule keeps its time going (a new install stops it)
         if (Regex.IsMatch(before, @"^\s*\[Server\]", RegexOptions.Multiline) &&
             !Regex.IsMatch(before, @"^\s*TimeStopsWhenEmpty\s*=", RegexOptions.Multiline)) {

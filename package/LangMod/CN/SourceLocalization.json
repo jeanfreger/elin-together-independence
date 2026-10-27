@@ -488,7 +488,7 @@
     "LangGeneral.emp_ui_host_closed.text": "房主关闭了游戏，本次联机已结束。",
     "LangGeneral.emp_ui_host_left_waiting.text": "房主离开了游戏，正在等待其返回…",
     "LangGeneral.emp_ui_sv_cfg_time_stops_empty.text": "无人游玩时时间停止",
-    "LangGeneral.emp_ui_sv_desc_time_stops_empty.text": "没有在线且未离开的玩家时（房主未离开也算），世界的日期停止。关闭：时间照常流逝。",
+    "LangGeneral.emp_ui_sv_desc_time_stops_empty.text": "没有在线且未离开的玩家时（房主未离开也算），世界的日期停止；独自在自己地图上的玩家离开时，那张地图的时间也停止。关闭：时间照常流逝。",
     "LangGeneral.emp_dc_host_kick_why.text": "断开连接：被主机踢出（{0}）",
     "LangGeneral.emp_dc_banned.text": "你已被此世界封禁。",
     "LangGeneral.emp_dc_banned_why.text": "你已被此世界封禁：{0}",
