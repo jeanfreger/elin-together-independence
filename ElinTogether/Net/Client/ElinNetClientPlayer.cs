@@ -75,10 +75,13 @@ internal partial class ElinNetClient
     private void ShowCharaChoice(SessionCharaSelectRequest request, string? notice = null)
     {
         var rows = request.Charas
-            // (dead in a permadeath world: shown, waiting for a revive at a bartender, not playable)
-            .Select(c => c.Dead
-                ? new ChoiceRow(c.Label + " " + "emp_ui_chara_dead_tag".lang(), null)
-                : new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid })))
+            // (dead in a permadeath world: shown, waiting for a revive at a bartender, not playable; in a solo save:
+            // shown, not playable until it comes back)
+            .Select(c => c.Away is { } away
+                ? new ChoiceRow(c.Label + " " + "emp_ui_chara_away_tag".lang(away), null)
+                : c.Dead
+                    ? new ChoiceRow(c.Label + " " + "emp_ui_chara_dead_tag".lang(), null)
+                    : new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid })))
             .ToList();
 
         // then, in this order: a character from one of my saves (if the host allows it), a new character
@@ -90,8 +93,17 @@ internal partial class ElinNetClient
         rows.Add(new ChoiceRow("emp_ui_chara_new".lang(), () => Host.Send(new SessionCharaSelectResponse { Uid = 0 }), true));
 
         // then deleting one of them, when the host allows it
-        if (request.AllowDelete && request.Charas.Count > 0) {
+        if (request.AllowDelete && request.Charas.Any(c => c.Away is null)) {
             rows.Add(new ChoiceRow("emp_ui_chara_delete".lang(), () => ShowDeleteChoice(request), true));
+        }
+
+        // taking one to a solo save, when the host allows it; bringing back one that is there, always
+        if (request.AllowExport && request.Charas.Any(c => c.Away is null && !c.Dead)) {
+            rows.Add(new ChoiceRow("emp_ui_chara_export".lang(), () => ShowExportChoice(request), true));
+        }
+
+        if (request.Charas.Any(c => c.Away is not null)) {
+            rows.Add(new ChoiceRow("emp_ui_chara_recall".lang(), () => ShowRecallChoice(request), true));
         }
 
         var title = "emp_ui_chara_pick".lang();
@@ -110,7 +122,7 @@ internal partial class ElinNetClient
     /// </summary>
     private void ShowDeleteChoice(SessionCharaSelectRequest request)
     {
-        var rows = request.Charas.Select(target => new ChoiceRow(target.Label, () =>
+        var rows = request.Charas.Where(c => c.Away is null).Select(target => new ChoiceRow(target.Label, () =>
             Dialog.YesNo("emp_ui_chara_delete_confirm".lang(target.Label), () => {
                 Host.Send(new SessionCharaSelectResponse {
                     Uid = target.Uid,
@@ -118,6 +130,82 @@ internal partial class ElinNetClient
                 });
             }, () => ShowCharaChoice(request, request.Notice)))).ToList();
         ShowRowList("emp_ui_chara_delete".lang(), rows, () => ShowCharaChoice(request, request.Notice));
+    }
+
+    /// <summary>
+    ///     Which character goes to a solo save, then which save, then "really?" (the save's own character is
+    ///     replaced, a copy of the save is kept): back to the list for anything but yes
+    /// </summary>
+    private void ShowExportChoice(SessionCharaSelectRequest request)
+    {
+        var rows = request.Charas.Where(c => c.Away is null && !c.Dead)
+            .Select(target => new ChoiceRow(target.Label, () => ShowExportSaveChoice(request, target)))
+            .ToList();
+        rows.Add(new ChoiceRow("", null));
+        rows.Add(new ChoiceRow("emp_ui_chara_import_back".lang(), () => ShowCharaChoice(request), true));
+        ShowRowList("emp_ui_chara_export_pick".lang(), rows, () => ShowCharaChoice(request));
+    }
+
+    // the character and the save the player chose, until the host's copy comes (OnSessionCharaExportData)
+    private (int Uid, GameIndex Save)? _pendingExport;
+
+    private void ShowExportSaveChoice(SessionCharaSelectRequest request, SessionCharaEntry target)
+    {
+        var saves = CharaImport.Saves();
+        if (saves.Count == 0) {
+            ShowCharaChoice(request, "emp_ui_chara_import_none");
+            return;
+        }
+
+        var rows = saves.Select(save => new ChoiceRow(CharaImport.Label(save), () =>
+            Dialog.YesNo("emp_ui_chara_export_confirm".lang(target.Label, CharaImport.Label(save)), () => {
+                _pendingExport = (target.Uid, save);
+                EmpLog.Information("Taking chara {Uid} to save {Id}", target.Uid, save.id);
+                Host.Send(new SessionCharaExportRequest {
+                    Uid = target.Uid,
+                    Save = CharaImport.Label(save),
+                });
+            }, () => ShowCharaChoice(request, request.Notice)))).ToList();
+        rows.Add(new ChoiceRow("", null));
+        rows.Add(new ChoiceRow("emp_ui_chara_import_back".lang(), () => ShowCharaChoice(request), true));
+        ShowRowList("emp_ui_chara_export_save".lang(), rows, () => ShowCharaChoice(request));
+    }
+
+    /// <summary>
+    ///     Which character in a solo save to bring back as it left, then "really?"
+    /// </summary>
+    private void ShowRecallChoice(SessionCharaSelectRequest request)
+    {
+        var rows = request.Charas.Where(c => c.Away is not null).Select(target => new ChoiceRow(target.Label, () =>
+            Dialog.YesNo("emp_ui_chara_recall_confirm".lang(target.Label), () => {
+                Host.Send(new SessionCharaExportRequest {
+                    Uid = target.Uid,
+                    Recall = true,
+                });
+            }, () => ShowCharaChoice(request, request.Notice)))).ToList();
+        rows.Add(new ChoiceRow("", null));
+        rows.Add(new ChoiceRow("emp_ui_chara_import_back".lang(), () => ShowCharaChoice(request), true));
+        ShowRowList("emp_ui_chara_recall".lang(), rows, () => ShowCharaChoice(request));
+    }
+
+    /// <summary>
+    ///     Net event: the host's copy of the character that leaves. A copy of the solo save first, then the character
+    ///     beside it; the host is told either way (not written: it never left)
+    /// </summary>
+    private void OnSessionCharaExportData(SessionCharaExportData data)
+    {
+        var asked = _pendingExport is { } pending && pending.Uid == data.Uid ? pending.Save : null;
+        _pendingExport = null;
+        if (asked is null) {
+            EmpLog.Warning("Received chara {Uid} to take to a solo save, which this player did not ask for", data.Uid);
+        }
+
+        var written = asked is not null && CharaExport.Write(asked, data);
+        Host.Send(new SessionCharaExportResult {
+            Uid = data.Uid,
+            Token = data.Token,
+            Written = written,
+        });
     }
 
     private void ShowSaveChoice(SessionCharaSelectRequest request)

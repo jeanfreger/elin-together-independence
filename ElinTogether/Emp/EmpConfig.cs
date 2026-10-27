@@ -741,6 +741,14 @@ internal partial class EmpConfig
             "Not its companions, base, quests or bank. Its save is only read, never changed\n" +
             "加入的玩家可以带来自己存档中的角色：角色本身、装备、背包、金币、声望和业力；不包括同伴、据点、任务和银行。存档只被读取，不会被修改");
 
+        Server.ExportCharacter = config.Bind(
+            "Server",
+            "ExportCharacter",
+            false,
+            "In the list of its characters, a joining player can take one of them to one of its own solo saves, where it replaces the save's character (a copy of the save is made first)\n" +
+            "The character leaves this world until it comes back through \"bring a character from a save\", or is brought back unchanged. Only with ImportCharacter on\n" +
+            "加入的玩家可以在角色列表中把自己的某个角色带到自己的单人存档中，替换该存档的角色（会先备份存档）。角色离开这个世界，直到通过导入角色带回或原样召回。仅在允许导入角色时有效");
+
         Server.DeleteCharacter = config.Bind(
             "Server",
             "DeleteCharacter",
@@ -910,6 +918,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;
         internal static ConfigEntry<bool> ImportCharacter { get; set; } = null!;
+        internal static ConfigEntry<bool> ExportCharacter { get; set; } = null!;
 
         internal static ConfigEntry<bool> DeleteCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> EnforceOwnership { get; set; } = null!;

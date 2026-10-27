@@ -589,5 +589,21 @@
     "LangGeneral.emp_team_chapter_250.text": "向阿什报告了",
     "LangGeneral.emp_team_chapter_300.text": "遇见了法里斯",
     "LangGeneral.emp_team_chapter_600.text": "奈梅尔之后",
-    "LangGeneral.emp_team_chapter_700.text": "阿什离开了家"
+    "LangGeneral.emp_team_chapter_700.text": "阿什离开了家",
+    "LangGeneral.emp_ui_sv_cfg_export_chara.text": "好友可以把角色带到单人存档",
+    "LangGeneral.emp_ui_sv_desc_export_chara.text": "好友可以在角色列表中把角色带到自己的单人存档，下次读取该存档时替换存档中的角色（会先备份存档）。角色离开这个世界，直到从该存档带回或原样召回为止。仅在允许带来存档角色时有效。关闭：不能带走。",
+    "LangGeneral.emp_ui_chara_export.text": "把角色带到单人存档…",
+    "LangGeneral.emp_ui_chara_export_pick.text": "要把哪个角色带到单人存档？",
+    "LangGeneral.emp_ui_chara_export_save.text": "带到哪个存档？该存档中的角色将被替换。",
+    "LangGeneral.emp_ui_chara_export_confirm.text": "#1 将离开这个世界，前往 #2。会先备份该存档。下次读取该存档时，#1 将替换其中的角色，原角色只保留在备份中。在从该存档带回之前，#1 不能在这里游玩。确定吗？",
+    "LangGeneral.emp_ui_chara_exported.text": "角色正在单人存档中等你：请在标题画面读取该存档。",
+    "LangGeneral.emp_ui_chara_export_fail.text": "无法把角色带到该存档，角色留在这个世界。",
+    "LangGeneral.emp_ui_chara_export_stale.text": "这个角色的旅行已经结束（已召回或已返回），不能再次带来。",
+    "LangGeneral.emp_ui_chara_away_tag.text": "（在单人存档中：#1）",
+    "LangGeneral.emp_ui_chara_away.text": "这个角色在单人存档中。",
+    "LangGeneral.emp_ui_chara_recall.text": "原样召回…",
+    "LangGeneral.emp_ui_chara_recall_confirm.text": "按离开时的样子召回 #1？单人存档中的那个角色将再也不能来到这里。",
+    "LangGeneral.emp_ui_chara_recalled.text": "角色已按离开时的样子召回。",
+    "LangGeneral.emp_ui_chara_export_arrived.text": "#1 从合作世界来到这里，替换了该存档的角色（原存档保存在备份中）。",
+    "LangGeneral.emp_ui_chara_export_load_fail.text": "无法把来自合作世界的角色放入该存档。存档保持原样，角色在 ElinMP/Incoming 中等待。"
 }
