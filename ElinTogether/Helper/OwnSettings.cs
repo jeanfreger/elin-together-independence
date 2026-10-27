@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
+using ElinTogether.Net;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -99,6 +100,11 @@ internal static class OwnSettings
                 SeedShrine = player.seedShrine,
                 LittleSaved = player.little_saved,
                 LittleDead = player.little_dead,
+                Log = EClass.game.log,
+                Digs = player.stats.digs,
+                Deaths = player.stats.death,
+                EarlyDeaths = player.stats.death2,
+                Slept = player.stats.slept,
                 Ability = EClass.game.altAbility && EClass.ui.IsAbilityOpen,
                 ZoomOut = ActionMode.Adv?.zoomOut2 ?? false,
             };
@@ -200,6 +206,19 @@ internal static class OwnSettings
             player.seedShrine = kept?.SeedShrine ?? 0;
             player.little_saved = kept?.LittleSaved ?? 0;
             player.little_dead = kept?.LittleDead ?? 0;
+            // the journal tells about this player (council 2026-10-28, OwnJournal): its own message history, not the
+            // host's last lines (a first time in this world: none yet)
+            if (NetSession.Instance.Rules.OwnJournal) {
+                EClass.game.log = kept?.Log ?? new MsgLog { id = "log" };
+                // and its own records, counted by the game only for its own character: blocks dug (hall of fame),
+                // deaths (a dialog reads them), nights slept (also the seed of the recipe it dreams of). Kills stay
+                // the world's: the game counts the whole faction's, and a story quest reads them (QuestDefense)
+                player.stats.digs = kept?.Digs ?? 0;
+                player.stats.death = kept?.Deaths ?? 0;
+                player.stats.death2 = kept?.EarlyDeaths ?? 0;
+                player.stats.slept = kept?.Slept ?? 0;
+            }
+
             if (kept is null) {
                 return;
             }
@@ -454,6 +473,13 @@ internal static class OwnSettings
         public int SeedShrine;
         public int LittleSaved;
         public int LittleDead;
+
+        // the message history (the journal's log), see OwnJournal
+        public MsgLog? Log;
+        public int Digs;
+        public int Deaths;
+        public int EarlyDeaths;
+        public int Slept;
 
         // the game these were noted from: not noted twice
         [JsonIgnore]
