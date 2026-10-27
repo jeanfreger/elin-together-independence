@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
+using ElinTogether.Net;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -99,6 +100,7 @@ internal static class OwnSettings
                 SeedShrine = player.seedShrine,
                 LittleSaved = player.little_saved,
                 LittleDead = player.little_dead,
+                Log = EClass.game.log,
                 Ability = EClass.game.altAbility && EClass.ui.IsAbilityOpen,
                 ZoomOut = ActionMode.Adv?.zoomOut2 ?? false,
             };
@@ -200,6 +202,12 @@ internal static class OwnSettings
             player.seedShrine = kept?.SeedShrine ?? 0;
             player.little_saved = kept?.LittleSaved ?? 0;
             player.little_dead = kept?.LittleDead ?? 0;
+            // the journal tells about this player (council 2026-10-28, OwnJournal): its own message history, not the
+            // host's last lines (a first time in this world: none yet)
+            if (NetSession.Instance.Rules.OwnJournal) {
+                EClass.game.log = kept?.Log ?? new MsgLog { id = "log" };
+            }
+
             if (kept is null) {
                 return;
             }
@@ -454,6 +462,9 @@ internal static class OwnSettings
         public int SeedShrine;
         public int LittleSaved;
         public int LittleDead;
+
+        // the message history (the journal's log), see OwnJournal
+        public MsgLog? Log;
 
         // the game these were noted from: not noted twice
         [JsonIgnore]
