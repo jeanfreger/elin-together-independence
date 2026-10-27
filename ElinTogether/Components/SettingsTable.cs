@@ -267,6 +267,7 @@ internal static class SettingsTable
         yield return new("player_kill", "together", true, EmpConfig.Server.PlayerKill, Under: "fights");
         yield return new("guest_bouts", "together", true, EmpConfig.Server.GuestBouts);
         yield return new("duel_arena", "together", true, EmpConfig.Server.DuelArena, Requires: () => EmpConfig.Server.Duels.Value, Under: "fights");
+        yield return new("duel_bets", "together", true, EmpConfig.Server.DuelBets, Requires: () => EmpConfig.Server.Duels.Value, Under: "fights");
         yield return new("player_trade", "friends", true, EmpConfig.Server.PlayerTrade);
         yield return new("follow", "friends", true, EmpConfig.Server.Follow);
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
@@ -455,6 +456,7 @@ internal static class SettingsTable
             [EmpConfig.Server.Duels] = r.AllowDuels,
             [EmpConfig.Server.GuestBouts] = r.GuestBouts,
             [EmpConfig.Server.DuelArena] = r.DuelArena,
+            [EmpConfig.Server.DuelBets] = r.DuelBets,
             [EmpConfig.Server.PlayerKill] = r.AllowPlayerKill,
             [EmpConfig.Server.PlayerTrade] = r.AllowPlayerTrade,
             [EmpConfig.Server.PermadeathRevive] = r.PermadeathRevive,

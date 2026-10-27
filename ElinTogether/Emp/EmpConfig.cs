@@ -272,6 +272,14 @@ internal partial class EmpConfig
             "Potions, arrows and charges used during the duel stay spent\n" +
             "玩家可以通过对方角色的菜单发起决斗：不会有人死亡，结束时双方恢复，没有任何损失；决斗中使用的药水、箭矢和充能不会返还");
 
+        Server.DuelBets = config.Bind(
+            "Server",
+            "DuelBets",
+            false,
+            "Bets: the challenger of a duel names a stake in gold (none, 100, 1,000 or as much as the poorer of the two has), shown in the box the other one answers; both put it down, the winner takes both\n" +
+            "The stakes go back to each one when the duel ends without a winner (a player leaves or drops out, the game stops); giving up loses them. Otherwise no stakes\n" +
+            "赌注：发起决斗的一方指定金币赌注（无、100、1000 或两人中较少一方的全部金币），显示在对方回答的对话框中；双方各自押上，胜者全拿；决斗没有胜者时（玩家离开、掉线、游戏停止）赌注退还给各自，认输则失去赌注。关闭时没有赌注");
+
         Server.DuelArena = config.Bind(
             "Server",
             "DuelArena",
@@ -803,6 +811,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> Duels { get; set; } = null!;
         internal static ConfigEntry<bool> GuestBouts { get; set; } = null!;
         internal static ConfigEntry<bool> DuelArena { get; set; } = null!;
+        internal static ConfigEntry<bool> DuelBets { get; set; } = null!;
         internal static ConfigEntry<bool> PersonalQuests { get; set; } = null!;
         internal static ConfigEntry<bool> ChooseCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> AutoReconnect { get; set; } = null!;

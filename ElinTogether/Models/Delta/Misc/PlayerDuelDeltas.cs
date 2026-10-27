@@ -22,6 +22,12 @@ public class DuelIntentDelta : ElinDelta
     [Key(2)]
     public int PartnerUid { get; set; }
 
+    /// <summary>
+    ///     A challenge: the stake each one puts down, 0 none, -1 as much as the poorer one has (PlayerDuel, step 7)
+    /// </summary>
+    [Key(3)]
+    public int Bet { get; set; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host && host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var from)) {
@@ -84,6 +90,12 @@ public class DuelStateDelta : ElinDelta
 
     [Key(10)]
     public int[]? ReturnB { get; set; }
+
+    /// <summary>
+    ///     The stake each duellist puts down, in gold (0: none)
+    /// </summary>
+    [Key(11)]
+    public int Bet { get; set; }
 
     protected override void OnApply(ElinNetBase net)
     {

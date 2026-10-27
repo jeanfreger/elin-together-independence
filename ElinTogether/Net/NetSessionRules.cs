@@ -336,6 +336,13 @@ public class NetSessionRules
     [Key(1031)]
     public bool DuelArena { get; set; }
 
+    /// <summary>
+    ///     Council 7, step 7: the challenger of a duel names a stake in gold, both put it down, the winner takes both;
+    ///     given back when the duel ends without a winner (see PlayerDuel). Off: no stakes
+    /// </summary>
+    [Key(1032)]
+    public bool DuelBets { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -377,6 +384,7 @@ public class NetSessionRules
         AllowDuels = EmpConfig.Server.Duels.Value,
         GuestBouts = EmpConfig.Server.GuestBouts.Value,
         DuelArena = EmpConfig.Server.DuelArena.Value,
+        DuelBets = EmpConfig.Server.DuelBets.Value,
         AllowPlayerKill = EmpConfig.Server.PlayerKill.Value,
         AllowGuestBuild = EmpConfig.Server.GuestBuild.Value,
         UseSharedSpeed = EmpConfig.Server.SharedAverageSpeed.Value,

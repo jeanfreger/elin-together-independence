@@ -547,5 +547,17 @@
     "LangGeneral.emp_ui_sv_desc_duel_arena.text": "与主机的决斗被接受后，主机会创建一块场地作为竞技场并前往，另一名玩家随后跟来；决斗结束后双方各自回到原来的位置。其他两名玩家之间的决斗仍在原地进行。",
     "LangGeneral.emp_duel_arena_go.text": "{0} 和 {1} 前往竞技场。",
     "LangGeneral.emp_duel_arena_host.text": "竞技场只用于主机的决斗：这场决斗在原地进行。",
-    "LangGeneral.emp_duel_arena_late.text": "对手没有到达竞技场：决斗取消。"
+    "LangGeneral.emp_duel_arena_late.text": "对手没有到达竞技场：决斗取消。",
+    "LangGeneral.emp_ui_sv_cfg_duel_bets.text": "决斗赌注",
+    "LangGeneral.emp_ui_sv_desc_duel_bets.text": "发起决斗的一方指定金币赌注（无、100、1,000 或两人中较少一方的全部金币），对方回答时可以看到；双方各自押上，胜者全拿。决斗没有胜者时（玩家离开、掉线、游戏停止）赌注退还给各自；认输则失去赌注。",
+    "LangGeneral.emp_duel_stake.text": "赌注",
+    "LangGeneral.emp_duel_stake_none.text": "不下注",
+    "LangGeneral.emp_duel_stake_gold.text": "{0} 金币",
+    "LangGeneral.emp_duel_stake_all.text": "双方能押上的全部",
+    "LangGeneral.emp_duel_invite_bet.text": "{0} 以每人 {1} 金币的赌注向你发起决斗。不会有人死亡，但用掉的东西不会返还。接受吗？",
+    "LangGeneral.emp_duel_asked_bet.text": "你以每人 {1} 金币的赌注向 {0} 发起了决斗……",
+    "LangGeneral.emp_duel_paid.text": "你押上了 {0} 金币的赌注。",
+    "LangGeneral.emp_duel_pot.text": "你赢得了赌注：{0} 金币！",
+    "LangGeneral.emp_duel_refund.text": "你的赌注已退还。",
+    "LangGeneral.emp_duel_unpaid.text": "赌注没有凑齐：决斗取消。"
 }
