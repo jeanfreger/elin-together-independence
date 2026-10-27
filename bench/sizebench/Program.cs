@@ -35,9 +35,10 @@ Bench.Run(players, npcs);
 
 internal static class Bench
 {
-    // as SteamNetSerializer (the Steam resolver only knows UserData/LobbyData, not used by what is measured here)
+    // as SteamNetSerializer
     private static readonly MessagePackSerializerOptions Options =
-        MessagePackSerializerOptions.Standard.WithResolver(StandardResolver.Instance);
+        MessagePackSerializerOptions.Standard.WithResolver(CompositeResolver.Create(
+            ElinTogether.Helper.Steam.SteamDataResolver.Default, StandardResolver.Instance));
 
     // a lived-in world: card uids in the hundreds of thousands, the zone uid a few hundred
     private const int ZoneUid = 412;
@@ -65,6 +66,9 @@ internal static class Bench
 
         Section("WorldStateDeltaList, one step of every player (CharaMoveDelta)");
         Compare(Old(OldMoves(charas.Take(players))), Size(Moves(charas.Take(players))));
+
+        Section($"SessionPlayersSnapshot, {players} players on one map (every 2 s to every peer)");
+        Compare(Old(OldPlayers(players)), Size(Players(players)));
 
         Section("Game time on an idle map (players on their own clock, the default)");
         // a WorldStateDeltaList with one GameDelta, sent at every 50 Hz flush (the host makes one per frame), plus
@@ -121,6 +125,26 @@ internal static class Bench
         })],
     };
 
+    internal static ElinTogether.Models.SessionPlayersSnapshot Players(int players) => new() {
+        Current = [..Enumerable.Range(0, players).Select(i => new ElinTogether.Net.NetPeerState {
+            Index = i,
+            User = 76561198000000000UL + (ulong)i,
+            CharaUid = 1000 + i,
+            Speed = 70 + i,
+            LastAct = 3,
+            LastReceivedTick = 123_456,
+            LastPingMs = 40 + i,
+            AvgPingMsWire = 41 + i,
+            ConnectionQualityLocalWire = 99,
+            ConnectionQualityRemoteWire = 99,
+        })],
+        Sums = new() {
+            ZoneUid = ZoneUid, Charas = 48, CharaMix = 123456789, Things = 900, ThingMix = -987654321,
+            Bags = Enumerable.Range(0, players).ToDictionary(i => 1000 + i, i => 1_000_000_000 + i), Locals = 40,
+            LocalMix = 55555555,
+        },
+    };
+
     // ---- the old shapes, field by field as the generated formatters wrote them
 
     internal static object?[] OldCard(int uid, byte type, int num = 1) => [uid, type, null, null, num];
@@ -136,6 +160,18 @@ internal static class Bench
 
     internal static object?[] OldSnapshot(IEnumerable<Chara> charas) =>
         [123_456, new object[] { 2026, 7, 14, 13, 27, 0 }, charas.Select(OldChara).ToArray<object?>(), 2_345_678, 0];
+
+    // NetPeerState with float ping and qualities; MapSums
+    internal static object?[] OldPlayers(int players) => [
+        Enumerable.Range(0, players).Select(i => (object?)new object?[] {
+            i, 76561198000000000UL + (ulong)i, 1000 + i, 70 + i, 3, 123_456, 40 + i, 41.37f + i, 0.987f, 0.993f, false,
+            false, false,
+        }).ToArray(),
+        new object?[] {
+            ZoneUid, 48, 123456789, 900, -987654321,
+            Enumerable.Range(0, players).ToDictionary(i => 1000 + i, i => 1_000_000_000 + i), 40, 55555555,
+        },
+    ];
 
     // union [id, [Owner, Pos, MoveType, ZoneUid]]
     internal static object?[] OldMoves(IEnumerable<Chara> charas) =>

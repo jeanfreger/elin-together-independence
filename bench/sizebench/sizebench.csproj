@@ -19,6 +19,10 @@
             <HintPath>..\..\_out\ElinTogether.dll</HintPath>
             <Private>false</Private>
         </Reference>
+        <Reference Include="Heathen.Steamworks">
+            <HintPath>$(ElinManaged)\Heathen.Steamworks.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
         <Reference Include="Elin">
             <HintPath>$(ElinManaged)\Elin.dll</HintPath>
             <Private>false</Private>
