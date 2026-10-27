@@ -126,6 +126,10 @@ public class SteamNetLobbyManager : EClass
         lobbyType = ELobbyType.k_ELobbyTypePrivateUnique;
 #endif
 
+        if (Signs) {
+            maxPlayers = Math.Max(maxPlayers, OfficialServer.MaxPlayers);
+        }
+
         SteamMatchmaking.CreateLobby(lobbyType, maxPlayers);
     }
 
@@ -311,6 +315,14 @@ public class SteamNetLobbyManager : EClass
         Current[EmpLobbyData.World] = WorldHandover.WorldKey;
         Current[EmpLobbyData.Handover] = ElinNetHost.HandoverNumber.ToString();
 
+        Current[EmpLobbyData.Public] = OpenToAll ? "1" : "0";
+
+        // the project's own public game: shown first and as official in everyone's list
+        if (Signs && OfficialServer.Sign(Current.SteamId.m_SteamID) is { } signature) {
+            Current[OfficialServer.SignatureKey] = signature;
+            EmpLog.Information("Lobby signed as the official Elin Together server");
+        }
+
         // the mods of the game, for who looks at the list of games before joining
         if (EmpConfig.Server.PublishMods.Value) {
             Current[EmpLobbyData.Mods] = ModList.Compact;
@@ -459,6 +471,9 @@ public class SteamNetLobbyManager : EClass
     ///     itself (depot, shared world): those let only the accounts of their world in
     /// </summary>
     internal bool OpenToAll => EmpConfig.Server.PublicGame.Value && !_quiet;
+
+    // a game anyone can join, hosted by the Elin Together account with its key (OfficialServer)
+    private bool Signs => (OpenToAll || EmpServer.Requested) && OfficialServer.CanHost();
 
     /// <summary>
     ///     A session opened by itself lets the accounts of its world in. A session opened by hand never does

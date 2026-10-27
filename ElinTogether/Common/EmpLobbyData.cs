@@ -18,4 +18,9 @@ public static class EmpLobbyData
     public const string World = "EmpWorld";
 
     public const string Handover = "EmpHandover";
+
+    /// <summary>
+    ///     "1" when anyone who finds the game can join it (PublicGame), "0" for the host's friends and invited players
+    /// </summary>
+    public const string Public = "EmpPublic";
 }

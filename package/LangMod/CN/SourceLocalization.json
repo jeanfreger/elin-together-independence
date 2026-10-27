@@ -521,5 +521,9 @@
     "LangGeneral.emp_ui_report_what.text": "发生了什么？（你在做什么，你期望什么）",
     "LangGeneral.emp_ui_report_sending.text": "正在发送报告……",
     "LangGeneral.emp_ui_report_page.text": "已在浏览器中打开报告页面：把桌面上的 zip 拖进去，然后点击 Submit。",
-    "LangGeneral.emp_ui_report_sent.text": "报告已发送：{0}\n在浏览器中打开吗？"
+    "LangGeneral.emp_ui_report_sent.text": "报告已发送：{0}\n在浏览器中打开吗？",
+    "LangGeneral.emp_ui_lobby_official.text": "★ Elin Together 官方服务器",
+    "LangGeneral.emp_ui_lobby_official_join.text": "加入官方服务器",
+    "LangGeneral.emp_ui_lobby_public.text": "任何人都可以加入",
+    "LangGeneral.emp_ui_lobby_friends.text": "仅限主机的好友和受邀玩家"
 }

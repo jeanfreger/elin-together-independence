@@ -1,7 +1,9 @@
+using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
+using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
 using UnityEngine;
 using YKF;
@@ -128,14 +130,27 @@ internal class TabLobbyBrowser : TabEmpBase
             }
 
             var total = 0;
-            foreach (var lobby in lobbies) {
+            // the project's own public game first (user, 2026-10-27), checked by its signature, not by its name
+            var official = lobbies.Select(l => (Lobby: l, Official: OfficialServer.IsOfficial(l)))
+                .OrderByDescending(l => l.Official).ToArray();
+            foreach (var (lobby, isOfficial) in official) {
                 var count = lobby.MemberCount;
                 total += count;
 
                 // one group per game: its description, what it runs with, and Join (from the title screen: one click
                 // joins that game; in a game, the player leaves it first)
                 var game = card.RowGroup();
+                if (isOfficial) {
+                    game.HeaderSmall("emp_ui_lobby_official".lang());
+                }
+
                 game.Text("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]));
+                // who may come in, said before trying (a lobby of an older version says nothing)
+                if (isOfficial || lobby[EmpLobbyData.Public] == "1") {
+                    game.TextSmall("emp_ui_lobby_public".lang());
+                } else if (lobby[EmpLobbyData.Public] == "0") {
+                    game.TextSmall("emp_ui_lobby_friends".lang());
+                }
 
                 // what that game runs with, when its host says so: known before joining
                 if (ModList.Summary(lobby[EmpLobbyData.Mods]) is { } mods) {
@@ -146,7 +161,7 @@ internal class TabLobbyBrowser : TabEmpBase
 
                 if (!EClass.core.IsGameStarted) {
                     var target = lobby;
-                    game.ButtonRow().RowButton("emp_ui_depot_join_btn".Loc(lobby.Name), () => {
+                    game.ButtonRow().RowButton(isOfficial ? "emp_ui_lobby_official_join".lang() : "emp_ui_depot_join_btn".Loc(lobby.Name), () => {
                         LayerElinTogether.Instance?.Close();
                         NetSession.Instance.Lobby.ConnectLobby(target);
                     });
