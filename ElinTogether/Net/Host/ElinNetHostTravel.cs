@@ -1265,15 +1265,13 @@ internal partial class ElinNetHost
                 SendSaveProbe(chara, peer);
             }
 
-            // the zone files are already in the save folder: the save is asked for, not made in this frame, so that
-            // players coming back in a row and the host's own move cost one save. ponytail: until it is made (5 s,
-            // 30 s at most if a menu or a fight holds it) game.txt lacks the character just handed back and the host's
-            // own progress. A host crash then loses what that player took or did on the map it held (a picked-up
-            // object is gone: the map file has it out, game.txt still has the old character) and an object it put
-            // down is there twice. Already so between two checkpoints (60 s of map files against up to 2 min of
-            // game.txt), the return adds at most these seconds. Unticked AutoSave or dedicated server: saved here
+            // the save is asked for, not made in this frame, so that players coming back in a row and the host's own
+            // move cost one save. Until it is made (5 s, 30 s at most if a menu or a fight holds it) the map handed
+            // back waits beside the save with the character (ZoneLeaseState.StageMap): a host crash meanwhile loses
+            // that return whole, nothing of it is doubled or half there. Unticked AutoSave or dedicated server: saved
+            // here, as soon as the game may
             if (!EClass.debug.ignoreAutoSave && !EmpAutoHost.RequestSave()) {
-                game.Save(isAutoSave: true);
+                EmpAutoHost.SaveFromMessage("a player came back");
             }
         }
 
@@ -1724,7 +1722,7 @@ internal partial class ElinNetHost
             }
 
             if (!EClass.debug.ignoreAutoSave) {
-                game.Save(isAutoSave: true);
+                EmpAutoHost.SaveFromMessage("a player away dropped");
             }
         }
 
