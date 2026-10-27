@@ -57,7 +57,13 @@ internal partial class ElinNetHost
     /// </summary>
     private void SeePlayers(NetPeerState? leaving = null)
     {
-        if (IsZoneSession) {
+        // (also called while the session closes, the world sometimes already gone: a throw there stopped the
+        // links from closing and the port stayed taken, the host could not open its session again, 2026-10-27)
+        if (IsZoneSession || !core.IsGameStarted || world?.date is null) {
+            if (leaving is not null) {
+                _backFromAbsence.Remove(leaving.CharaUid);
+            }
+
             return;
         }
 
