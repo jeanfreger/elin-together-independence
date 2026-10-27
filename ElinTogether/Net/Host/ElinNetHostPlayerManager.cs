@@ -460,7 +460,7 @@ internal partial class ElinNetHost
 
         foreach (var (chara, peer, _) in joins) {
             peer.Send(NetSession.Instance.Rules);
-            peer.Send(new SaveDataProbe { Game = world, RemoteCharaUid = chara.uid });
+            peer.Send(new SaveDataProbe { Game = world, RemoteCharaUid = chara.uid, Lore = IsZoneSession ? null : TeamKnowledge.For(chara) });
             if (map is not null) {
                 peer.Send(map);
             } else {

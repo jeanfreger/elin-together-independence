@@ -69,15 +69,22 @@ internal static class TeamKnowledge
             return;
         }
 
+        var flipped = false;
         if (On && !Seeded) {
             Seed();
+            flipped = true;
         } else if (!On && Seeded) {
             MergeBack();
+            flipped = true;
         }
 
         // the host plays its team's knowledge like any player, and another team's when it changes team
         if (On && Seeded && Teams.TeamOf(EClass.pc.uid) is var team && team != _team) {
             Hold(team);
+        }
+
+        if (flipped) {
+            TellEveryone();
         }
     }
 
@@ -146,6 +153,37 @@ internal static class TeamKnowledge
     private static TeamLore WorldUnion()
     {
         return Union(ElinNetHost.TeamLoreBook.Keys.Select(Stored).OfType<TeamLore>().Prepend(Take(EClass.player)));
+    }
+
+    /// <summary>
+    ///     What that player's team knows, for its copy of the world; none when the box is off (the copy's lists are the
+    ///     world's)
+    /// </summary>
+    internal static TeamLore? For(Chara chara)
+    {
+        return LocalTeam is null ? null : Of(Teams.TeamOf(chara.uid));
+    }
+
+    /// <summary>
+    ///     A guest: what its game knows now, to keep in the copy of the world coming in; none when the box is off
+    /// </summary>
+    internal static TeamLore? Carry()
+    {
+        return On && EClass.core.IsGameStarted && EClass.game?.player?.recipes is not null ? Take(EClass.player) : null;
+    }
+
+    /// <summary>
+    ///     The box was ticked or unticked: every player is told what its team knows now (unticked: the world's)
+    /// </summary>
+    private static void TellEveryone()
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host) {
+            return;
+        }
+
+        foreach (var (peer, chara) in host.ActiveRemoteCharas) {
+            host.SendDeltaTo(peer, new TeamLoreDelta { Lore = For(chara) ?? Take(EClass.player) });
+        }
     }
 
     /// <summary>
