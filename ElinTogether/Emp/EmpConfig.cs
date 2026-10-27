@@ -272,6 +272,14 @@ internal partial class EmpConfig
             "Potions, arrows and charges used during the duel stay spent\n" +
             "玩家可以通过对方角色的菜单发起决斗：不会有人死亡，结束时双方恢复，没有任何损失；决斗中使用的药水、箭矢和充能不会返还");
 
+        Server.DuelArena = config.Bind(
+            "Server",
+            "DuelArena",
+            false,
+            "A duel the host fights is fought in an arena: when the challenge is accepted the host makes a field for it and goes there, the other one follows, and after the duel each one comes back to the tile it left\n" +
+            "A duel between two other players is still fought where they stand. Otherwise every duel is fought where they stand\n" +
+            "主机参与的决斗在竞技场中进行：接受挑战后主机创建一块场地并前往，另一方随后跟来，决斗结束后双方各自回到原来的位置；其他两名玩家之间的决斗仍在原地进行。关闭时所有决斗都在原地进行");
+
         Server.GuestBouts = config.Bind(
             "Server",
             "GuestBouts",
@@ -794,6 +802,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> HostManagesBase { get; set; } = null!;
         internal static ConfigEntry<bool> Duels { get; set; } = null!;
         internal static ConfigEntry<bool> GuestBouts { get; set; } = null!;
+        internal static ConfigEntry<bool> DuelArena { get; set; } = null!;
         internal static ConfigEntry<bool> PersonalQuests { get; set; } = null!;
         internal static ConfigEntry<bool> ChooseCharacter { get; set; } = null!;
         internal static ConfigEntry<bool> AutoReconnect { get; set; } = null!;

@@ -32,6 +32,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         EmpAutoHost.Update();
         // (alone on a map of its own the host link is still there: the host still hears it)
         PlayerIdle.Update();
+        PlayerDuel.Always();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
             return;

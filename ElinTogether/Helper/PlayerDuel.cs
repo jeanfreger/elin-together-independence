@@ -27,6 +27,31 @@ public static class PlayerDuel
     public const int Won = 3;
     public const int Cancelled = 4;
 
+    // what a duel waits for between the yes and the fight (Countdown): the arena (step 6), then the countdown itself
+    private const int Travelling = 1;
+    private const int Counting = 2;
+
+    /// <summary>
+    ///     How long the arena waits for the other duellist to arrive (the guest loads the host's map anew)
+    /// </summary>
+    private const float ArenaWaitSeconds = 90f;
+
+    /// <summary>
+    ///     How long the host stays in the arena after the duel for the guest to leave first: the guest walks out to its
+    ///     own tile, the host comes back to its town after it (left first, it would leave the guest the arena)
+    /// </summary>
+    private const float ArenaLeaveSeconds = 20f;
+
+    // the host after a duel in the arena: back to town once the guest left it, then the arena is no more
+    private static ArenaBack? _back;
+    private static Zone? _doomed;
+
+    // a guest's game: the arena it goes to, then the way out of it, kept across the copies of the world the trip loads
+    private static int _going;
+    private static float _goingUntil;
+    private static float _nextFollow;
+    private static (int Arena, int X, int Z, float At)? _leaving;
+
     /// <summary>
     ///     How long the challenge stays open, no answer is a no
     /// </summary>
@@ -58,6 +83,7 @@ public static class PlayerDuel
         return _over.Exists(o => (o.A == target.uid && o.B == origin.uid) || (o.B == target.uid && o.A == origin.uid));
     }
     private static int _nextId = 1;
+    private static int _arenaSaid;
     private static Dialog? _box;
 
     // a duel's music in this game (the bout music of the game, 102), until the duel is over
@@ -183,7 +209,21 @@ public static class PlayerDuel
             case Invited:
                 Msg.Say("emp_duel_asked".Loc(b));
                 break;
+            case Countdown when !state.Ready:
+                // to the arena: the host goes first, a guest follows it there (Always)
+                if (state.ArenaUid != 0 && _arenaSaid != state.DuelId) {
+                    _arenaSaid = state.DuelId;
+                    Msg.Say("emp_duel_arena_go".Loc(a, b));
+                }
+
+                if (state.ArenaUid != 0 && EClass._zone?.uid != state.ArenaUid) {
+                    _going = state.ArenaUid;
+                    _goingUntil = Time.realtimeSinceStartup + ArenaWaitSeconds;
+                }
+
+                break;
             case Countdown:
+                _going = 0;
                 Music(true);
                 Msg.Say("emp_duel_countdown".Loc(a, b));
                 break;
@@ -212,6 +252,76 @@ public static class PlayerDuel
                 Music(false);
                 Msg.Say(state.Reason.lang());
                 break;
+        }
+
+        // over, in the arena: a guest walks out first, to the tile it left (Always); the host follows (UpdateArenaBack)
+        if (state.Phase is Won or Cancelled && state.ArenaUid != 0 && NetSession.Instance.Transport is ElinNetClient) {
+            _going = 0;
+            if ((state.UidA == mine ? state.ReturnA : state.ReturnB) is { Length: 2 } tile) {
+                _leaving = (state.ArenaUid, tile[0], tile[1], Time.realtimeSinceStartup + LeaveDelaySeconds);
+            }
+        }
+    }
+
+    // (the last results of the duel, healing and gold, reach this game before it leaves the host's map)
+    private const float LeaveDelaySeconds = 2f;
+
+    /// <summary>
+    ///     Every frame, connected or not (a guest on its way to the arena holds a map of its own for a moment): the trip
+    ///     to the arena and back of a guest duellist
+    /// </summary>
+    internal static void Always()
+    {
+        if (_going == 0 && _leaving is null) {
+            return;
+        }
+
+        if (NetSession.Instance.Transport is not ElinNetClient client || !EClass.core.IsGameStarted) {
+            _going = 0;
+            _leaving = null;
+            return;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        if (_going != 0) {
+            if (EClass._zone?.uid == _going || now > _goingUntil) {
+                _going = 0;
+            } else if (NetSession.Instance.IsAway && !client.IsInTransfer && now >= _nextFollow) {
+                // the host left for the arena and this game keeps the town meanwhile: it joins the host there,
+                // as it joins it in the zone of a quest
+                _nextFollow = now + 3f;
+                client.FollowHost();
+            }
+        }
+
+        if (_leaving is not { } leaving || now < leaving.At) {
+            return;
+        }
+
+        // (still on the way there when the duel was called off: out once it arrives)
+        if (EClass._zone?.uid != leaving.Arena || EClass.pc.currentZone?.instance is not { } arena) {
+            if (now > leaving.At + ArenaWaitSeconds) {
+                _leaving = null;
+            }
+
+            return;
+        }
+
+        if (client.IsInTransfer || !NetSession.Instance.Rules.AllowIndependentTravel) {
+            // (without independent travel the host takes everyone back with it)
+            if (!NetSession.Instance.Rules.AllowIndependentTravel) {
+                _leaving = null;
+            }
+
+            return;
+        }
+
+        _leaving = null;
+        // out of an instance the game goes back to the tile it notes there (ZoneInstanceBout: Exact): this player's own
+        arena.x = leaving.X;
+        arena.z = leaving.Z;
+        if (EClass.game.spatials.Find(arena.uidZone) is { } town) {
+            EClass.pc.MoveZone(town);
         }
     }
 
@@ -267,6 +377,8 @@ public static class PlayerDuel
         View = null;
         CloseBox();
         _music = false;
+        _back = null;
+        _doomed = null;
     }
 
     /// <summary>
@@ -322,7 +434,8 @@ public static class PlayerDuel
 
         if (intent.Kind == Accept_) {
             session.Phase = Countdown;
-            session.Deadline = Time.realtimeSinceStartup + CountdownSeconds;
+            session.Stage = Arena(session, host) ? Travelling : Counting;
+            session.Deadline = Time.realtimeSinceStartup + (session.Stage == Travelling ? ArenaWaitSeconds : CountdownSeconds);
             Tell(session, host);
         } else {
             End(session, host, "emp_duel_declined");
@@ -351,7 +464,7 @@ public static class PlayerDuel
     /// </summary>
     internal static void Update()
     {
-        if (_sessions.Count == 0) {
+        if (_sessions.Count == 0 && _back is null && _doomed is null) {
             return;
         }
 
@@ -360,8 +473,12 @@ public static class PlayerDuel
             return;
         }
 
+        UpdateArenaBack();
+        DestroyArena(host);
         foreach (var session in _sessions.ToArray()) {
-            if (!Present(session.A) || !Present(session.B)) {
+            if (session.Phase == Countdown && session.Stage == Travelling) {
+                Travel(session, host);
+            } else if (!Present(session.A) || !Present(session.B)) {
                 End(session, host, "emp_duel_over");
             } else if (session.Winner is { } winner) {
                 // the host is right about hit points; the rest is given back by each duellist's own game
@@ -370,6 +487,7 @@ public static class PlayerDuel
                 session.Phase = Won;
                 _sessions.Remove(session);
                 _rest.Add((session.A, session.B, Time.realtimeSinceStartup + RestSeconds));
+                LeaveArena(session);
                 Tell(session, host, winner.uid);
                 EmpLog.Information("Player {Winner} won a duel against {Loser}",
                     winner.uid, (winner == session.A ? session.B : session.A).uid);
@@ -397,8 +515,9 @@ public static class PlayerDuel
             return;
         }
 
-        // one thing at a time: a second challenge is refused and the duel going on is left alone
-        if (_sessions.Exists(s => s.A == from || s.B == from || s.A == partner || s.B == partner) ||
+        // one thing at a time: a second challenge is refused and the duel going on is left alone (and the way back
+        // from the arena is one)
+        if (_back is not null || _sessions.Exists(s => s.A == from || s.B == from || s.A == partner || s.B == partner) ||
             PlayerTrade.Busy(from) || PlayerTrade.Busy(partner)) {
             TellOne(host, from, new() {
                 Phase = Cancelled,
@@ -435,7 +554,177 @@ public static class PlayerDuel
         _sessions.Remove(session);
         _rest.Add((session.A, session.B, Time.realtimeSinceStartup + RestSeconds));
         session.Phase = Cancelled;
+        LeaveArena(session);
         Tell(session, host, 0, reason);
+    }
+
+    // ---------------------------------------------------------------- the arena (council 7, step 6)
+
+    /// <summary>
+    ///     Whether this duel is fought in an arena: the host's box, and the host is one of the two (the arena is a map
+    ///     the host makes and runs, the other one comes along as to the zone of a quest; between two guests one of
+    ///     them would have to run it, never tried with three games). Otherwise where they stand
+    /// </summary>
+    private static bool Arena(Session session, ElinNetHost host)
+    {
+        if (!NetSession.Instance.Rules.DuelArena || host.IsZoneSession) {
+            return false;
+        }
+
+        var pc = EClass.pc;
+        if (session.A != pc && session.B != pc) {
+            foreach (var chara in new[] { session.A, session.B }) {
+                TellOne(host, chara, new() {
+                    Phase = Cancelled,
+                    UidA = chara.uid,
+                    UidB = chara.uid,
+                    Reason = "emp_duel_arena_host",
+                });
+            }
+
+            return false;
+        }
+
+        // (not from the world map nor from another instance: there is no town to come back to)
+        return EClass._zone is { IsRegion: false, IsInstance: false };
+    }
+
+    /// <summary>
+    ///     The host makes the arena (a field, as the game's bouts, with the game's ZoneInstanceBout: out of it
+    ///     everyone goes back to the tile it left) and goes there; the other one follows, then the countdown
+    /// </summary>
+    private static void Travel(Session session, ElinNetHost host)
+    {
+        var now = Time.realtimeSinceStartup;
+        if (session.ArenaZone is null) {
+            session.TownUid = EClass._zone.uid;
+            session.ReturnA = [session.A.pos.x, session.A.pos.z];
+            session.ReturnB = [session.B.pos.x, session.B.pos.z];
+            // (no target: nothing of the game's bout with an adventurer happens there)
+            session.ArenaZone = SpatialGen.CreateInstance("field", new ZoneInstanceBout());
+            EmpLog.Information("Duel {DuelId}: the host goes to the arena {ZoneUid}", session.Id, session.ArenaZone.uid);
+            EClass.pc.MoveZone(session.ArenaZone, ZoneTransition.EnterState.Center);
+            session.TellAgain = now + TellArenaSeconds;
+            Tell(session, host);
+            return;
+        }
+
+        if (now >= session.Deadline) {
+            End(session, host, "emp_duel_arena_late");
+            return;
+        }
+
+        // the host is on its way
+        if (EClass._zone != session.ArenaZone || EClass._map is null) {
+            return;
+        }
+
+        // (said again now and then: a game that was loading a map may have missed it)
+        if (now >= session.TellAgain) {
+            session.TellAgain = now + TellArenaSeconds;
+            Tell(session, host);
+        }
+
+        // both there: the character of a guest that came is not the one it had in town
+        if (Here(session.A.uid, host) is not { } a || Here(session.B.uid, host) is not { } b) {
+            return;
+        }
+
+        session.A = a;
+        session.B = b;
+        session.Stage = Counting;
+        session.Deadline = now + CountdownSeconds;
+        Tell(session, host);
+    }
+
+    private const float TellArenaSeconds = 5f;
+
+    /// <summary>
+    ///     That player stands on this map and its game holds it
+    /// </summary>
+    private static Chara? Here(int uid, ElinNetHost host)
+    {
+        if (EClass.pc.uid == uid) {
+            return EClass.pc;
+        }
+
+        foreach (var (peerId, chara) in host.ActiveRemoteCharas) {
+            if (chara.uid == uid) {
+                return host.IsSettled(peerId) && Present(chara) ? chara : null;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    ///     The duel in the arena is over: the guest walks out first (its game, see Always), the host after it
+    /// </summary>
+    private static void LeaveArena(Session session)
+    {
+        if (session.ArenaZone is not { } arena) {
+            return;
+        }
+
+        var guest = session.A == EClass.pc ? session.B : session.A;
+        _back = new() {
+            Arena = arena,
+            TownUid = session.TownUid,
+            GuestUid = guest.uid,
+            GiveUp = Time.realtimeSinceStartup + ArenaWaitSeconds,
+        };
+    }
+
+    private static void UpdateArenaBack()
+    {
+        if (_back is not { } back) {
+            return;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        // (called off before the host got there: it leaves once it arrives)
+        if (EClass._zone != back.Arena || EClass._map is null) {
+            if (now > back.GiveUp) {
+                _back = null;
+            }
+
+            return;
+        }
+
+        if (back.Until == 0) {
+            back.Until = now + ArenaLeaveSeconds;
+        }
+
+        if (now < back.Until && NetSession.Instance.Rules.AllowIndependentTravel &&
+            EClass._map.charas.Exists(c => c.uid == back.GuestUid)) {
+            return;
+        }
+
+        _back = null;
+        _doomed = back.Arena;
+        // out of an instance the game takes the host back to its own tile (ZoneInstanceBout: Exact)
+        if (EClass.game.spatials.Find(back.TownUid) is { } town) {
+            EClass.pc.MoveZone(town);
+        }
+    }
+
+    /// <summary>
+    ///     Everyone left the arena: it is gone (the game would only drop it the next time someone goes to the world map)
+    /// </summary>
+    private static void DestroyArena(ElinNetHost host)
+    {
+        if (_doomed is not { } arena || EClass._zone == arena || EClass.player.nextZone == arena) {
+            return;
+        }
+
+        _doomed = null;
+        if (arena.destryoed || host.IsLeased(arena.uid) || !arena.CanDestroy()) {
+            return;
+        }
+
+        EmpLog.Information("Duel arena {ZoneUid} destroyed", arena.uid);
+        arena.Destroy();
+        arena.parent?.RemoveChild(arena);
     }
 
     private static void Tell(Session session, ElinNetHost host, int winnerUid = 0, string reason = "")
@@ -447,6 +736,10 @@ public static class PlayerDuel
             UidB = session.B.uid,
             WinnerUid = winnerUid,
             Reason = reason,
+            Ready = session.Phase != Countdown || session.Stage == Counting,
+            ArenaUid = session.ArenaZone?.uid ?? 0,
+            ReturnA = session.ReturnA,
+            ReturnB = session.ReturnB,
         };
 
         Show(state);
@@ -477,10 +770,25 @@ public static class PlayerDuel
     private sealed class Session
     {
         internal Chara A = null!;
+        internal Zone? ArenaZone;
         internal Chara B = null!;
         internal float Deadline;
         internal int Id;
         internal int Phase;
+        internal int[]? ReturnA;
+        internal int[]? ReturnB;
+        internal int Stage;
+        internal float TellAgain;
+        internal int TownUid;
         internal Chara? Winner;
+    }
+
+    private sealed class ArenaBack
+    {
+        internal Zone Arena = null!;
+        internal float GiveUp;
+        internal int GuestUid;
+        internal int TownUid;
+        internal float Until;
     }
 }

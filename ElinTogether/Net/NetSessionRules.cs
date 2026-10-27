@@ -329,6 +329,13 @@ public class NetSessionRules
     [Key(1030)]
     public bool GuestBouts { get; set; }
 
+    /// <summary>
+    ///     Council 7, step 6: a duel with the host is fought in an arena the host makes, both come back to their tiles
+    ///     after, see PlayerDuel. Off (or between two guests): where they stand
+    /// </summary>
+    [Key(1031)]
+    public bool DuelArena { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -369,6 +376,7 @@ public class NetSessionRules
         HostManagesBase = EmpConfig.Server.HostManagesBase.Value,
         AllowDuels = EmpConfig.Server.Duels.Value,
         GuestBouts = EmpConfig.Server.GuestBouts.Value,
+        DuelArena = EmpConfig.Server.DuelArena.Value,
         AllowPlayerKill = EmpConfig.Server.PlayerKill.Value,
         AllowGuestBuild = EmpConfig.Server.GuestBuild.Value,
         UseSharedSpeed = EmpConfig.Server.SharedAverageSpeed.Value,

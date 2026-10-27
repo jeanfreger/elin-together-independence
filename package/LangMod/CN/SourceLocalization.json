@@ -542,5 +542,10 @@
     "LangGeneral.emp_ui_chara_limit.text": "你的角色数量已达到这个世界的上限：删除一个后才能创建或导入新角色。",
     "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面",
     "LangGeneral.emp_ui_sv_cfg_guest_bouts.text": "其他玩家也能与冒险者决斗",
-    "LangGeneral.emp_ui_sv_desc_guest_bouts.text": "其他玩家与冒险者的决斗和主机相同：决斗期间冒险者离开城镇，结束后恢复返回；下次决斗前的一周对所有人相同，胜利会被记录，奖励来自冒险者本身。关闭：该玩家只在自己的游戏中与副本战斗，世界中不会留下任何结果。"
+    "LangGeneral.emp_ui_sv_desc_guest_bouts.text": "其他玩家与冒险者的决斗和主机相同：决斗期间冒险者离开城镇，结束后恢复返回；下次决斗前的一周对所有人相同，胜利会被记录，奖励来自冒险者本身。关闭：该玩家只在自己的游戏中与副本战斗，世界中不会留下任何结果。",
+    "LangGeneral.emp_ui_sv_cfg_duel_arena.text": "与主机的决斗在竞技场进行",
+    "LangGeneral.emp_ui_sv_desc_duel_arena.text": "与主机的决斗被接受后，主机会创建一块场地作为竞技场并前往，另一名玩家随后跟来；决斗结束后双方各自回到原来的位置。其他两名玩家之间的决斗仍在原地进行。",
+    "LangGeneral.emp_duel_arena_go.text": "{0} 和 {1} 前往竞技场。",
+    "LangGeneral.emp_duel_arena_host.text": "竞技场只用于主机的决斗：这场决斗在原地进行。",
+    "LangGeneral.emp_duel_arena_late.text": "对手没有到达竞技场：决斗取消。"
 }
