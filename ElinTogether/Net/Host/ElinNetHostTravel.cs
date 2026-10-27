@@ -341,6 +341,14 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     The character of the player whose quest zone the host came along to, null when it is not that quest's
+    /// </summary>
+    internal Chara? AccompaniedTaker(int questUid)
+    {
+        return _accompanied is { } along && along.QuestUid == questUid ? ActiveRemoteCharas.GetValueOrDefault(along.PeerId) : null;
+    }
+
+    /// <summary>
     ///     The quest of the player the host came along with, as that player last told it (it counts what is
     ///     delivered, the host only reads). The same object until it tells something new
     /// </summary>
