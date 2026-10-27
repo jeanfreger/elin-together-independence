@@ -1,10 +1,12 @@
 # Elin Together ——「独立」分支
 
-**当前版本：0.26.1069**（压缩包 `ElinTogether-independence.zip`）。
+**当前版本：0.26.1080**（压缩包 `ElinTogether-independence.zip`）。
 
 [English](README.md) | [Français](README_fr.md) | 中文 | [日本語](README_ja.md)
 
 [![最新版本](https://img.shields.io/github/v/release/jeanfreger/elin-together-independence?include_prereleases&label=latest%20release)](https://github.com/jeanfreger/elin-together-independence/releases)
+
+> **目前没有官方服务器或官方 Discord。** Elin Together 目前没有官方公共服务器，也没有官方 Discord。项目成员绝不会向你索要钱财、密码或 Steam 登录信息：以本模组名义这样做的人都不是我们。模组及其更新只发布在本页面和 Steam 创意工坊。
 
 这是 [Elin Together](https://github.com/ElinTogether/ElinTogether)（[Elin](https://store.steampowered.com/app/2135150/Elin/) 的多人联机 Mod）的修改版，只有一个目标：**在游戏中，主机玩家与其他玩家没有任何区别**。每个人都可以带着自己的同伴、任务、名声和金钱去想去的地方，而世界（剧情、据点、公会）保持共享。世界本身也不必再存放在某一位玩家的电脑上。
 

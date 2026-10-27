@@ -1,10 +1,12 @@
 # Elin Together — 「独立」版フォーク
 
-**現在のバージョン：0.26.1069**（zip：`ElinTogether-independence.zip`）。
+**現在のバージョン：0.26.1080**（zip：`ElinTogether-independence.zip`）。
 
 [English](README.md) | [Français](README_fr.md) | [中文](README_zh.md) | 日本語
 
 [![最新リリース](https://img.shields.io/github/v/release/jeanfreger/elin-together-independence?include_prereleases&label=latest%20release)](https://github.com/jeanfreger/elin-together-independence/releases)
+
+> **公式サーバー・公式Discordはまだありません。** Elin Together には現在、公式の公開サーバーも公式Discordもありません。プロジェクトの関係者がお金、パスワード、Steamのログイン情報を求めることは絶対にありません。MODの名前でそれを求める人は私たちではありません。MODとその更新は、このページとSteamワークショップでのみ公開されています。
 
 [Elin](https://store.steampowered.com/app/2135150/Elin/) のマルチプレイ MOD、[Elin Together](https://github.com/ElinTogether/ElinTogether) の改造版です。目的はひとつ：**ゲーム内で、ホストと他のプレイヤーの違いをなくすこと**。各自が好きな場所へ、自分の仲間・クエスト・名声・お金とともに行き、ワールド（ストーリー、拠点、ギルド）は共有のままです。ワールドそのものも、特定のプレイヤーの PC に置いておく必要がなくなりました。
 

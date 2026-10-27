@@ -1,10 +1,12 @@
 # Elin Together — version « indépendance »
 
-**Version actuelle : 0.26.1069** (zip `ElinTogether-independence.zip`).
+**Version actuelle : 0.26.1080** (zip `ElinTogether-independence.zip`).
 
 [English](README.md) | Français | [中文](README_zh.md) | [日本語](README_ja.md)
 
 [![Dernière version](https://img.shields.io/github/v/release/jeanfreger/elin-together-independence?include_prereleases&label=derni%C3%A8re%20version)](https://github.com/jeanfreger/elin-together-independence/releases)
+
+> **Pas encore de serveur ni de Discord officiels.** Elin Together n'a pour l'instant ni serveur public officiel ni Discord officiel. Personne du projet ne vous demandera jamais d'argent, de mot de passe ou vos identifiants Steam : quelqu'un qui le fait au nom du mod n'est pas nous. Le mod et ses mises à jour sont uniquement sur cette page et sur le Steam Workshop.
 
 Une version modifiée d'[Elin Together](https://github.com/ElinTogether/ElinTogether), le mod multijoueur
 d'[Elin](https://store.steampowered.com/app/2135150/Elin/), avec un seul but : **en jeu, aucune différence entre
