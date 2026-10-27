@@ -25,6 +25,28 @@ public class BossWinDelta : ElinDelta
     [Key(3)]
     public required int DangerLv { get; init; }
 
+    /// <summary>
+    ///     Security audit 2026-10-27 (item 5): any zone's boss could be declared dead, any dungeon conquered, with a
+    ///     depth of the sender's choosing (fame for everyone on that map). Only the game that simulates the zone tells:
+    ///     a guest away in its own zones, never one on the host's map (the host's game sees that death itself); the
+    ///     dungeon and depth must be the host's own. (A zone with no boss left in a game gives nothing there: each
+    ///     game checks its own)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (game.spatials.Find(ZoneUid) is not Zone zone) {
+            return null;
+        }
+
+        if (!host.IsAwayPeer(OriginPeer)) {
+            return $"boss of zone {ZoneUid} claimed by a guest that does not simulate it";
+        }
+
+        return DangerLv > zone.DangerLv || TopZoneUid != zone.GetTopZone().uid || Nefia != zone.IsNefia
+            ? $"boss of zone {ZoneUid} claimed with depth {DangerLv} (host {zone.DangerLv}), top {TopZoneUid}, nefia {Nefia}"
+            : null;
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host) {
