@@ -322,6 +322,13 @@ public class NetSessionRules
     [Key(121)]
     public bool PermadeathRevive { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-25 (dev/PLAN_teams_knowledge.md): each team has its own recipes and codex, see
+    ///     TeamKnowledge. An older host sends none: one book for everyone, as it was
+    /// </summary>
+    [Key(1010)]
+    public bool TeamKnowledge { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -340,6 +347,7 @@ public class NetSessionRules
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
+        TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

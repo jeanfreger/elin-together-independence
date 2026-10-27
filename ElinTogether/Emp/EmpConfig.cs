@@ -626,6 +626,14 @@ internal partial class EmpConfig
             "A player killed by another dies only if \"Players can kill each other\" is on. Otherwise players of different teams cannot fight\n" +
             "不同队伍的玩家在城镇和出生区域之外互为敌人，流浪者不参与；只有开启玩家可以互相击杀时才会真正死亡。关闭时不同队伍的玩家不能战斗");
 
+        Server.TeamKnowledge = config.Bind(
+            "Server",
+            "TeamKnowledge",
+            false,
+            "Each team has its own recipes, crafted list and codex: what a player learns, its teammates learn, the other teams do not. The save keeps everything all teams know\n" +
+            "Otherwise everyone shares one book of recipes and one codex, as before\n" +
+            "每个队伍有自己的配方、制作记录和图鉴：玩家学到的东西其队友也会学到，其他队伍不会。存档保留所有队伍知道的一切；关闭时所有人如前共用一套配方和图鉴");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -826,6 +834,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
 
         internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;
