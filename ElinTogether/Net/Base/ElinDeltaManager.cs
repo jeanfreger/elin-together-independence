@@ -118,7 +118,11 @@ public class ElinDeltaManager
             hold = false;
         }
 
+        // what was dropped over the limit while loading is missing from this map for good: the map is asked again, once
+        // what was kept is applied (reliability audit 2026-10-27, #7)
+        var lost = 0;
         if (_holding && !hold) {
+            lost = _heldLost;
             if (_held.Count > 0 || _heldLost > 0) {
                 EmpLog.Information(
                     "Replaying {Held} held deltas ({Acts} besides game time) after {Seconds:F1}s of loading, " +
@@ -177,6 +181,14 @@ public class ElinDeltaManager
                 net.ReportDesync(desyncInfo);
                 CountFailure(net, deltaType, ex, delta);
                 // noexcept
+            }
+        }
+
+        if (lost > 0) {
+            EmpLog.Warning("{Lost} deltas received while loading were over the limit of {MaxHeld} and are lost here, asking for the map again",
+                lost, MaxHeld);
+            if (net is ElinNetClient) {
+                NetDesync.OweRepair("deltas kept while loading (over the limit)", lost);
             }
         }
 
@@ -293,7 +305,8 @@ public class ElinDeltaManager
         _untilPlaced = false;
     }
 
-    private const int MaxHeld = 20_000;
+    // (not a constant: the bench lowers it, bench/held_lost_check.py)
+    internal static int MaxHeld = 20_000;
     // as long as the client waits for its placement, see ElinNetClient.ActivationWait
     private const float MaxHoldSeconds = 10f;
 

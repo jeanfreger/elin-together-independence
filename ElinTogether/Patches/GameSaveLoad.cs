@@ -1,3 +1,4 @@
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 using UnityEngine;
@@ -9,10 +10,20 @@ internal class GameSaveLoad
 {
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Game), nameof(Game.Save))]
-    internal static bool OnSaveRemoteGame(ref bool __result)
+    internal static bool OnSaveRemoteGame(ref bool __result, bool isAutoSave)
     {
         // an away client reads as host but only holds a copy of the host world
         if (NetSession.Instance.IsHost && !NetSession.Instance.IsAway) {
+            // the maps players handed back go in with this save, not before (the game skips an autosave it was told to)
+            if (!(isAutoSave && EClass.debug.ignoreAutoSave)) {
+                try {
+                    ZoneLeaseState.CommitAllStaged();
+                } catch (System.Exception ex) {
+                    // never a reason not to save
+                    EmpLog.Warning(ex, "Maps handed back by players could not all be put in the save");
+                }
+            }
+
             return true;
         }
 

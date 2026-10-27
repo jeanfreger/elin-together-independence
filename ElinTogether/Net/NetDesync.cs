@@ -269,6 +269,19 @@ internal static class NetDesync
     /// <summary>
     ///     The numbers of the game that keeps the map arrived: compare, warn, repair
     /// </summary>
+    // zone -> why its map is to be reloaded as soon as a reload may be made there, see OweRepair
+    private static (int ZoneUid, string Kind, int Count)? _owed;
+
+    /// <summary>
+    ///     What the map just loaded here should have changed is lost (ElinDeltaManager, over the limit of what is
+    ///     kept while loading): reloaded at the first comparison that may, under the rule and cooldowns of a
+    ///     checksum repair. Nothing repaired it before (reliability audit 2026-10-27, #7)
+    /// </summary>
+    internal static void OweRepair(string kind, int count)
+    {
+        _owed = (EClass._zone?.uid ?? -1, kind, count);
+    }
+
     internal static void Compare(MapSums? host)
     {
         try {
@@ -316,6 +329,16 @@ internal static class NetDesync
         if (now < _quietUntil) {
             _mapStrikes = _bagStrikes = 0;
             return;
+        }
+
+        if (_owed is { } owed) {
+            // another map since: that one is loaded whole
+            if (owed.ZoneUid != host.ZoneUid) {
+                _owed = null;
+            } else if (RepairFailingDelta(owed.Kind, owed.Count)) {
+                _owed = null;
+                return;
+            }
         }
 
         if (Collect() is not { } local) {

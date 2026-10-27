@@ -99,11 +99,53 @@ internal static class EmpAutoHost
         }
     }
 
+    // why a save asked by a network message waits for the game to be able to save, see SaveFromMessage
+    private static string? _saveWhenSafe;
+
+    /// <summary>
+    ///     A save a network message needs made where nothing saves by itself (a player came back or dropped with
+    ///     the box unticked, a dedicated server): made in that frame when the game may save, as soon as it may
+    ///     otherwise. It was made whatever the game was doing (a map loading, the host changing map) and a save the
+    ///     game could not make went unsaid (reliability audit 2026-10-27, #10)
+    /// </summary>
+    internal static void SaveFromMessage(string why)
+    {
+        if (!SafeToSave()) {
+            _saveWhenSafe = why;
+            EmpLog.Information("Save ({Why}) put off: the game cannot save right now", why);
+            return;
+        }
+
+        _saveWhenSafe = null;
+        if (!EClass.game.Save(isAutoSave: true)) {
+            EmpLog.Warning("The game could not save the world ({Why}), see Player.log", why);
+        }
+    }
+
+    private static void UpdateSaveWhenSafe()
+    {
+        if (_saveWhenSafe is not { } why) {
+            return;
+        }
+
+        // the session or the game is gone: nothing to save for it
+        if (!EClass.core.IsGameStarted || NetSession.Instance.Transport is not ElinNetHost) {
+            _saveWhenSafe = null;
+            return;
+        }
+
+        if (SafeToSave()) {
+            SaveFromMessage(why);
+        }
+    }
+
     /// <summary>
     ///     Called every frame
     /// </summary>
     internal static void Update()
     {
+        UpdateSaveWhenSafe();
+
 #if DEBUG
         // a window of the bench saves by itself only once its test asked (emp.autosave_every): the suites written
         // before this count on a world that is not saved behind their back

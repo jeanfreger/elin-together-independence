@@ -222,7 +222,7 @@ internal partial class ElinNetHost
                 // (with the host's "repair the map by itself" box: unticked, the map stays as it stands on its screen)
                 var map = !Session.Rules.AutoResync || zone.IsRegion || zone.IsInstance || zone.map is null
                     ? null
-                    : ZoneLeaseState.CollectMap(zone);
+                    : TryCollectMap(zone);
                 var sums = map is null ? null : ZoneLeaseState.Sums(zone.map);
 
                 EmpLog.Information("Host leaves {ZoneFullName}, {@Peer} keeps it, uid range from {UidRangeStart}, host copy sent along {HasMap}: {Sums}",
@@ -253,6 +253,21 @@ internal partial class ElinNetHost
                 Guest = true,
                 Handoff = true,
             });
+        }
+    }
+
+    /// <summary>
+    ///     Our copy for the player keeping the map we leave. None when it cannot be read: that player keeps the one
+    ///     on its screen, as with the host's "repair the map by itself" box unticked. A throw here held the lease
+    ///     with no grant sent, and stopped the host's own move (reliability audit 2026-10-27, #4)
+    /// </summary>
+    private static Dictionary<string, LZ4Bytes>? TryCollectMap(Zone zone)
+    {
+        try {
+            return ZoneLeaseState.CollectMap(zone);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Map of zone {ZoneFullName} could not be read, the player keeping it keeps its own copy", zone.ZoneFullName);
+            return null;
         }
     }
 
@@ -824,13 +839,25 @@ internal partial class ElinNetHost
             KeepAlive(zone);
         }
 
+        // before the lease is held: a map that cannot be read (disk) left the zone held by nobody, for good, and the
+        // player waiting (reliability audit 2026-10-27, #4)
+        Dictionary<string, LZ4Bytes>? map;
+        try {
+            map = zone.IsRegion || !zone.isGenerated
+                ? null
+                : ZoneLeaseState.CollectMap(zone);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Map of zone {ZoneFullName} could not be read, lease denied to {@Peer}", zone.ZoneFullName, peer);
+            peer.Send(new ZoneLeaseDenied {
+                ZoneUid = request.ZoneUid,
+                Reason = "emp_travel_invalid",
+            });
+            return;
+        }
+
         // a guest moving on is no longer one, see HandOverZone
         _guests.Remove(peer.Id);
         var rangeStart = ReserveLease(peer, zone);
-
-        var map = zone.IsRegion || !zone.isGenerated
-            ? null
-            : ZoneLeaseState.CollectMap(zone);
 
         EmpLog.Information("Leased zone {ZoneFullName} to {@Peer}, uid range from {UidRangeStart}, map {HasMap}",
             zone.ZoneFullName, peer, rangeStart, map is not null);
@@ -1041,18 +1068,36 @@ internal partial class ElinNetHost
         }
     }
 
+    /// <summary>
+    ///     Guest peer id -> the map it asked to join and the number its game knows it by, while the player holding
+    ///     that map is asked first, see GrantGuestLease
+    /// </summary>
+    private readonly Dictionary<int, (int ZoneUid, int RequestedUid)> _guestAsks = [];
+
     private void GrantGuestLease(Zone zone, ZoneLeaseRequest request, ISteamNetPeer peer, ISteamNetPeer holder)
     {
         _guests.Remove(peer.Id);
         _pendingGuests[peer.Id] = (zone.uid, holder.Id);
+        _guestAsks[peer.Id] = (zone.uid, request.ZoneUid);
 
-        EmpLog.Information("Player {@Peer} joins zone {ZoneFullName} held by {@Holder}",
+        EmpLog.Information("Player {@Peer} asks to join zone {ZoneFullName} held by {@Holder}",
             peer, zone.ZoneFullName, holder);
 
-        // the guest leaves its current place first (ack or release), then the holder expects it
-        peer.Send(new ZoneLeaseGrant {
+        // the holder is asked first, the guest still where it is: refused, it stays there. It used to leave its place
+        // first, and a refusal brought it back with the whole world (RefuseGuest, then SendRejoin). Asked again once
+        // the guest left its place, with where it stands, see OnZoneLeaseAck
+        SendGuestRequest(peer, zone.uid, holder.Id);
+    }
+
+    /// <summary>
+    ///     The holder expects the guest: the guest leaves its current place (ack or release), then the holder is told
+    ///     where it arrives
+    /// </summary>
+    private void SendGuestGrant(ISteamNetPeer guest, Zone zone, int requestedUid)
+    {
+        guest.Send(new ZoneLeaseGrant {
             ZoneUid = zone.uid,
-            RequestedUid = request.ZoneUid,
+            RequestedUid = requestedUid,
             UidRangeStart = 0,
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
@@ -1106,6 +1151,17 @@ internal partial class ElinNetHost
             return;
         }
 
+        // the first answer, the guest still where it was: now it goes
+        if (_guestAsks.Remove(guest.Id, out var ask)) {
+            if (game.spatials.Find(ask.ZoneUid) is not { } zone) {
+                RefuseGuest(guest, ready.ZoneUid);
+                return;
+            }
+
+            SendGuestGrant(guest, zone, ask.RequestedUid);
+            return;
+        }
+
         _guests[guest.Id] = _pendingGuests[guest.Id];
         _visitedHolder[guest.User] = _guests[guest.Id].HolderId;
         _pendingGuests.Remove(guest.Id);
@@ -1128,6 +1184,8 @@ internal partial class ElinNetHost
     private void RefuseGuest(ISteamNetPeer guest, int zoneUid)
     {
         _pendingGuests.Remove(guest.Id);
+        // still where it was (refused at the first question): it only hears no, see ElinNetClient.OnZoneLeaseDenied
+        _guestAsks.Remove(guest.Id);
 
         EmpLog.Information("Zone {ZoneUid} refused player {@Peer}, it returns to the host",
             zoneUid, guest);
@@ -1144,10 +1202,18 @@ internal partial class ElinNetHost
     private void OnZoneLeaseRelease(ZoneLeaseRelease release, ISteamNetPeer peer)
     {
         if (!_departed.Contains(peer.Id)) {
-            // stale or repeated release, the player is already back on the host map
-            EmpLog.Warning("Player {@Peer} released zone {ZoneUid} while not away, ignoring",
-                peer, release.ZoneUid);
-            return;
+            // a return asked by a player still on our map: its travel never went through (an answer lost, a throw
+            // in the middle of it) and it waits for the world, for good if nothing answers (reliability audit
+            // 2026-10-27, #3). Off the map, then back as any return
+            if (release.Rejoin && !release.Checkpoint && ActiveRemoteCharas.ContainsKey(peer.Id)) {
+                EmpLog.Warning("Player {@Peer} asks to come back while on the host map, sending it the world", peer);
+                DepartFromHostMap(peer);
+            } else {
+                // stale or repeated release, the player is already back on the host map
+                EmpLog.Warning("Player {@Peer} released zone {ZoneUid} while not away, ignoring",
+                    peer, release.ZoneUid);
+                return;
+            }
         }
 
         if (release.Checkpoint) {
@@ -1222,6 +1288,9 @@ internal partial class ElinNetHost
             _departed.Remove(peer.Id);
             _departedAt.Remove(peer.Id);
             _checkpointUidNext.Remove(peer.Id);
+            // on its way to another player's map that never expected it: that answer, if it comes, is for nobody
+            _pendingGuests.Remove(peer.Id);
+            _guestAsks.Remove(peer.Id);
 
             if (chara is { isDead: false } && soft) {
                 // no copy of the world: it stays on the map it handed back, see CompleteSoftRejoin
@@ -1236,15 +1305,13 @@ internal partial class ElinNetHost
                 SendSaveProbe(chara, peer);
             }
 
-            // the zone files are already in the save folder: the save is asked for, not made in this frame, so that
-            // players coming back in a row and the host's own move cost one save. ponytail: until it is made (5 s,
-            // 30 s at most if a menu or a fight holds it) game.txt lacks the character just handed back and the host's
-            // own progress. A host crash then loses what that player took or did on the map it held (a picked-up
-            // object is gone: the map file has it out, game.txt still has the old character) and an object it put
-            // down is there twice. Already so between two checkpoints (60 s of map files against up to 2 min of
-            // game.txt), the return adds at most these seconds. Unticked AutoSave or dedicated server: saved here
+            // the save is asked for, not made in this frame, so that players coming back in a row and the host's own
+            // move cost one save. Until it is made (5 s, 30 s at most if a menu or a fight holds it) the map handed
+            // back waits beside the save with the character (ZoneLeaseState.StageMap): a host crash meanwhile loses
+            // that return whole, nothing of it is doubled or half there. Unticked AutoSave or dedicated server: saved
+            // here, as soon as the game may
             if (!EClass.debug.ignoreAutoSave && !EmpAutoHost.RequestSave()) {
-                game.Save(isAutoSave: true);
+                EmpAutoHost.SaveFromMessage("a player came back");
             }
         }
 
@@ -1295,7 +1362,12 @@ internal partial class ElinNetHost
     /// </summary>
     private void OnZoneLeaseDecline(ZoneLeaseDecline decline, ISteamNetPeer peer)
     {
-        _pendingGuests.Remove(peer.Id);
+        // only a visit of that very map: a player declining a map it was handed meanwhile is still on its way to the
+        // one it asked for
+        if (_pendingGuests.TryGetValue(peer.Id, out var going) && going.ZoneUid == decline.ZoneUid) {
+            _pendingGuests.Remove(peer.Id);
+            _guestAsks.Remove(peer.Id);
+        }
 
         if (!_leases.TryGetValue(peer.Id, out var zones) || !zones.Remove(decline.ZoneUid)) {
             return;
@@ -1341,7 +1413,8 @@ internal partial class ElinNetHost
                 zone.UnloadMap();
             }
 
-            ZoneLeaseState.WriteMap(zone, release.Map);
+            // in the save with the next save of the host's game, which holds the characters that go with it
+            ZoneLeaseState.StageMap(zone, release.Map);
         }
 
         ZoneLeaseState.ApplyState(zone, release.ZoneState, release.IdCurrentSubset);
@@ -1668,6 +1741,7 @@ internal partial class ElinNetHost
         _departed.Remove(peer.Id);
         _departedAt.Remove(peer.Id);
         _pendingGuests.Remove(peer.Id);
+        _guestAsks.Remove(peer.Id);
         _guests.Remove(peer.Id);
         _softRejoins.Remove(peer.Id);
 
@@ -1694,7 +1768,7 @@ internal partial class ElinNetHost
             }
 
             if (!EClass.debug.ignoreAutoSave) {
-                game.Save(isAutoSave: true);
+                EmpAutoHost.SaveFromMessage("a player away dropped");
             }
         }
 
