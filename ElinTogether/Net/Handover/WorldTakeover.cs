@@ -1,4 +1,5 @@
 using System;
+using ElinTogether.Models;
 using System.Collections;
 using System.IO;
 using STask = System.Threading.Tasks.Task;
@@ -46,6 +47,13 @@ internal static class WorldTakeover
 
         if (session.Transport is ElinNetHost) {
             return "this game hosts already";
+        }
+
+        // a world with admins (admin tools, council 2026-10-27) is taken over by one of them only: whoever takes it
+        // over gets the host's powers, bans included
+        ulong me = session.Self?.User ?? HeathenEngineering.SteamworksIntegration.UserData.Me;
+        if (ModerationDelta.AdminIds.Count > 0 && !ModerationDelta.AdminIds.Contains(me)) {
+            return "only an admin of this world takes it over";
         }
 
         // a game of the player's own is never left for this
