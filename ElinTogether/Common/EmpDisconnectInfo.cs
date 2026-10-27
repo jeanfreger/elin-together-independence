@@ -19,6 +19,22 @@ public static class EmpDisconnectInfo
     public const string ClientCancel = "emp_dc_client_cancel";
     public const string VersionMismatch = "emp_dc_version_mismatch";
     public const string ActMappingMismatch = "emp_dc_act_mismatch";
+    public const string Banned = "emp_dc_banned";
+    public const string KickWait = "emp_dc_kick_wait";
+
+    /// <summary>
+    ///     A reason with words of its own (the host's, a count): "key|words", told as "key_why" with them. Steam takes
+    ///     128 characters at most
+    /// </summary>
+    public static string With(string key, string? words)
+    {
+        words = words?.Replace('|', ' ').Trim();
+        if (string.IsNullOrEmpty(words)) {
+            return key;
+        }
+
+        return key + "|" + (words!.Length > 80 ? words.Substring(0, 80) : words);
+    }
 
     /// <summary>
     ///     The link dropped without anyone deciding it (dead link, no answer, closed without a word): the player
@@ -40,6 +56,10 @@ public static class EmpDisconnectInfo
     {
         if (BuildVersionIntegrity.GetGtfoReason(reason, out var mod, out var game)) {
             return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod, BuildVersionIntegrity.GameVersion, game);
+        }
+
+        if (reason?.IndexOf('|') is > 0 and var bar && reason.StartsWith("emp_dc_", System.StringComparison.Ordinal)) {
+            return (reason.Substring(0, bar) + "_why").Loc(reason.Substring(bar + 1));
         }
 
         return (reason ?? RemoteClosed).lang();

@@ -98,7 +98,7 @@ internal class TabSessionInfo : TabEmpBase
 
     private static void KickPlayer(int peerIndex)
     {
-        NetSession.Instance.Transport?.DisconnectPeer(peerIndex, EmpDisconnectInfo.HostKick);
+        (NetSession.Instance.Transport as ElinNetHost)?.Kick(peerIndex);
         LayerElinTogether.Instance?.Reopen();
     }
 

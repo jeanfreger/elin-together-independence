@@ -448,6 +448,13 @@ internal partial class EmpConfig
             "Minutes without keyboard, mouse or own act after which a player is away from the keyboard: it no longer holds the night, waits on the world map or moves the shared date. 0: off\n" +
             "玩家在多少分钟内没有键盘、鼠标或自身动作即视为离开：不再阻止夜晚过去、不再让世界地图等待、不再推进共享日期。0：关闭");
 
+        Server.KickKeepOutMinutes = config.Bind(
+            "Server",
+            "KickKeepOutMinutes",
+            5,
+            "Minutes a kicked player cannot come back. 0: it may come back at once\n" +
+            "被踢出的玩家在多少分钟内不能重新加入。0：可以立即重新加入");
+
         Server.NightPasses = config.Bind(
             "Server",
             "NightPasses",
@@ -766,6 +773,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> AutoHost { get; set; } = null!;
         internal static ConfigEntry<bool> OwnSleep { get; set; } = null!;
         internal static ConfigEntry<int> IdleMinutes { get; set; } = null!;
+        internal static ConfigEntry<int> KickKeepOutMinutes { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;

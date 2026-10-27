@@ -30,9 +30,9 @@ internal class EmpConsole
     }
 
     [ConsoleCommand("kick")]
-    internal static string KickPlayer(int playerIndex)
+    internal static string KickPlayer(int playerIndex, string reason = "")
     {
-        if (NetSession.Instance.Transport is not ElinNetHost) {
+        if (NetSession.Instance.Transport is not ElinNetHost host) {
             return "Only the host can kick players";
         }
 
@@ -40,9 +40,19 @@ internal class EmpConsole
             return "Cannot kick the host";
         }
 
-        NetSession.Instance.Transport.DisconnectPeer(playerIndex, EmpDisconnectInfo.HostKick);
-        EmpLog.Information("Kicked player at index {PeerIndex}", playerIndex);
-        return $"Kicked player {playerIndex}";
+        return host.Kick(playerIndex, reason);
+    }
+
+    [ConsoleCommand("ban")]
+    internal static string BanPlayer(ulong steamId, string reason = "")
+    {
+        return NetSession.Instance.Transport is ElinNetHost host ? host.Ban(steamId, reason) : "Only the host can ban players";
+    }
+
+    [ConsoleCommand("unban")]
+    internal static string UnbanPlayer(ulong steamId)
+    {
+        return NetSession.Instance.Transport is ElinNetHost ? ElinNetHost.Unban(steamId) : "Only the host can unban players";
     }
 
     [ConsoleCommand("reconnect")]

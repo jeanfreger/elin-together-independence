@@ -427,7 +427,11 @@ public class SteamNetLobbyManager : EClass
             if (state == SteamNetLobbyMemberState.Entered) {
                 var friend = SteamFriends.GetFriendRelationship(user);
                 var known = IsKnownAccount(user);
-                if (friend == EFriendRelationship.k_EFriendRelationshipFriend || _invited.Contains(user) || known || OpenToAll) {
+                // banned from this world (ElinNetHostModeration): no key, out of the lobby
+                if (ElinNetHost.Bans.ContainsKey(user)) {
+                    EmpLog.Information("Refused {RemoteIdentity}: banned from this world", user);
+                    Current.KickMember(user);
+                } else if (friend == EFriendRelationship.k_EFriendRelationshipFriend || _invited.Contains(user) || known || OpenToAll) {
                     Current[$"connection_key_{user}"] =
                         SteamNetManager.ConnectionKeys[user] =
                             PlayerUidMaker.MakeConnectionKey(user);

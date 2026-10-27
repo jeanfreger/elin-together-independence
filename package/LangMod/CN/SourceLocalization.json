@@ -488,5 +488,15 @@
     "LangGeneral.emp_ui_host_closed.text": "房主关闭了游戏，本次联机已结束。",
     "LangGeneral.emp_ui_host_left_waiting.text": "房主离开了游戏，正在等待其返回…",
     "LangGeneral.emp_ui_sv_cfg_time_stops_empty.text": "无人游玩时时间停止",
-    "LangGeneral.emp_ui_sv_desc_time_stops_empty.text": "没有在线且未离开的玩家时（房主未离开也算），世界的日期停止。关闭：时间照常流逝。"
+    "LangGeneral.emp_ui_sv_desc_time_stops_empty.text": "没有在线且未离开的玩家时（房主未离开也算），世界的日期停止。关闭：时间照常流逝。",
+    "LangGeneral.emp_dc_host_kick_why.text": "断开连接：被主机踢出（{0}）",
+    "LangGeneral.emp_dc_banned.text": "你已被此世界封禁。",
+    "LangGeneral.emp_dc_banned_why.text": "你已被此世界封禁：{0}",
+    "LangGeneral.emp_dc_kick_wait_why.text": "你已被踢出此世界。请在 {0} 分钟后再试。",
+    "LangGeneral.emp_ui_sv_cfg_kick_keep_out.text": "被踢玩家等待",
+    "LangGeneral.emp_ui_sv_desc_kick_keep_out.text": "关闭：被踢出的玩家可以立即回来。\n5 分钟：被踢出的玩家 5 分钟内不能回来。\n15 分钟：15 分钟内。\n60 分钟：60 分钟内。",
+    "LangGeneral.emp_ui_sv_opt_kick_keep_out_0.text": "关闭",
+    "LangGeneral.emp_ui_sv_opt_kick_keep_out_5.text": "5 分钟",
+    "LangGeneral.emp_ui_sv_opt_kick_keep_out_15.text": "15 分钟",
+    "LangGeneral.emp_ui_sv_opt_kick_keep_out_60.text": "60 分钟"
 }

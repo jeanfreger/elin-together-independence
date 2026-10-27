@@ -211,6 +211,13 @@ internal partial class ElinNetHost : ElinNetBase
             // do a spin wait to pin the username
         }
 
+        // banned, or kicked a moment ago: turned away before anything of the world is sent (ElinNetHostModeration)
+        if (Refusal(peer.User) is { } refused) {
+            EmpLog.Information("Player {@Peer} refused: {Reason}", peer, refused);
+            Socket.Disconnect(peer, refused);
+            return;
+        }
+
         // a player coming back before its dead link was noticed: a returning player keeps its peer id, and its
         // old link closing later would take the character of the new one off the map. One link per player
         foreach (var old in Socket.Peers) {
