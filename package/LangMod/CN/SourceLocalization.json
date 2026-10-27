@@ -540,5 +540,7 @@
     "LangGeneral.emp_ui_sv_opt_max_characters_10.text": "10",
     "LangGeneral.emp_ui_sv_opt_max_characters_0.text": "不限",
     "LangGeneral.emp_ui_chara_limit.text": "你的角色数量已达到这个世界的上限：删除一个后才能创建或导入新角色。",
-    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面"
+    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面",
+    "LangGeneral.emp_ui_sv_cfg_guest_bouts.text": "其他玩家也能与冒险者决斗",
+    "LangGeneral.emp_ui_sv_desc_guest_bouts.text": "其他玩家与冒险者的决斗和主机相同：决斗期间冒险者离开城镇，结束后恢复返回；下次决斗前的一周对所有人相同，胜利会被记录，奖励来自冒险者本身。关闭：该玩家只在自己的游戏中与副本战斗，世界中不会留下任何结果。"
 }

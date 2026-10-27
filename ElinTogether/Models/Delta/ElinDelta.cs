@@ -183,6 +183,8 @@ namespace ElinTogether.Models;
 [Union(985, typeof(ModerationDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
+// Duels, council 7 steps 5 to 7
+[Union(1030, typeof(AdventurerBoutDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

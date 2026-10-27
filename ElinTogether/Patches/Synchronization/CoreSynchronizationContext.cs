@@ -47,6 +47,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         TileStateDelta.Flush();
         PlayerTrade.Update();
         PlayerDuel.Update();
+        AdventurerBout.Update();
         CardCache.Update();
         CharaSynchronizationContext.Update();
         NetProfileSynchronizationContext.Update();

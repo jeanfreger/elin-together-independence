@@ -322,6 +322,13 @@ public class NetSessionRules
     [Key(121)]
     public bool PermadeathRevive { get; set; }
 
+    /// <summary>
+    ///     Council 7, step 5: a guest's bout with an adventurer counts as the host's does, see AdventurerBout. Off: it
+    ///     stays in the guest's own game. An older host sends none: off, as it was
+    /// </summary>
+    [Key(1030)]
+    public bool GuestBouts { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -361,6 +368,7 @@ public class NetSessionRules
         AllowReconnect = EmpConfig.Server.AutoReconnect.Value,
         HostManagesBase = EmpConfig.Server.HostManagesBase.Value,
         AllowDuels = EmpConfig.Server.Duels.Value,
+        GuestBouts = EmpConfig.Server.GuestBouts.Value,
         AllowPlayerKill = EmpConfig.Server.PlayerKill.Value,
         AllowGuestBuild = EmpConfig.Server.GuestBuild.Value,
         UseSharedSpeed = EmpConfig.Server.SharedAverageSpeed.Value,

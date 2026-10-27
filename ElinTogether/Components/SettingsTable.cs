@@ -265,6 +265,7 @@ internal static class SettingsTable
         yield return new("fights", "together", false, Choice: Fights);
         yield return new("duels", "together", true, EmpConfig.Server.Duels, Under: "fights");
         yield return new("player_kill", "together", true, EmpConfig.Server.PlayerKill, Under: "fights");
+        yield return new("guest_bouts", "together", true, EmpConfig.Server.GuestBouts);
         yield return new("player_trade", "friends", true, EmpConfig.Server.PlayerTrade);
         yield return new("follow", "friends", true, EmpConfig.Server.Follow);
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
@@ -451,6 +452,7 @@ internal static class SettingsTable
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,
+            [EmpConfig.Server.GuestBouts] = r.GuestBouts,
             [EmpConfig.Server.PlayerKill] = r.AllowPlayerKill,
             [EmpConfig.Server.PlayerTrade] = r.AllowPlayerTrade,
             [EmpConfig.Server.PermadeathRevive] = r.PermadeathRevive,
