@@ -16,6 +16,9 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     private const int BatchSize = 32;
     private const long PollBudgetMs = 4;
 
+    // what a player that has not joined yet may send in one message
+    private const int UntrustedMessageSize = 4 * 1024 * 1024;
+
     private readonly IntPtr[] _batchedMessages = new IntPtr[BatchSize];
     private readonly SteamNetPeerBroadcast _broadcast = new(serializer ?? new SteamNetSerializer());
     private readonly List<SteamNetPeer> _peers = [];
@@ -107,6 +110,14 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
                     // a piece of a big message: nothing for the listener before the last one, see SteamNetPeer.Send
                     if (NetFragments.IsFragment(bytes)) {
+                        // a player not in yet sends small things (versions, a character): a big message from it is
+                        // refused before it is pieced together (security audit 2026-10-27: 64 MB were read first)
+                        if (IsHost && !peer.Trusted && NetFragments.ReadInt(bytes, 16) > UntrustedMessageSize) {
+                            EmpLog.Warning("A message of {Size} bytes from {@Peer}, who has not joined yet, was refused",
+                                NetFragments.ReadInt(bytes, 16), peer);
+                            continue;
+                        }
+
                         var interrupted = peer.Fragments.InterruptedMessages;
                         var whole = peer.Fragments.Add(bytes);
                         if (peer.Fragments.InterruptedMessages != interrupted) {

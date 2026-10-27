@@ -173,6 +173,11 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     internal readonly NetFragmentAssembler Fragments = new();
 
     /// <summary>
+    ///     The host let this player in (it plays a character here): its messages may be as big as any
+    /// </summary>
+    internal bool Trusted { get; set; }
+
+    /// <summary>
     ///     Hands Steam as much of what waits as its send queue takes, the rest stays for the next frame
     /// </summary>
     internal void Flush()

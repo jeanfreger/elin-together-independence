@@ -16,6 +16,10 @@ internal partial class ElinNetHost
 {
     internal const double FloodRate = 500;
     internal const double FloodBurst = 2048;
+
+    // and all its kinds together (security audit 2026-10-27: 500 a second for each of some 170 kinds was no limit)
+    internal const double TotalRate = 3000;
+    internal const double TotalBurst = 8192;
     private const double FloodLogWindow = 10;
 
     private static readonly Stopwatch FloodClock = Stopwatch.StartNew();
@@ -26,15 +30,12 @@ internal partial class ElinNetHost
     private bool Floods(ElinDelta delta, int peerId)
     {
         var now = FloodClock.Elapsed.TotalSeconds;
+        var total = (peerId, typeof(ElinDelta));
         var key = (peerId, delta.GetType());
-        var (budget, at) = _deltaBudget.TryGetValue(key, out var held) ? held : (FloodBurst, now);
-        budget = Math.Min(FloodBurst, budget + (now - at) * FloodRate);
-        if (budget >= 1) {
-            _deltaBudget[key] = (budget - 1, now);
+        var overall = !Spend(total, now, TotalRate, TotalBurst);
+        if (!overall && Spend(key, now, FloodRate, FloodBurst)) {
             return false;
         }
-
-        _deltaBudget[key] = (budget, now);
 
         var enforce = ElinDelta.TrustEnforced;
         var (loggedAt, count) = _floodLogged.TryGetValue(key, out var logged) ? logged : (double.MinValue, 0);
@@ -43,13 +44,27 @@ internal partial class ElinNetHost
             EmpLog.Warning(enforce
                     ? "Cut a flood of {DeltaType} from peer {Peer}: {Count} over {Rate} a second"
                     : "Would have cut a flood of {DeltaType} from peer {Peer}: {Count} over {Rate} a second",
-                key.Item2.Name, peerId, count, FloodRate);
+                key.Item2.Name, peerId, count, overall ? TotalRate : FloodRate);
             _floodLogged[key] = (now, 0);
         } else {
             _floodLogged[key] = (loggedAt, count);
         }
 
         return enforce;
+    }
+
+    // one token of that budget, refilled at its rate up to its burst
+    private bool Spend((int Peer, Type Type) key, double now, double rate, double burst)
+    {
+        var (budget, at) = _deltaBudget.TryGetValue(key, out var held) ? held : (burst, now);
+        budget = Math.Min(burst, budget + (now - at) * rate);
+        if (budget < 1) {
+            _deltaBudget[key] = (budget, now);
+            return false;
+        }
+
+        _deltaBudget[key] = (budget - 1, now);
+        return true;
     }
 
     /// <summary>

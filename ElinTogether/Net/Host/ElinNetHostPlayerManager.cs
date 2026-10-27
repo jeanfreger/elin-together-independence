@@ -312,6 +312,9 @@ internal partial class ElinNetHost
     {
         // register before any SetAI
         ActiveRemoteCharas[peer.Id] = chara;
+        if (peer is Steam.SteamNetPeer joined) {
+            joined.Trusted = true;
+        }
 
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
