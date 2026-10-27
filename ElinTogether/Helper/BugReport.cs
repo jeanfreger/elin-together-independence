@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -38,6 +39,11 @@ internal static class BugReport
                 foreach (var (name, jpg) in ReplayBuffer.Snapshot()) {
                     using var entry = zip.CreateEntry(name, System.IO.Compression.CompressionLevel.NoCompression).Open();
                     entry.Write(jpg, 0, jpg.Length);
+                }
+
+                if (ReplayBuffer.Gif() is { } gif) {
+                    using var entry = zip.CreateEntry("replay.gif", System.IO.Compression.CompressionLevel.NoCompression).Open();
+                    entry.Write(gif, 0, gif.Length);
                 }
 
                 foreach (var name in new[] { "Player.log", "Player-prev.log" }) {
@@ -169,6 +175,9 @@ internal static class BugReport
                 info = Describe(),
                 zip = bytes is null ? "" : Convert.ToBase64String(bytes),
                 version = ModInfo.BuildVersion,
+                // what the developers open first, each a file of its own beside the zip (user, 2026-10-27: the logs
+                // must be easy to reach): the replay moving, and the ends of the two logs, read in the browser
+                files = ReadableFiles(),
             });
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             EmpLog.Warning(ex, "The bug report could not be read to send it");
@@ -202,6 +211,47 @@ internal static class BugReport
         }
 
         done(url);
+    }
+
+    // the end of a log is where the bug is: past this, only the last part goes as its own file (the zip has it all)
+    private const int LogTail = 1536 * 1024;
+
+    private static List<object> ReadableFiles()
+    {
+        var files = new List<object>();
+        if (ReplayBuffer.Gif() is { } gif) {
+            files.Add(new { name = "replay.gif", content = Convert.ToBase64String(gif) });
+        }
+
+        var data = Application.persistentDataPath;
+        var modLog = new DirectoryInfo(Path.Combine(data, "ElinMP", "Logs")) is { Exists: true } logs
+            ? logs.GetFiles("*.log").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault(f => f.Name.StartsWith("Session"))
+            : null;
+        foreach (var (path, name) in new[] { (Path.Combine(data, "Player.log"), "Player.log"), (modLog?.FullName, "ElinTogether.log") }) {
+            if (path is not null && Tail(path) is { } text) {
+                files.Add(new { name, content = Convert.ToBase64String(text) });
+            }
+        }
+
+        return files;
+    }
+
+    private static byte[]? Tail(string path)
+    {
+        try {
+            using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var length = (int)Math.Min(source.Length, LogTail);
+            source.Seek(-length, SeekOrigin.End);
+            var bytes = new byte[length];
+            var read = 0;
+            while (read < length && source.Read(bytes, read, length - read) is > 0 and var n) {
+                read += n;
+            }
+
+            return bytes;
+        } catch (IOException) {
+            return null;
+        }
     }
 
     private static string FirstLine(string words)

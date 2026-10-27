@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace ElinTogether.Helper;
@@ -72,6 +73,59 @@ internal static class ReplayBuffer
         while (_frames.Count > Frames) {
             _frames.Dequeue();
         }
+    }
+
+    /// <summary>
+    ///     The pictures kept, as one animated GIF (twice as fast as played), null without pictures. Decoded here on the
+    ///     main thread, made smaller (480 wide) for the page that shows it
+    /// </summary>
+    private static (DateTime Last, byte[]? Gif) _made;
+
+    internal static byte[]? Gif()
+    {
+        if (_frames.Count == 0) {
+            return null;
+        }
+
+        // (asked for the zip and for the report's own files: made once for the same pictures)
+        var last = _frames.Last().At;
+        if (_made.Last == last) {
+            return _made.Gif;
+        }
+
+        const int width = 480;
+        var frames = new List<byte[]>();
+        var height = 0;
+        var texture = new Texture2D(2, 2);
+        try {
+            foreach (var (_, jpg) in _frames) {
+                if (!texture.LoadImage(jpg)) {
+                    continue;
+                }
+
+                height = width * texture.height / texture.width;
+                var pixels = texture.GetPixels32();
+                var rgb = new byte[width * height * 3];
+                for (var y = 0; y < height; y++) {
+                    // (the texture's first row is the bottom one)
+                    var sy = (texture.height - 1 - y * texture.height / height) * texture.width;
+                    for (var x = 0; x < width; x++) {
+                        var c = pixels[sy + x * texture.width / width];
+                        var i = (y * width + x) * 3;
+                        rgb[i] = c.r;
+                        rgb[i + 1] = c.g;
+                        rgb[i + 2] = c.b;
+                    }
+                }
+
+                frames.Add(rgb);
+            }
+        } finally {
+            UnityEngine.Object.Destroy(texture);
+        }
+
+        _made = (last, frames.Count == 0 ? null : GifWriter.Write(width, height, frames, 50));
+        return _made.Gif;
     }
 
     /// <summary>
