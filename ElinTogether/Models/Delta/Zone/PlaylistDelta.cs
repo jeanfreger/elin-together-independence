@@ -25,6 +25,9 @@ public class PlaylistDelta : ElinDelta
     [Key(3)]
     public bool Shuffle { get; init; }
 
+    // Elin nightly 23.356 only: the stable branch has no shuffle, and naming the field would break this delta there
+    private static readonly System.Reflection.FieldInfo? ShufflePL = HarmonyLib.AccessTools.Field(typeof(MapConfig), "shufflePL");
+
     internal static void Emit()
     {
         if (!IsApplying && NetSession.Instance.Connection is { } connection && EClass._zone is { map: { } map } zone) {
@@ -32,7 +35,7 @@ public class PlaylistDelta : ElinDelta
                 ZoneUid = zone.uid,
                 Day = [..map._plDay],
                 Night = [..map._plNight],
-                Shuffle = map.config.shufflePL,
+                Shuffle = ShufflePL?.GetValue(map.config) is true,
             });
         }
     }
@@ -49,7 +52,7 @@ public class PlaylistDelta : ElinDelta
 
         map._plDay = [..Day];
         map._plNight = [..Night];
-        map.config.shufflePL = Shuffle;
+        ShufflePL?.SetValue(map.config, Shuffle);
         if (map.plDay != null) {
             Object.DestroyImmediate(map.plDay);
             map.plDay = null;

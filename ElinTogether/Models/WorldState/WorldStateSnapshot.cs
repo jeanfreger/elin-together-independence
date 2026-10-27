@@ -100,10 +100,8 @@ public class WorldStateSnapshot : EClass
                 game.cards.uidNext = GlobalUidNext;
 
                 // 4
-                if (NetSession.Instance.Rules.UseSharedSpeed &&
-                    SharedSpeed > 0f) {
-                    NetSession.Instance.SharedSpeed = SharedSpeed;
-                }
+                // (always: the host sends 0 when the shared speed is off, a value kept from before stayed; upstream 403f6fb)
+                NetSession.Instance.SharedSpeed = SharedSpeed;
             },
         });
     }
