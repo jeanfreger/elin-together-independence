@@ -23,10 +23,58 @@ public class CardModCurrencyDelta : ElinDelta
             return;
         }
 
+        if (Refused(host)) {
+            return;
+        }
+
         EmpLog.Debug("Mod currency {CurrencyId} by {CurrencyAmount} on chara {Uid}",
             CurrencyId, Amount, chara.uid);
 
         using var _ = Simulate();
         chara.ModCurrency(Amount, CurrencyId);
+    }
+
+    // the currencies of the game a player holds; and what one may gain in an hour on a server that enforces trust
+    private static readonly System.Collections.Generic.Dictionary<string, int> HourlyGain = new() {
+        ["money"] = 2_000_000, ["money2"] = 2_000, ["money3"] = 2_000, ["plat"] = 2_000, ["medal"] = 200,
+        ["ticket_sky"] = 50, ["casino_coin"] = 200_000,
+    };
+
+    private static readonly System.Collections.Generic.Dictionary<(int Peer, string Id), (float Since, long Gained)> Gains = [];
+
+    /// <summary>
+    ///     A guest says what it gained or spent of its own currency (it trades and loots on its own maps). On a public
+    ///     or dedicated server (TrustEnforced): only the game's currencies, spending always, gains up to an hourly
+    ///     amount (security audit 2026-10-27: a forged amount minted any sum, any id made any item)
+    /// </summary>
+    private bool Refused(ElinNetHost host)
+    {
+        if (!TrustEnforced) {
+            return false;
+        }
+
+        if (!HourlyGain.TryGetValue(CurrencyId, out var cap)) {
+            EmpLog.Warning("Refused currency {CurrencyId} from peer {Peer}: not a currency of the game", CurrencyId, OriginPeer);
+            return true;
+        }
+
+        if (Amount <= 0) {
+            return false;
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        var key = (OriginPeer, CurrencyId);
+        if (!Gains.TryGetValue(key, out var gained) || now - gained.Since > 3600f) {
+            gained = (now, 0);
+        }
+
+        if (gained.Gained + Amount > cap) {
+            EmpLog.Warning("Refused {Amount} {CurrencyId} from peer {Peer}: over {Cap} in an hour", Amount, CurrencyId, OriginPeer, cap);
+            ElinNetHost.AdminLog($"refused {Amount} {CurrencyId} from peer {OriginPeer}: over {cap} in an hour");
+            return true;
+        }
+
+        Gains[key] = (gained.Since, gained.Gained + Amount);
+        return false;
     }
 }

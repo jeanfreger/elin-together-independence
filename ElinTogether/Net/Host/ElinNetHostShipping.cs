@@ -183,6 +183,13 @@ internal partial class ElinNetHost
             return;
         }
 
+        // from afar only (on this map the box is the game's own); and on a public or dedicated server, at a pace and
+        // an amount of gold a player reaches (security audit 2026-10-27: any item or sum went into the world's boxes)
+        if (!_departed.Contains(peer.Id) || DepositRefused(peer, deposit)) {
+            EmpLog.Warning("Refused a deposit from {@Peer} in box {Box}", peer, deposit.Box);
+            return;
+        }
+
         // a player ships for itself, the owner of a zone for its guests too
         var forGuest = _guests.Any(kv => kv.Value.HolderId == peer.Id &&
                                          Socket.Peers.FirstOrDefault(p => p.Id == kv.Key) is { } guest &&
@@ -196,6 +203,31 @@ internal partial class ElinNetHost
             peer, thing.id, thing.Num, shipper);
 
         // no answer: the player asks for the box once after its deposits, see ElinNetClient.AskWorldBoxSoon
+    }
+
+    // peer -> (since, deposits, gold) over the last hour
+    private readonly Dictionary<int, (float Since, int Count, long Gold)> _deposits = [];
+
+    private bool DepositRefused(ISteamNetPeer peer, ShippingDeposit deposit)
+    {
+        if (!ElinDelta.TrustEnforced) {
+            return false;
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (!_deposits.TryGetValue(peer.Id, out var seen) || now - seen.Since > 3600f) {
+            seen = (now, 0, 0);
+        }
+
+        var thing = deposit.Thing.Decompress<Thing>();
+        var gold = thing.id == "money" ? (long)thing.Num : 0L;
+        if (seen.Count >= 600 || seen.Gold + gold > 2_000_000) {
+            AdminLog($"refused a deposit from {(ulong)peer.User}: {seen.Count} deposits, {seen.Gold + gold} gold in an hour");
+            return true;
+        }
+
+        _deposits[peer.Id] = (seen.Since, seen.Count + 1, seen.Gold + gold);
+        return false;
     }
 
     /// <summary>
