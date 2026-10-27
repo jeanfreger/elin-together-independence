@@ -135,6 +135,21 @@ internal partial class ElinNetHost
             : null;
     }
 
+    /// <summary>
+    ///     The characters of the players connected, wherever they are (the host's own first)
+    /// </summary>
+    internal List<Chara> ConnectedPlayers()
+    {
+        var list = new List<Chara> { pc };
+        foreach (var peer in Socket.Peers) {
+            if (PlayerChara(peer.Id) is { } chara && !list.Contains(chara)) {
+                list.Add(chara);
+            }
+        }
+
+        return list;
+    }
+
     private static Dictionary<int, byte[]> PersonalLogOf(int charaUid)
     {
         if (!PersonalQuestLogs.TryGetValue(charaUid, out var log)) {

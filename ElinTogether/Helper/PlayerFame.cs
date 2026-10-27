@@ -1,3 +1,4 @@
+using ElinTogether.Models;
 using ElinTogether.Net;
 using UnityEngine;
 
@@ -33,6 +34,44 @@ internal static class PlayerFame
         return new() {
             OnExit = () => EClass.player.fame = host,
         };
+    }
+}
+
+/// <summary>
+///     What the world makes for nobody in particular (a new nefia on the world map) reads "the player" for its level:
+///     the host's character alone. With company, each one is made for a player in turn, the host's character among
+///     them, so that every player finds things of its own level (user decision H5-04: each player's own level).
+///     Alone, or while another player already stands in (the host makes it because that player asked): the game's own
+/// </summary>
+internal static class PlayerInTurn
+{
+    private static int _next;
+
+    /// <summary>
+    ///     The next of the players connected, wherever they are. Null when it is the host's own character
+    /// </summary>
+    internal static Chara? OfWorld()
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host || !NetCompany.HasCompany ||
+            RemoteCraft.IsStandingIn || PlayerStandIn.IsActive) {
+            return null;
+        }
+
+        var players = host.ConnectedPlayers();
+        if (players.Count < 2) {
+            return null;
+        }
+
+        var player = players[_next++ % players.Count];
+        return player == EClass.pc ? null : player;
+    }
+
+    /// <summary>
+    ///     That player stands in as "the player" (its level, its fame) until the scope ends. Null when nothing changes
+    /// </summary>
+    internal static ScopeExit? World()
+    {
+        return OfWorld() is { } player ? RemoteCraft.AsCrafter(player) : null;
     }
 }
 

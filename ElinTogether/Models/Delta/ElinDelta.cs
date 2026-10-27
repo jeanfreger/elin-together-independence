@@ -181,6 +181,9 @@ namespace ElinTogether.Models;
 // Admin tools (council 2026-10-27)
 [Union(984, typeof(AdminCommandDelta))]
 [Union(985, typeof(ModerationDelta))]
+// Hunt 5, each player's own (2026-10-27)
+[Union(1040, typeof(BackerGiftDelta))]
+[Union(1041, typeof(AchievementDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass
