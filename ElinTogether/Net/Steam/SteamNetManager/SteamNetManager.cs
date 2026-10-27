@@ -216,22 +216,27 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         EmpLog.Verbose("Closing connection {@Peer}",
             peer);
 
-        // reciprocal disconnect
-        _listener?.OnPeerDisconnected(peer, reason);
+        // reciprocal disconnect. Whatever the game does for the player leaving, the link goes: a throw there left
+        // the peer in the list for good, a ghost every message still went to (reliability audit 2026-10-27)
+        try {
+            _listener?.OnPeerDisconnected(peer, reason);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Exception while {@Peer} left, its link is closed anyway", peer);
+        } finally {
+            if (!NetShutdown.IsQuitting) {
+                // last chance for what still waits, the connection lingers on what Steam took
+                peer.Flush();
 
-        if (!NetShutdown.IsQuitting) {
-            // last chance for what still waits, the connection lingers on what Steam took
-            peer.Flush();
+                SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
 
-            SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
+                SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, true);
+            }
 
-            SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, true);
+            _peers.Remove(peer);
+            _broadcast.RemoveTarget(peer);
+
+            peer.Dispose();
         }
-
-        _peers.Remove(peer);
-        _broadcast.RemoveTarget(peer);
-
-        peer.Dispose();
     }
 
     private ISteamNetPeer AddConnection(HSteamNetConnection connection)
@@ -262,7 +267,11 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         NetCompany.Invalidate();
 
-        _listener?.OnPeerConnected(peer);
+        try {
+            _listener?.OnPeerConnected(peer);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Exception while {@Peer} arrived", peer);
+        }
 
         EmpLog.Debug("Player {PlayerName} {RemoteIdentity} connected, claiming index {PeerIndex}",
             peer.User.Name, peer.User, peer.Id);

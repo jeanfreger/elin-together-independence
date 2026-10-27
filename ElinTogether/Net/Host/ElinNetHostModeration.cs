@@ -259,6 +259,13 @@ internal partial class ElinNetHost
         try {
             var folder = Path.Combine(Application.persistentDataPath, "ElinMP", "Logs");
             Directory.CreateDirectory(folder);
+            // one older file kept past 20 MB
+            var file = Path.Combine(folder, "admin.log");
+            if (File.Exists(file) && new FileInfo(file).Length > 20L * 1024 * 1024) {
+                File.Copy(file, Path.Combine(folder, "admin.1.log"), true);
+                File.Delete(file);
+            }
+
             File.AppendAllText(Path.Combine(folder, "admin.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {line}\n");
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             EmpLog.Warning(ex, "Admin log not written: {Line}", line);

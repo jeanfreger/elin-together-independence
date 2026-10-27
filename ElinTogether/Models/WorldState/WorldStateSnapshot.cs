@@ -13,7 +13,6 @@ public class WorldStateSnapshot : EClass
 {
     private static Dictionary<int, int> _missingLeftOverCharas = [];
 
-    public static readonly List<CharaStateSnapshot> CachedRemoteSnapshots = [];
 
     [Key(0)]
     public required int ServerTick { get; init; }
@@ -38,8 +37,6 @@ public class WorldStateSnapshot : EClass
 
     public static WorldStateSnapshot Create()
     {
-        CachedRemoteSnapshots.Add(CharaStateSnapshot.CreateSelf());
-
         var selfState = NetSession.Instance.Self;
         if (selfState != null) {
             selfState.Speed = pc.Stub_get_Speed();
@@ -54,14 +51,9 @@ public class WorldStateSnapshot : EClass
             snapshots[chara.uid] = CharaStateSnapshot.Create(chara);
         }
 
-        // attach remote state to client characters
-        foreach (var remoteSnapshot in CachedRemoteSnapshots) {
-            if (snapshots.TryGetValue(remoteSnapshot.Owner.Uid, out var snapshot)) {
-                snapshot.State = remoteSnapshot.State;
-            }
-        }
-
-        CachedRemoteSnapshots.Clear();
+        // (the players' own state, LastAct, speed, turbo, is not attached any more: no game reads it here, the host
+        // keeps it from each guest's own report, and it was a quarter of every snapshot to everyone, efficiency audit
+        // 2026-10-27)
 
         return new() {
             ServerTick = NetSession.Instance.Tick,

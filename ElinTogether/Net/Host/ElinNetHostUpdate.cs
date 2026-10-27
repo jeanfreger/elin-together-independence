@@ -259,7 +259,6 @@ internal partial class ElinNetHost
             ? SharedSpeed
             : -1;
 
-        WorldStateSnapshot.CachedRemoteSnapshots.Add(response);
 
         var chara = ActiveRemoteCharas[peer.Id];
         response.ApplyReconciliation(chara);

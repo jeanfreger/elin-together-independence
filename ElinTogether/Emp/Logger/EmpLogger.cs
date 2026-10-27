@@ -122,7 +122,11 @@ internal static partial class EmpLogger
                     buffered: true,
 #endif
                     rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 3);
+                    // a long-running server: a new file past 100 MB, the last ones kept (reliability audit 2026-10-27:
+                    // at 1 GB Serilog stopped writing for the rest of the day, unsaid)
+                    fileSizeLimitBytes: 100L * 1024 * 1024,
+                    rollOnFileSizeLimit: true,
+                    retainedFileCountLimit: 6);
         }
     }
 

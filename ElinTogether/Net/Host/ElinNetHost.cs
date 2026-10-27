@@ -206,11 +206,8 @@ internal partial class ElinNetHost : ElinNetBase
 
     protected override void OnPeerConnected(ISteamNetPeer peer)
     {
-        var sw = Stopwatch.StartNew();
-        while (peer.User.Name is null && sw.ElapsedMilliseconds <= 500) {
-            // do a spin wait to pin the username
-        }
-
+        // (no wait for the Steam name: it arrives through a callback of this very thread, a spin of 0.5 s only froze
+        // every join, reliability audit 2026-10-27)
         // banned, or kicked a moment ago: turned away before anything of the world is sent (ElinNetHostModeration)
         if (Refusal(peer.User) is { } refused) {
             EmpLog.Information("Player {@Peer} refused: {Reason}", peer, refused);

@@ -230,6 +230,7 @@ internal static class NetMetrics
 
         try {
             Directory.CreateDirectory(Folder);
+            PruneOld();
             var path = Path.Combine(Folder, $"net_metrics_{DateTime.Now:yyyy-MM-dd}.csv");
             if (!File.Exists(path)) {
                 line.Insert(0, "timestamp,role,category,key,count,bytes,ms\n");
@@ -296,6 +297,27 @@ internal static class NetMetrics
                     rows.Add((category, key, m.TotalCount + m.Count, m.TotalBytes + m.Bytes, ToMs(m.TotalTicks + m.Ticks)));
                 }
             }
+        }
+    }
+
+    private static bool _pruned;
+
+    // the files of more than a week ago go, once per run (a server writes one a day, 100 MB with 50 players)
+    private static void PruneOld()
+    {
+        if (_pruned) {
+            return;
+        }
+
+        _pruned = true;
+        try {
+            foreach (var file in Directory.GetFiles(Folder, "net_metrics_*.csv")) {
+                if (File.GetLastWriteTime(file) < DateTime.Now.AddDays(-7)) {
+                    File.Delete(file);
+                }
+            }
+        } catch (IOException) {
+        } catch (UnauthorizedAccessException) {
         }
     }
 }

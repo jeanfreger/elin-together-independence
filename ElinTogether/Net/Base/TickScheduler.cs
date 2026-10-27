@@ -18,16 +18,30 @@ public class TickScheduler
         IsTicking = true;
         var now = Time.time;
 
-        foreach (var sub in _subscriptions.Where(sub => now >= sub.NextInvokeTime)) {
+        for (var i = 0; i < _subscriptions.Count; i++) {
+            var sub = _subscriptions[i];
+            if (now < sub.NextInvokeTime) {
+                continue;
+            }
+
+            // never behind now: after a freeze (a join, a save) the job ran on every frame until it caught up, a burst
+            // of snapshots to everyone (efficiency audit 2026-10-27)
             sub.NextInvokeTime += sub.TickInterval;
+            if (sub.NextInvokeTime <= now) {
+                sub.NextInvokeTime = now + sub.TickInterval;
+            }
 
             var start = System.Diagnostics.Stopwatch.GetTimestamp();
             try {
                 sub.Update();
             } catch (Exception ex) {
-                EmpLog.Debug(ex, "Exception at tick update {TickHandler}",
-                    sub.Update.Method.Name);
-                // noexcept
+                // the first failure of a job is a warning: a job that fails at every tick froze players with nothing
+                // in the log but at Debug (reliability audit 2026-10-27)
+                if (sub.Failures++ == 0) {
+                    EmpLog.Warning(ex, "Exception at tick update {TickHandler}", sub.Update.Method.Name);
+                } else {
+                    EmpLog.Debug(ex, "Exception at tick update {TickHandler} ({Failures} so far)", sub.Update.Method.Name, sub.Failures);
+                }
             }
 
             sub.Metric.Add(0, start);
@@ -67,5 +81,6 @@ public class TickScheduler
     {
         public float NextInvokeTime;
         public NetMetric Metric = null!;
+        public int Failures;
     }
 }

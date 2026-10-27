@@ -19,6 +19,7 @@ internal static class EmpAutoHost
     private const long SlowSaveMs = 500;
     private const float BackupSeconds = 3600f;
     private const float ForceSeconds = 30f;
+    private const float RegularForceSeconds = 120f;
 
     private static float _nextSave;
     private static float _forceAt;
@@ -140,6 +141,12 @@ internal static class EmpAutoHost
         // a save asked for by RequestSave is not put off for good by a menu or a fight: it was never asked
         // (never while a map loads or the host changes zone, however long it was put off)
         if (!SafeToSave() || (!CanSave() && (_forceAt <= 0f || now < _forceAt))) {
+            // the regular save too, put off by a menu left open, fishing or a monster that keeps the host in sight:
+            // made anyway a while later (reliability audit 2026-10-27: an hour of everyone's play went unsaved)
+            if (SafeToSave() && _forceAt <= 0f) {
+                _forceAt = now + RegularForceSeconds;
+            }
+
             _nextSave = now + RetrySeconds;
             return;
         }
@@ -218,7 +225,11 @@ internal static class EmpAutoHost
         var watch = Stopwatch.StartNew();
         var saved = game.Save(true, true);
         watch.Stop();
-        EmpLog.Information("Autosave: {Result} in {Ms} ms", saved ? "saved" : "failed", watch.ElapsedMilliseconds);
+        if (saved) {
+            EmpLog.Information("Autosave: saved in {Ms} ms", watch.ElapsedMilliseconds);
+        } else {
+            EmpLog.Warning("Autosave: the game could not save the world ({Ms} ms), see Player.log", watch.ElapsedMilliseconds);
+        }
 
         if (saved) {
             // every guest keeps a copy of the world as it was just saved

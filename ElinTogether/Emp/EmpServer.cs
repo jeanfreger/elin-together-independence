@@ -32,6 +32,7 @@ internal static class EmpServer
     private static bool _loading;
     private static string _saved = "-";
     private static string _order = "";
+    private static int _lastPlayers;
     private static readonly DateTime _started = DateTime.Now;
 
     internal static bool Requested => _save is not null;
@@ -136,10 +137,18 @@ internal static class EmpServer
         // nobody is there to save: the server does, while someone plays
         if (Time.unscaledTime >= _nextSave) {
             _nextSave = Time.unscaledTime + SaveSeconds;
-            if (session.CurrentPlayers.Count > 1 && EClass.game.Save(true, true)) {
-                _saved = DateTime.Now.ToString("HH:mm");
+            if (session.CurrentPlayers.Count > 1) {
+                SaveNow();
             }
         }
+
+        // the last player out: what it did is in the world, saved at once (reliability audit 2026-10-27)
+        var players = session.CurrentPlayers.Count;
+        if (players < _lastPlayers && players <= 1) {
+            SaveNow();
+        }
+
+        _lastPlayers = players;
 
         if (Time.unscaledTime >= _nextBackup) {
             Backup();
@@ -162,6 +171,16 @@ internal static class EmpServer
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Server: backup of {Save} failed", Game.id);
             return "error: backup failed";
+        }
+    }
+
+    private static void SaveNow()
+    {
+        if (EClass.game.Save(true, true)) {
+            _saved = DateTime.Now.ToString("HH:mm");
+        } else {
+            _saved = "FAILED " + DateTime.Now.ToString("HH:mm");
+            EmpLog.Warning("Server: the game could not save the world, see Player.log");
         }
     }
 
