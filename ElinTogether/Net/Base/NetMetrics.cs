@@ -74,6 +74,7 @@ internal static class NetMetrics
     internal static readonly NetMetric BroadcastTargets = Named("broadcast", "targets");
     internal static readonly NetMetric GameSave = Named("save", "game");
     internal static readonly NetMetric MapSave = Named("save", "map");
+    internal static readonly NetMetric WorldPack = Named("dispatch", "world_pack");
     internal static readonly NetMetric MapPack = Named("dispatch", "map_pack");
     internal static readonly NetMetric DeltaSend = Named("main", "delta_send");
 

@@ -27,7 +27,28 @@ internal static class ZoneLeaseState
 
         return Directory
             .GetFiles(zone.pathSave, "*.*", SearchOption.TopDirectoryOnly)
-            .ToDictionary(Path.GetFileNameWithoutExtension, LZ4Bytes.CreateFromFile);
+            .ToDictionary(MapFileKey, LZ4Bytes.CreateFromFile);
+    }
+
+    /// <summary>
+    ///     A file of a saved map, by its name. A layer of cell ids over 255 is written as "objs.w2" or "objs.w4"
+    ///     (Map.WriteCellIds) and read back under that name: keyed without it, it reached the other game as "objs"
+    ///     and loaded as an empty layer
+    /// </summary>
+    internal static string MapFileKey(string path)
+    {
+        var name = Path.GetFileName(path);
+        return IsWideIds(name) ? name : Path.GetFileNameWithoutExtension(name);
+    }
+
+    internal static bool IsMapFileKey(string id)
+    {
+        return !id.Contains('/') && !id.Contains('\\') && (!id.Contains('.') || IsWideIds(id));
+    }
+
+    private static bool IsWideIds(string name)
+    {
+        return name.EndsWith(".w2") || name.EndsWith(".w4");
     }
 
     internal static void WriteMap(Zone zone, Dictionary<string, LZ4Bytes> map)
@@ -35,7 +56,7 @@ internal static class ZoneLeaseState
         Directory.CreateDirectory(zone.pathSave);
 
         foreach (var (id, asset) in map) {
-            if (id.Contains('.') || id.Contains('/') || id.Contains('\\')) {
+            if (!IsMapFileKey(id)) {
                 continue;
             }
 

@@ -62,7 +62,7 @@ public class ZoneDataResponse
             Zone = LZ4Bytes.Create(zone),
             Map = Directory
                 .GetFiles(zone.pathSave, "*.*", SearchOption.TopDirectoryOnly)
-                .ToDictionary(Path.GetFileNameWithoutExtension, LZ4Bytes.CreateFromFile),
+                .ToDictionary(ZoneLeaseState.MapFileKey, LZ4Bytes.CreateFromFile),
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
         };
@@ -95,7 +95,7 @@ public class ZoneDataResponse
         var basePath = ResourceFetch.GetEmpSavePath();
 
         foreach (var (id, asset) in Map) {
-            if (id.Contains('.') || id.Contains('/') || id.Contains('\\')) {
+            if (!ZoneLeaseState.IsMapFileKey(id)) {
                 continue;
             }
             var path = Path.Combine(basePath, ZoneUid.ToString(), id);

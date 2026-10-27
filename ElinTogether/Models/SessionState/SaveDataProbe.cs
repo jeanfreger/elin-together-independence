@@ -1,3 +1,4 @@
+using ElinTogether.Net;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -21,8 +22,11 @@ public class SaveDataProbe
 
     public static SaveDataProbe Create(int uid)
     {
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        var game = LZ4Bytes.Create(EClass.game);
+        NetMetrics.WorldPack.Add(game.Bytes.Length, start);
         return new() {
-            Game = LZ4Bytes.Create(EClass.game),
+            Game = game,
             RemoteCharaUid = uid,
         };
     }
