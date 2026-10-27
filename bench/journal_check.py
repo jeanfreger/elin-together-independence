@@ -10,6 +10,9 @@ j1  message history: a line the guest's game wrote and one the host's game wrote
     its own line and not the host's; the host never gets the guest's. Off (then on again): the guest's history is
     the host's again, the old behaviour (proves the box decides). Red before this part: the guest's line is gone.
     The lines are written with Msg.SayRaw, the call every game message ends in, not by a played action.
+j2  personal records: the guest's digs, deaths, early deaths and nights slept (set in its game as the game counts
+    them, NOT played) survive a world copy; the host's do not move; kills stay the world's (the host's in both
+    games). Off: the guest's records are the host's again.
 Not covered: the file route (the guest closes the game and joins again), three players.
 """
 import sys
@@ -88,7 +91,34 @@ def j1():
     set_own_journal(True)
 
 
-TESTS = {"j0": j0, "j1": j1}
+REC = ('var s = EClass.player.stats; return string.Join(",", s.digs, s.death, s.death2, s.slept, s.kills);')
+
+
+def records(port):
+    return [int(x) for x in ev(port, REC).split(",")]
+
+
+def j2():
+    host = records(H)
+    # the guest's own counts, as its game counts them when it digs, dies and sleeps (set directly: NOT played)
+    own = [host[0] + 7, host[1] + 3, host[2] + 2, host[3] + 5]
+    ev(A, f'var s = EClass.player.stats; s.digs = {own[0]}; s.death = {own[1]}; s.death2 = {own[2]}; s.slept = {own[3]}; return "ok";')
+    if not trip():
+        return
+    got, host_now = records(A), records(H)
+    check(f"on: the guest keeps its own digs, deaths, early deaths, nights ({got[:4]} vs {own})", got[:4] == own)
+    check(f"the host's own records did not move ({host_now[:4]} vs {host[:4]})", host_now[:4] == host[:4])
+    check(f"kills stay the world's: the guest has the host's ({got[4]} vs {host_now[4]})", got[4] == host_now[4])
+
+    set_own_journal(False)
+    if not trip():
+        return
+    got, host_now = records(A), records(H)
+    check(f"off: the guest's records are the host's again ({got[:4]} vs {host_now[:4]})", got[:4] == host_now[:4])
+    set_own_journal(True)
+
+
+TESTS = {"j0": j0, "j1": j1, "j2": j2}
 
 
 def main():
