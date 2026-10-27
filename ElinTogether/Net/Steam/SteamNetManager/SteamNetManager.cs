@@ -136,7 +136,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                         bytes = whole;
                     }
 
-                    var (typeHash, payload) = SteamNetSerializer.ExtractTypeAndPayload(bytes);
+                    var typeHash = BitConverter.ToUInt32(bytes, 0);
                     var type = SteamNetTypeRegistry.Resolve(typeHash);
                     if (type == null) {
                         EmpLog.Warning("Failed to parse type hash {TypeHash}",
@@ -145,7 +145,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                     }
 
                     var start = Stopwatch.GetTimestamp();
-                    var packet = _serializer.Deserialize(payload, type);
+                    var packet = _serializer.Deserialize(SteamNetSerializer.Payload(bytes), type);
                     _listener?.OnMessageReceived(packet, peer);
                     NetMetrics.Received(peer.Id, typeHash, bytes.Length, start);
                 } catch (Exception ex) {

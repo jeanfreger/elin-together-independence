@@ -78,6 +78,28 @@ internal static class Bench
         Console.WriteLine($"   before {oldMs,6:0.0} ms {oldBytes / 100_000,5} bytes/flush   after {newMs,6:0.0} ms " +
                           $"{newBytes / 100_000,5} bytes/flush");
 
+        Section("SteamNetSerializer.Serialize, the snapshot above (CPU, 100 000 messages)");
+        var serializerType = typeof(RemoteCard).Assembly.GetType("ElinTogether.Net.Steam.SteamNetSerializer")!;
+        var serializer = Activator.CreateInstance(serializerType, true)!;
+        var serialize = serializerType.GetMethod("Serialize")!.MakeGenericMethod(typeof(WorldStateSnapshot))
+            .CreateDelegate<Func<WorldStateSnapshot, byte[]>>(serializer);
+        var snapshot = Snapshot(charas);
+        var message = serialize(snapshot);
+        var expected = MessagePackSerializer.Serialize(snapshot, Options);
+        var hash = typeof(WorldStateSnapshot).ToString().Aggregate(2166136261U, (h, c) => unchecked((h ^ c) * 16777619U));
+        Console.WriteLine($"   header {(BitConverter.ToUInt32(message, 0) == hash ? "ok" : "WRONG")}, payload " +
+                          $"{(message.AsSpan(4).SequenceEqual(expected) ? "identical" : "DIFFERS")}");
+        var (oldSerMs, oldSerBytes) = Time(() => {
+            var payload = MessagePackSerializer.Serialize(snapshot, Options);
+            var bytes = new byte[4 + payload.Length];
+            BitConverter.TryWriteBytes(bytes, hash);
+            Buffer.BlockCopy(payload, 0, bytes, 4, payload.Length);
+            return bytes;
+        });
+        var (newSerMs, newSerBytes) = Time(() => serialize(snapshot));
+        Console.WriteLine($"   before {oldSerMs,6:0.0} ms {oldSerBytes / 100_000,5} bytes/message   after {newSerMs,6:0.0} ms " +
+                          $"{newSerBytes / 100_000,5} bytes/message");
+
         Section("Game time on an idle map (players on their own clock, the default)");
         // a WorldStateDeltaList with one GameDelta, sent at every 50 Hz flush (the host makes one per frame), plus
         // the 4-byte type hash; now only while the host's world fast-forwards (5 Hz) and once when it stops
