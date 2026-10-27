@@ -115,7 +115,7 @@ internal class TabClientConfiguration : TabEmpBase
                 });
             }, Dialog.InputType.Chat);
             input.input.field.characterLimit = 3000;
-            input.input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
+            Patches.ReportBoxPatch.Enlarge(input);
         });
         help.TextSmall("emp_ui_report_send_desc".lang());
     }
