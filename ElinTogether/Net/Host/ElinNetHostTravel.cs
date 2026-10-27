@@ -326,6 +326,7 @@ internal partial class ElinNetHost
     protected override void Update()
     {
         base.Update();
+        UpdateJoinCopies();
         UpdateQuestAsk();
         UpdateSoftRejoins();
         UpdateWorldMapTogether();

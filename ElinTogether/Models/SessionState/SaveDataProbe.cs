@@ -20,14 +20,14 @@ public class SaveDataProbe
         return Game.Decompress<Game>();
     }
 
-    public static SaveDataProbe Create(int uid)
+    /// <summary>
+    ///     The copy of the world a joining player gets (shared by the players joining together)
+    /// </summary>
+    public static LZ4Bytes PackWorld()
     {
         var start = System.Diagnostics.Stopwatch.GetTimestamp();
         var game = LZ4Bytes.Create(EClass.game);
         NetMetrics.WorldPack.Add(game.Bytes.Length, start);
-        return new() {
-            Game = game,
-            RemoteCharaUid = uid,
-        };
+        return game;
     }
 }

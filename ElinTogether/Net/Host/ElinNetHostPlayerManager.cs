@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
@@ -158,9 +159,10 @@ internal partial class ElinNetHost
             peer.Send(new SessionNewPlayerRequest());
         } else {
             // remote character exists
-            SendSaveProbe(chara, peer);
-            SendToSpawnZone(chara, peer, false);
-            ReturnToAwayZone(peer);
+            SendSaveProbe(chara, peer, () => {
+                SendToSpawnZone(chara, peer, false);
+                ReturnToAwayZone(peer);
+            });
         }
     }
 
@@ -215,8 +217,7 @@ internal partial class ElinNetHost
         }
 
         SavedRemoteCharas[peer.User] = chara.uid;
-        SendSaveProbe(chara, peer);
-        SendToSpawnZone(chara, peer, false);
+        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, false));
     }
 
     /// <summary>
@@ -287,8 +288,7 @@ internal partial class ElinNetHost
         // adds the character now played to the roster
         RosterOf(peer.User);
 
-        SendSaveProbe(chara, peer);
-        SendToSpawnZone(chara, peer, true);
+        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, true));
     }
 
     /// <summary>
@@ -321,35 +321,87 @@ internal partial class ElinNetHost
     /// <summary>
     ///     Send a save snapshot for replication
     /// </summary>
-    public void SendSaveProbe(Chara chara, ISteamNetPeer peer)
+    // joins within this time of the last copy share the next one (council 2026-10-27, 50 players): each copy of the
+    // world and the map freezes the host, and players come back together after a restart
+    private const float JoinBatchSeconds = 0.5f;
+    private float _lastJoinCopy = float.MinValue;
+    private readonly List<(Chara Chara, ISteamNetPeer Peer, Action? After)> _joinQueue = [];
+
+    /// <summary>
+    ///     The player plays its character from now on, and gets a copy of the world and of the host map. Alone it gets
+    ///     them at once; right after another join it waits for the next copy (JoinBatchSeconds), shared by all who
+    ///     came meanwhile. <paramref name="after" /> is what goes to it after both copies
+    /// </summary>
+    public void SendSaveProbe(Chara chara, ISteamNetPeer peer, Action? after = null)
     {
         EmpLog.Information("Sending save probe to player {@Peer} for replication",
             peer);
 
         RegisterPlayer(chara, peer);
+        _joinQueue.Add((chara, peer, after));
 
-        // what is already done is in the copies below: told to everyone before them, this player would
+        if (Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
+            SendJoinCopies();
+        }
+    }
+
+    private void UpdateJoinCopies()
+    {
+        if (_joinQueue.Count > 0 && Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
+            SendJoinCopies();
+        }
+    }
+
+    private void SendJoinCopies()
+    {
+        _lastJoinCopy = Time.realtimeSinceStartup;
+
+        // (gone meanwhile, or playing another character since)
+        var joins = _joinQueue
+            .Where(j => j.Peer.IsConnected && ActiveRemoteCharas.TryGetValue(j.Peer.Id, out var played) && played == j.Chara)
+            .ToList();
+        _joinQueue.Clear();
+        if (joins.Count == 0) {
+            return;
+        }
+
+        // what is already done is in the copies below: told to everyone before them, these players would
         // otherwise replay it on top of a world that has it
         Delta.RefreshBuffer();
         WorldStateDeltaUpdate();
-
-        peer.Send(NetSession.Instance.Rules);
-        peer.Send(SaveDataProbe.Create(chara.uid));
 
         // the map in the same frame as the world, not when the player asks for it once the world is loaded:
         // nothing happens between the two copies, and what happens after both is kept there until the map is
         // loaded (ElinDeltaManager.HoldForIncomingMap). The characters of the players are in the world only:
         // what they picked up or put on between the two copies never reached this player
-        if (_zone is { } zone) {
-            EmpLog.Information("World and map {ZoneFullName} sent together to player {@Peer}",
-                zone.ZoneFullName, peer);
-            PropagateZoneChangeState(zone, peer);
-        } else {
-            EmpLog.Warning("No active map to send with the world to player {@Peer}", peer);
+        var world = SaveDataProbe.PackWorld();
+        var map = _zone is { } zone ? ZoneDataResponse.Create(zone) : null;
+        EmpLog.Information("World and map {ZoneFullName} sent together to {Count} player(s)",
+            _zone?.ZoneFullName, joins.Count);
+
+        foreach (var (chara, peer, _) in joins) {
+            peer.Send(NetSession.Instance.Rules);
+            peer.Send(new SaveDataProbe { Game = world, RemoteCharaUid = chara.uid });
+            if (map is not null) {
+                peer.Send(map);
+            } else {
+                EmpLog.Warning("No active map to send with the world to player {@Peer}", peer);
+            }
+        }
+
+        if (_zone is { } here) {
+            Session.Lobby.Current[EmpLobbyData.CurrentZone] = here.NameWithLevel;
         }
 
         TellMarriages();
         TellTeams();
+
+        foreach (var join in joins) {
+            join.After?.Invoke();
+        }
+
+        // counted from the end of the copies: joins held back by their freeze share the next one
+        _lastJoinCopy = Time.realtimeSinceStartup;
     }
 
     /// <summary>
@@ -372,8 +424,7 @@ internal partial class ElinNetHost
         // adds the character now played to the roster
         RosterOf(peer.User);
 
-        SendSaveProbe(chara, peer);
-        SendToSpawnZone(chara, peer, true);
+        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, true));
     }
 
     /// <summary>
