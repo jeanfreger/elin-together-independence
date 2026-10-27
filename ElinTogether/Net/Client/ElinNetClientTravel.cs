@@ -461,6 +461,12 @@ internal partial class ElinNetClient
             // here. Back to it the way a player away comes back: it drops that lease and puts us on its map
             if (!Session.IsAway && !_rejoining && core.IsGameStarted) {
                 SendRejoin();
+            } else if (Session.IsAway && !_rejoining && Session.AwayZone?.uid != grant.ZoneUid) {
+                // away elsewhere: nothing drops that lease on the host, the map stayed held by nobody for good, nobody
+                // else could go in (reliability audit 2026-10-27, #4)
+                Host.Send(new ZoneLeaseDecline {
+                    ZoneUid = grant.ZoneUid,
+                });
             }
 
             return;

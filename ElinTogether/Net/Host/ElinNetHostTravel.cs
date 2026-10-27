@@ -222,7 +222,7 @@ internal partial class ElinNetHost
                 // (with the host's "repair the map by itself" box: unticked, the map stays as it stands on its screen)
                 var map = !Session.Rules.AutoResync || zone.IsRegion || zone.IsInstance || zone.map is null
                     ? null
-                    : ZoneLeaseState.CollectMap(zone);
+                    : TryCollectMap(zone);
                 var sums = map is null ? null : ZoneLeaseState.Sums(zone.map);
 
                 EmpLog.Information("Host leaves {ZoneFullName}, {@Peer} keeps it, uid range from {UidRangeStart}, host copy sent along {HasMap}: {Sums}",
@@ -253,6 +253,21 @@ internal partial class ElinNetHost
                 Guest = true,
                 Handoff = true,
             });
+        }
+    }
+
+    /// <summary>
+    ///     Our copy for the player keeping the map we leave. None when it cannot be read: that player keeps the one
+    ///     on its screen, as with the host's "repair the map by itself" box unticked. A throw here held the lease
+    ///     with no grant sent, and stopped the host's own move (reliability audit 2026-10-27, #4)
+    /// </summary>
+    private static Dictionary<string, LZ4Bytes>? TryCollectMap(Zone zone)
+    {
+        try {
+            return ZoneLeaseState.CollectMap(zone);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Map of zone {ZoneFullName} could not be read, the player keeping it keeps its own copy", zone.ZoneFullName);
+            return null;
         }
     }
 
@@ -816,13 +831,25 @@ internal partial class ElinNetHost
             KeepAlive(zone);
         }
 
+        // before the lease is held: a map that cannot be read (disk) left the zone held by nobody, for good, and the
+        // player waiting (reliability audit 2026-10-27, #4)
+        Dictionary<string, LZ4Bytes>? map;
+        try {
+            map = zone.IsRegion || !zone.isGenerated
+                ? null
+                : ZoneLeaseState.CollectMap(zone);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Map of zone {ZoneFullName} could not be read, lease denied to {@Peer}", zone.ZoneFullName, peer);
+            peer.Send(new ZoneLeaseDenied {
+                ZoneUid = request.ZoneUid,
+                Reason = "emp_travel_invalid",
+            });
+            return;
+        }
+
         // a guest moving on is no longer one, see HandOverZone
         _guests.Remove(peer.Id);
         var rangeStart = ReserveLease(peer, zone);
-
-        var map = zone.IsRegion || !zone.isGenerated
-            ? null
-            : ZoneLeaseState.CollectMap(zone);
 
         EmpLog.Information("Leased zone {ZoneFullName} to {@Peer}, uid range from {UidRangeStart}, map {HasMap}",
             zone.ZoneFullName, peer, rangeStart, map is not null);
