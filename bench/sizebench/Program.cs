@@ -70,6 +70,14 @@ internal static class Bench
         Section($"SessionPlayersSnapshot, {players} players on one map (every 2 s to every peer)");
         Compare(Old(OldPlayers(players)), Size(Players(players)));
 
+        Section("ElinDeltaManager.ApplyOverride at each flush, a batch of moves (CPU, 100 000 flushes)");
+        var batch = Moves(charas.Take(players)).DeltaList;
+        var manager = new ElinTogether.Net.ElinDeltaManager();
+        var (oldMs, oldBytes) = Time(() => OldApplyOverride(batch));
+        var (newMs, newBytes) = Time(() => manager.ApplyOverride(batch));
+        Console.WriteLine($"   before {oldMs,6:0.0} ms {oldBytes / 100_000,5} bytes/flush   after {newMs,6:0.0} ms " +
+                          $"{newBytes / 100_000,5} bytes/flush");
+
         Section("Game time on an idle map (players on their own clock, the default)");
         // a WorldStateDeltaList with one GameDelta, sent at every 50 Hz flush (the host makes one per frame), plus
         // the 4-byte type hash; now only while the host's world fast-forwards (5 Hz) and once when it stops
@@ -178,6 +186,28 @@ internal static class Bench
         [charas.Select(c => (object?)new object?[] { 200, new object?[] { OldCard(c.Uid, 1), new object[] { c.X + 1, c.Z }, 0, ZoneUid } }).ToArray()];
 
     // ---- helpers
+
+    private static (double Ms, long Bytes) Time(Func<object> flush)
+    {
+        flush();
+        var bytes = GC.GetAllocatedBytesForCurrentThread();
+        var watch = Stopwatch.StartNew();
+        for (var i = 0; i < 100_000; i++) {
+            flush();
+        }
+
+        return (watch.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - bytes);
+    }
+
+    // the grouping ApplyOverride did at every flush (all these deltas stack: every group is kept whole)
+    private static List<ElinDelta> OldApplyOverride(List<ElinDelta> batch) => [
+        ..batch
+            .Select((delta, index) => new { delta, index })
+            .GroupBy(x => (x.delta.GetType(), 0))
+            .SelectMany(g => g)
+            .OrderBy(x => x.index)
+            .Select(x => x.delta),
+    ];
 
     internal static int Old(object? shape) => OldBytes(shape).Length;
 
