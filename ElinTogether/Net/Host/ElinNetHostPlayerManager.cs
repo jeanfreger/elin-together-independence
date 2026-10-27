@@ -95,6 +95,11 @@ internal partial class ElinNetHost
 
         foreach (var chara in _map.charas.ToArray()) {
             if (chara != pc && chara.GetBool("remote_chara") && played?.ContainsValue(chara) != true) {
+                // a world being loaded, no session yet: its rides between players come back with them
+                if (Session.Connection is null) {
+                    LoadedRideTies.AddRange(CompanionHelper.PlayerRideTies(chara));
+                }
+
                 RemoveRemoteChara(chara);
             }
         }
@@ -509,6 +514,7 @@ internal partial class ElinNetHost
             .Where(c => c != pc && c.GetBool("remote_chara"));
 
         foreach (var chara in currentRemoteCharas.Except(excluded)) {
+            LoadedRideTies.AddRange(CompanionHelper.PlayerRideTies(chara));
             RemoveRemoteChara(chara);
         }
 

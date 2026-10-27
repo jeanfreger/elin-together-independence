@@ -299,6 +299,7 @@ internal partial class ElinNetHost
     {
         if (RideTiesAtLinkLoss.Remove(user, out var kept) &&
             UnityEngine.Time.realtimeSinceStartup - kept.At <= LinkLostGraceSeconds) {
+            EmpLog.Debug("Ride ties of {User} to restore: {Ties}", user, string.Join(" ", kept.Ties));
             CompanionHelper.TieAgain(kept.Ties);
         }
     }
@@ -308,6 +309,16 @@ internal partial class ElinNetHost
     ///     player is not here yet and the tie is dropped as it is away; its return ties it again, as after a dropped
     ///     link (ride2 reload, 2026-10-26: the host's game said nobody rode, the guest's world copy still did)
     /// </summary>
+    // the rides between players read from the save, kept before RemoveLeftOverCharas takes the players off the
+    // map (which unties them, RemoteRideHostPatch.OnRemoveCard): the host lost its seat at each reload (ride2 h-on-g)
+    internal static readonly List<(int Rider, int Carried, bool Parasite)> LoadedRideTies = [];
+
+    [ElinPreLoad]
+    private static void ForgetLoadedRideTies(GameIOContext context)
+    {
+        LoadedRideTies.Clear();
+    }
+
     private static void KeepSavedRideTies()
     {
         // (read from both ends: a save may keep the rider's side only)
@@ -318,10 +329,15 @@ internal partial class ElinNetHost
             }
 
             var ties = CompanionHelper.PlayerRideTies(player);
-            ties.AddRange(mine.Where(t => (t.Rider == uid || t.Carried == uid) && !ties.Contains(t)));
+            ties.AddRange(mine.Concat(LoadedRideTies)
+                .Where(t => (t.Rider == uid || t.Carried == uid) && !ties.Contains(t)).Distinct());
             if (ties.Count > 0) {
                 RideTiesAtLinkLoss[user] = (ties, UnityEngine.Time.realtimeSinceStartup);
             }
         }
+
+        EmpLog.Debug("Ride ties read from the save: {Loaded}, kept for {Players} player(s)",
+            string.Join(" ", LoadedRideTies), RideTiesAtLinkLoss.Count);
+        LoadedRideTies.Clear();
     }
 }
