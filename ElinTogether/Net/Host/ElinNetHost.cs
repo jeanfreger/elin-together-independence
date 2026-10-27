@@ -53,7 +53,7 @@ internal partial class ElinNetHost : ElinNetBase
         HostedVersion[0] = ModInfo.BuildVersion;
     }
 
-    internal void StartServer(bool localUdp = false, bool quiet = false)
+    internal void StartServer(bool localUdp = false, bool quiet = false, bool alsoSteam = false)
     {
         Stop();
         StopWorldStateUpdate();
@@ -78,7 +78,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         try {
             if (localUdp) {
-                Socket.StartServerUdp();
+                Socket.StartServerUdp(alsoSteam: alsoSteam);
                 WorldHandover.AnnounceLocal(Common.EmpConstants.LocalPort);
             } else {
                 Socket.StartServerSdr();

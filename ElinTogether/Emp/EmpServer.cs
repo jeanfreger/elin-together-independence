@@ -88,7 +88,7 @@ internal static class EmpServer
 
             EmpLog.Information("Server: opening the session on port {Port}", Common.EmpConstants.LocalPort);
             try {
-                session.InitializeComponent<ElinNetHost>().StartServer(true);
+                session.InitializeComponent<ElinNetHost>().StartServer(true, alsoSteam: true);
             } catch (Exception ex) {
                 Fail($"port {Common.EmpConstants.LocalPort} could not be opened ({ex.Message})");
                 return;

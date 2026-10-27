@@ -31,6 +31,11 @@ public partial class SteamNetManager
     private const int DevIdentityPorts = 8;
 
     /// <summary>
+    ///     A dedicated server (-empserver) on the local port also takes players coming through Steam
+    /// </summary>
+    private HSteamListenSocket _steamListenSocket = HSteamListenSocket.Invalid;
+
+    /// <summary>
     ///     Start server on valve SDR
     /// </summary>
     public void StartServerSdr()
@@ -49,7 +54,12 @@ public partial class SteamNetManager
     /// <summary>
     ///     Mainly just for debugging
     /// </summary>
-    public void StartServerUdp(ushort port = EmpConstants.LocalPort)
+    /// <param name="alsoSteam">
+    ///     also listen through Steam (SDR): a dedicated server makes a Steam lobby, whose players connect that way
+    ///     (two-PC test 2026-10-27: they entered the lobby and never connected). Only there: a game that hosts by
+    ///     the local port otherwise is a test bench, where it broke reloads
+    /// </param>
+    public void StartServerUdp(ushort port = EmpConstants.LocalPort, bool alsoSteam = false)
     {
         EmpLog.Debug("Starting local udp server at port {Port}",
             port);
@@ -76,6 +86,13 @@ public partial class SteamNetManager
             }
         }
 #endif
+
+        if (alsoSteam) {
+            _steamListenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, options.Length, options);
+            if (_steamListenSocket == HSteamListenSocket.Invalid) {
+                EmpLog.Warning("Server: no Steam listen socket, only the local port {Port} takes players", port);
+            }
+        }
 
         IsLocalUdp = true;
         SetupSteamCallback();
@@ -131,6 +148,11 @@ public partial class SteamNetManager
         if (_listenSocket != HSteamListenSocket.Invalid) {
             SteamNetworkingSockets.CloseListenSocket(_listenSocket);
             _listenSocket = HSteamListenSocket.Invalid;
+        }
+
+        if (_steamListenSocket != HSteamListenSocket.Invalid) {
+            SteamNetworkingSockets.CloseListenSocket(_steamListenSocket);
+            _steamListenSocket = HSteamListenSocket.Invalid;
         }
 
         foreach (var socket in _devListenSockets.Keys) {
