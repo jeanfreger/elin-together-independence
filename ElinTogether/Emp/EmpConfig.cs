@@ -682,6 +682,14 @@ internal partial class EmpConfig
             "Otherwise one bill for the whole world, as before\n" +
             "每个队伍为自己的土地单独收到每月税单（无队伍的土地：流浪者的税单），按其成员的最高名声计算。未付税单按队伍计数：四张及以上只扣该队伍玩家的善恶值；关闭时整个世界如前只有一张税单");
 
+        Server.TeamStory = config.Bind(
+            "Server",
+            "TeamStory",
+            false,
+            "Each team keeps its own story journal: the furthest chapter of the main quest one of its players took part in (the player who made the step and the players on that map), shown on the Teams card. The story itself stays the world's\n" +
+            "Otherwise no journal per team\n" +
+            "每个队伍保留自己的剧情日志：其玩家参与过的主线最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上；剧情本身仍属于整个世界。关闭时没有队伍日志");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -889,6 +897,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
         internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

@@ -97,6 +97,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Host option "Teams keep their own story journal" (<see cref="TeamStory" />): team id -> the furthest phase
+    ///     of the main quest one of its players took part in
+    /// </summary>
+    [ElinGameIOProperty("team_story")]
+    internal static Dictionary<int, int> TeamStoryBook
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     The chara uid of every player of this world, the host's own included
     /// </summary>
     internal static IEnumerable<int> PlayerCharaUids()
@@ -181,6 +192,7 @@ internal partial class ElinNetHost
             Owners = new(CardOwners),
             Requests = new(TeamRequests),
             Bills = TeamBills.Told(),
+            Story = TeamStory.Told(),
         });
     }
 }

@@ -365,6 +365,13 @@ public class NetSessionRules
     [Key(135)]
     public bool TeamBills { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-25: the furthest main-quest chapter each team took part in, on the team card, no world
+    ///     effect, see TeamStory. An older host sends none: no journal
+    /// </summary>
+    [Key(136)]
+    public bool TeamStory { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -385,6 +392,7 @@ public class NetSessionRules
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
         TeamBills = EmpConfig.Server.TeamBills.Value,
+        TeamStory = EmpConfig.Server.TeamStory.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

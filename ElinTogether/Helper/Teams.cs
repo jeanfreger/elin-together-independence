@@ -25,6 +25,7 @@ internal static class Teams
     private static Dictionary<int, int> _owners = [];
     private static Dictionary<int, int> _requests = [];
     private static Dictionary<int, int> _bills = [];
+    private static Dictionary<int, int> _story = [];
     private static bool _told;
 
     // the game that keeps the book: the host of the world, or a game playing alone
@@ -45,6 +46,7 @@ internal static class Teams
         _owners = [];
         _requests = [];
         _bills = [];
+        _story = [];
         _told = false;
         ElinNetHost.TeamRequests.Clear();
     }
@@ -62,6 +64,7 @@ internal static class Teams
         _owners = new(delta.Owners);
         _requests = new(delta.Requests ?? []);
         _bills = new(delta.Bills ?? []);
+        _story = new(delta.Story ?? []);
         // (not the book told on joining: nothing changed then)
         if (known) {
             Notice(team, asked);
@@ -94,6 +97,11 @@ internal static class Teams
     ///     A guest's copy of the unpaid tax bills of each team (<see cref="TeamBills.Told" />)
     /// </summary>
     internal static Dictionary<int, int> ToldBills => _bills;
+
+    /// <summary>
+    ///     A guest's copy of the teams' story journal (<see cref="TeamStory.Told" />)
+    /// </summary>
+    internal static Dictionary<int, int> ToldStory => _story;
 
     /// <summary>
     ///     Every team id, the Wanderers first
