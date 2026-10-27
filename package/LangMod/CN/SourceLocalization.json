@@ -571,5 +571,10 @@
     "LangGeneral.emp_duel_paid.text": "你押上了 {0} 金币的赌注。",
     "LangGeneral.emp_duel_pot.text": "你赢得了赌注：{0} 金币！",
     "LangGeneral.emp_duel_refund.text": "你的赌注已退还。",
-    "LangGeneral.emp_duel_unpaid.text": "赌注没有凑齐：决斗取消。"
+    "LangGeneral.emp_duel_unpaid.text": "赌注没有凑齐：决斗取消。",
+    "LangGeneral.emp_ui_sv_cfg_team_bills.text": "队伍各自缴纳土地税",
+    "LangGeneral.emp_ui_sv_desc_team_bills.text": "每个拥有土地的队伍单独收到每月税单，只计算自己的土地，按成员的最高名声计算（不属于任何队伍的土地：流浪者的税单）。未付税单按队伍计数：四张及以上只扣该队伍玩家的善恶值。关闭：整个世界只有一张税单（如前）。",
+    "LangGeneral.emp_team_bill.text": "{0}的税单：{1}",
+    "LangGeneral.emp_ui_teams_title.text": "队伍",
+    "LangGeneral.emp_ui_team_bills.text": "未付税单：{0}"
 }

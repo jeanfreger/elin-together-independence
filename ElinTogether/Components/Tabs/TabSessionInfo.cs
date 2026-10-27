@@ -16,6 +16,24 @@ internal class TabSessionInfo : TabEmpBase
     {
         BuildOverviewSection();
         BuildPlayerList();
+        BuildTeams();
+    }
+
+    /// <summary>
+    ///     The teams (host options "Teams pay their own land" and "Teams keep their own story journal"): one line
+    ///     each, the same in every game
+    /// </summary>
+    private void BuildTeams()
+    {
+        if (!NetSession.Instance.Rules.UseTeams || !TeamBills.On) {
+            return;
+        }
+
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_teams_title".lang());
+        foreach (var team in Teams.Ids()) {
+            card.Text(Teams.NameOf(team) + "  " + "emp_ui_team_bills".Loc(TeamBills.UnpaidOf(team)));
+        }
     }
 
     private void BuildOverviewSection()

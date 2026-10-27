@@ -80,6 +80,12 @@ public class BillPayDelta : ElinDelta
     [Key(5)]
     public int Gift { get; init; }
 
+    /// <summary>
+    ///     With <see cref="BillAnswer.Paid" />: the team the tax bill was made for, -1 for none (see TeamBills)
+    /// </summary>
+    [Key(6)]
+    public int Team { get; set; } = -1;
+
     internal static void Send(Thing bill)
     {
         if (NetSession.Instance.Connection is ElinNetClient client) {
@@ -102,6 +108,7 @@ public class BillPayDelta : ElinDelta
                 Id = bill.id,
                 Amount = bill.c_bill,
                 Gift = bill.GetInt(35) / 1000,
+                Team = TeamBills.TeamOf(bill) ?? -1,
             });
         }
     }
@@ -194,7 +201,7 @@ public class BillPayDelta : ElinDelta
         }
 
         sender.ModCurrency(-amount);
-        LowerCounters(tax, amount, bill.GetInt(35) / 1000);
+        LowerCounters(tax, amount, bill.GetInt(35) / 1000, TeamBills.TeamOf(bill));
 
         bill.Destroy();
         Tell(host, sender.NameSimple, bill.id, amount);
@@ -202,11 +209,12 @@ public class BillPayDelta : ElinDelta
     }
 
     // what the game does to the counters of the bills (InvOwnerDeliver.PayBill), once
-    private static void LowerCounters(bool tax, int amount, int gift)
+    private static void LowerCounters(bool tax, int amount, int gift, int? team)
     {
         if (tax) {
             player.stats.taxBillsPaid += amount;
             player.taxBills = Math.Max(0, player.taxBills - 1);
+            TeamBills.OnPaid(team);
             // what the game gives back for the extra tax
             if (gift > 0) {
                 world.SendPackage(ThingGen.CreateParcel("parcel_mysiliaGift", ThingGen.Create("money2", "copper").SetNum(gift)));
@@ -235,7 +243,8 @@ public class BillPayDelta : ElinDelta
         }
 
         // the gift is the extra tax of the bill / 1000, and the extra tax is a part of the bill's amount
-        LowerCounters(tax, amount, Math.Clamp(Gift, 0, amount / 1000));
+        // (the team is the bill's as its holder read it: a team that owes nothing is not lowered, the world's is)
+        LowerCounters(tax, amount, Math.Clamp(Gift, 0, amount / 1000), Team >= 0 ? Team : null);
         Tell(host, Payer ?? "", Id!, amount);
     }
 

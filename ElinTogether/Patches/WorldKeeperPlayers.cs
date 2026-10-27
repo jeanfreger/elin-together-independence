@@ -78,7 +78,8 @@ internal static class WorldKeeperPlayers
     [HarmonyPatch(typeof(Faction), nameof(Faction.OnAdvanceMonth))]
     internal static void OnMonth(Faction __instance)
     {
-        if (Host is not { } host || !PersonalQuests.Enabled || !NetSession.Instance.Rules.UseWorldKeeper ||
+        // (teams paying their own land: each team's players only, see TeamBills)
+        if (Host is not { } host || !PersonalQuests.Enabled || !NetSession.Instance.Rules.UseWorldKeeper || TeamBills.On ||
             __instance.GetChildren().Count == 0) {
             return;
         }

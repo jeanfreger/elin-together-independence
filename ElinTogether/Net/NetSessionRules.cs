@@ -358,6 +358,13 @@ public class NetSessionRules
     [Key(126)]
     public bool DuelBets { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-25 (dev/PLAN_teams_knowledge.md): one tax bill per team for its own lands, unpaid bills
+    ///     counted per team, see TeamBills. An older host sends none: one bill for the world, as it was
+    /// </summary>
+    [Key(135)]
+    public bool TeamBills { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -377,6 +384,7 @@ public class NetSessionRules
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
+        TeamBills = EmpConfig.Server.TeamBills.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

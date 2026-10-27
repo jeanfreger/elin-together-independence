@@ -674,6 +674,14 @@ internal partial class EmpConfig
             "Otherwise everyone shares one book of recipes and one codex, as before\n" +
             "每个队伍有自己的配方、制作记录和图鉴：玩家学到的东西其队友也会学到，其他队伍不会。存档保留所有队伍知道的一切；关闭时所有人如前共用一套配方和图鉴");
 
+        Server.TeamBills = config.Bind(
+            "Server",
+            "TeamBills",
+            false,
+            "Each team gets its own monthly tax bill, for its own lands (lands of no team: the Wanderers' bill), on its members' highest fame. Unpaid bills are counted per team: four or more cost karma to that team's players only\n" +
+            "Otherwise one bill for the whole world, as before\n" +
+            "每个队伍为自己的土地单独收到每月税单（无队伍的土地：流浪者的税单），按其成员的最高名声计算。未付税单按队伍计数：四张及以上只扣该队伍玩家的善恶值；关闭时整个世界如前只有一张税单");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -880,6 +888,7 @@ internal partial class EmpConfig
 
         internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
         internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;
