@@ -271,6 +271,13 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         peer.User.SetPlayedWith();
 
+        // the same account again while its old link is still held (a crash, a cut on its side): the new link
+        // replaces the old one, which would stay a ghost until it timed out (upstream 6f0fda1)
+        foreach (var stale in _peers.Where(p => p.User == peer.User).ToArray()) {
+            EmpLog.Information("Replacing connection of {@Peer} with a new one", stale);
+            Disconnect(stale, EmpDisconnectInfo.RemoteClosed);
+        }
+
         SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
 
         _peers.Add(peer);
@@ -314,6 +321,15 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                 var peer = _peers.FirstOrDefault(p => p.Connection == connection);
                 if (peer is not null) {
                     Disconnect(peer, status.m_info.m_szEndDebug);
+                }
+
+                break;
+            // the link is lost on this side (no answer for too long): closed now, not left as a ghost (upstream 6f0fda1)
+            case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                var lost = _peers.FirstOrDefault(p => p.Connection == connection);
+                if (lost is not null) {
+                    EmpLog.Debug("Lost connection to {@Peer}: {Reason}", lost, status.m_info.m_szEndDebug);
+                    Disconnect(lost, EmpDisconnectInfo.Timeout);
                 }
 
                 break;
