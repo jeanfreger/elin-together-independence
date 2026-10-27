@@ -10,11 +10,15 @@ internal class SteamNetSerializer : ISteamNetSerializer
 {
     private const int HeaderSize = sizeof(uint);
 
+    // a bounded depth (security audit 2026-10-27): delta lists nest (CharaBuildDelta.DeltaList), and a peer's packet
+    // nested a hundred thousand times overflowed the stack, which nothing catches: the host's game was gone. Real
+    // messages nest a dozen levels at most
     private static readonly MessagePackSerializerOptions _options =
         MessagePackSerializerOptions.Standard.WithResolver(
             CompositeResolver.Create(
                 SteamDataResolver.Default,
-                StandardResolver.Instance));
+                StandardResolver.Instance))
+            .WithSecurity(MessagePackSecurity.TrustedData.WithMaximumObjectGraphDepth(96));
 
     public byte[] Serialize<T>(T obj)
     {

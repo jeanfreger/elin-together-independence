@@ -131,6 +131,17 @@ internal partial class ElinNetHost
         foreach (var data in companions) {
             var uploaded = data.Decompress<Chara>();
             var old = game.cards.globalCharas.Find(uploaded.uid);
+
+            // only that player's own companions, or a new one met on its map: never a player, nor a character of
+            // someone else or of the world (security audit 2026-10-27)
+            // (a resident of nobody, or the world's: recruited on the way by a friend; refused only on a public server)
+            if (SavedRemoteCharas.ContainsValue(uploaded.uid) || uploaded.uid == pc.uid ||
+                (old is not null && old.CompanionOwnerUid != ownerUid &&
+                 (old.CompanionOwnerUid != 0 || (ElinDelta.TrustEnforced && (old.IsPCFaction || old.IsGlobal))))) {
+                EmpLog.Warning("Companion {Uid} uploaded for player {OwnerUid} is not its own: refused", uploaded.uid, ownerUid);
+                continue;
+            }
+
             kept.Add(uploaded.uid);
 
             if (old is not null && old.parent is Zone && old.currentZone == _zone) {

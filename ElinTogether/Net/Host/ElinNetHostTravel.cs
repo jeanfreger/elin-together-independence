@@ -24,6 +24,10 @@ internal partial class ElinNetHost
     /// </summary>
     private const int LeaseUidHeadroom = 50_000;
 
+    // what a player alone on a map may allocate at most: a counter it reported beyond (int.MaxValue was tried, security
+    // audit 2026-10-27) would have made the host's uids wrap and collide in the save
+    private const int MaxLeaseUids = 5_000_000;
+
     /// <summary>
     ///     Same for quest uids: a zone simulated by a client creates the quests of its residents there
     /// </summary>
@@ -77,6 +81,10 @@ internal partial class ElinNetHost
     private readonly Dictionary<int, (int ZoneUid, int HolderId)> _pendingGuests = [];
 
     private readonly Dictionary<int, (int ZoneUid, int HolderId)> _guests = [];
+
+    // Steam id of a visitor -> the player whose map it last visited: a holder uploads its visitors' characters, never
+    // anyone else's (security audit 2026-10-27: an offline player's character was replaced by any holder)
+    private readonly Dictionary<ulong, int> _visitedHolder = [];
 
     /// <summary>
     ///     Peers standing on the host map: they finished replicating it. Not those still loading it
@@ -1091,6 +1099,7 @@ internal partial class ElinNetHost
         }
 
         _guests[guest.Id] = _pendingGuests[guest.Id];
+        _visitedHolder[guest.User] = _guests[guest.Id].HolderId;
         _pendingGuests.Remove(guest.Id);
 
         guest.Send(new ZoneLeaseDepart {
@@ -1148,7 +1157,7 @@ internal partial class ElinNetHost
 
             // only a range the client allocated in pushes the host counter
             if (release.UidNext > rangeStart) {
-                game.cards.uidNext = Math.Max(game.cards.uidNext, release.UidNext);
+                game.cards.uidNext = Math.Max(game.cards.uidNext, Math.Min(release.UidNext, rangeStart + MaxLeaseUids));
             }
 
             // every range came back with what was used of it: nothing above the counter is in use anymore
@@ -1250,7 +1259,8 @@ internal partial class ElinNetHost
         }
 
         // the client keeps allocating in its range, the host counter only moves on release or disconnect
-        _checkpointUidNext[peer.Id] = checkpoint.UidNext;
+        var start = zones[checkpoint.ZoneUid];
+        _checkpointUidNext[peer.Id] = Math.Min(Math.Max(checkpoint.UidNext, start), start + MaxLeaseUids);
 
         ReplaceRemoteChara(peer.User, checkpoint.Chara);
         ReplaceCompanions(checkpoint.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0);
@@ -1411,6 +1421,12 @@ internal partial class ElinNetHost
             // a guest that left since (back here or elsewhere) brought a newer copy itself
             if (Socket.Peers.FirstOrDefault(p => (ulong)p.User == user) is { } guest &&
                 (!_guests.TryGetValue(guest.Id, out var at) || at.HolderId != holder.Id)) {
+                continue;
+            }
+
+            // gone meanwhile: only a visitor of that very holder
+            if (!_visitedHolder.TryGetValue(user, out var visited) || visited != holder.Id) {
+                EmpLog.Warning("Player {@Peer} sent the character of {User}, who never visited its map: refused", holder, user);
                 continue;
             }
 

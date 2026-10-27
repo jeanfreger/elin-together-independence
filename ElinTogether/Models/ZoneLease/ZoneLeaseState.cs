@@ -41,10 +41,19 @@ internal static class ZoneLeaseState
         return IsWideIds(name) ? name : Path.GetFileNameWithoutExtension(name);
     }
 
+    /// <summary>
+    ///     A name the game gives a map file: letters, digits and _, maybe .w2/.w4. Nothing else is written, from
+    ///     whoever it comes (security audit 2026-10-27: "C:name", "name:stream", "CON" escaped the zone's folder),
+    ///     nor more than the game writes
+    /// </summary>
     internal static bool IsMapFileKey(string id)
     {
-        return !id.Contains('/') && !id.Contains('\\') && (!id.Contains('.') || IsWideIds(id));
+        var name = IsWideIds(id) ? id.Substring(0, id.Length - 3) : id;
+        return name.Length is > 0 and <= 32 && name.All(c => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_') &&
+               !Reserved.Contains(name.ToUpperInvariant());
     }
+
+    private static readonly HashSet<string> Reserved = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "LPT1", "LPT2", "LPT3"];
 
     private static bool IsWideIds(string name)
     {
@@ -55,7 +64,8 @@ internal static class ZoneLeaseState
     {
         Directory.CreateDirectory(zone.pathSave);
 
-        foreach (var (id, asset) in map) {
+        // (the game writes some twenty files for a map)
+        foreach (var (id, asset) in map.Take(64)) {
             if (!IsMapFileKey(id)) {
                 continue;
             }

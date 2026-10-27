@@ -267,7 +267,10 @@ public abstract class ElinDelta : EClass
     ///     The checks refuse for real: the host's box, or always in a game anybody can join (council 2, audit
     ///     2026-10-23: on for a public game). Off, a refusal is only logged
     /// </summary>
-    internal static bool TrustEnforced => EmpConfig.Server.EnforceOwnership.Value || NetSession.Instance.Lobby.OpenToAll;
+    // (a dedicated server too: its session opens quietly, never "open to all", yet strangers reach it; security audit
+    // 2026-10-27)
+    internal static bool TrustEnforced => EmpConfig.Server.EnforceOwnership.Value || NetSession.Instance.Lobby.OpenToAll ||
+                                          EmpServer.Requested;
 
     /// <summary>
     ///     On the host, after this guest's delta was refused: the sender's game is told how things really are, where
