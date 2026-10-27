@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Net.Steam;
@@ -63,6 +65,7 @@ internal partial class ElinNetHost
         }
 
         EmpLog.Information("Admin: kicked {@Peer} ({Reason}), kept out {Minutes} min", peer, reason ?? "", minutes);
+        AdminLog($"kick {(ulong)peer.User} {peer.User.Name} ({reason}), kept out {minutes} min");
         Socket.Disconnect(peer, EmpDisconnectInfo.With(EmpDisconnectInfo.HostKick, reason));
         return $"Kicked {peer.User.Name} ({peer.User})";
     }
@@ -79,6 +82,7 @@ internal partial class ElinNetHost
 
         Bans[user] = reason?.Trim() ?? "";
         EmpLog.Information("Admin: banned {User} ({Reason})", user, reason ?? "");
+        AdminLog($"ban {user} ({reason})");
         foreach (var peer in Socket.Peers.Where(p => (ulong)p.User == user).ToList()) {
             Socket.Disconnect(peer, EmpDisconnectInfo.With(EmpDisconnectInfo.Banned, reason));
         }
@@ -94,6 +98,50 @@ internal partial class ElinNetHost
         }
 
         EmpLog.Information("Admin: unbanned {User}", user);
+        AdminLog($"unban {user}");
         return $"Unbanned {user}";
+    }
+
+    /// <summary>
+    ///     One line per order, refusal, arrival and departure, with the Steam id: ElinMP/Logs/admin.log of the machine
+    ///     that hosts (never in the world save, which would grow for ever)
+    /// </summary>
+    internal static void AdminLog(string line)
+    {
+        try {
+            var folder = Path.Combine(Application.persistentDataPath, "ElinMP", "Logs");
+            Directory.CreateDirectory(folder);
+            File.AppendAllText(Path.Combine(folder, "admin.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {line}\n");
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            EmpLog.Warning(ex, "Admin log not written: {Line}", line);
+        }
+    }
+
+    /// <summary>
+    ///     An order of the server's operator (ElinMP/server.cmd, see EmpServer), one line:
+    ///     kick|ban|unban &lt;Steam id or exact name&gt; [reason]. Returns what was done
+    /// </summary>
+    internal string RunOrder(string line)
+    {
+        var words = line.Trim().Split([' '], 3, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length < 2) {
+            return "error: " + line;
+        }
+
+        var reason = words.Length > 2 ? words[2] : null;
+        var peer = Socket.Peers.FirstOrDefault(p => ((ulong)p.User).ToString() == words[1] || p.User.Name == words[1]);
+        ulong user = peer is not null ? peer.User : ulong.TryParse(words[1], out var id) ? id : 0UL;
+        if (user == 0UL) {
+            return "error: no player " + words[1];
+        }
+
+        var done = words[0].ToLowerInvariant() switch {
+            "kick" => peer is null ? "error: " + words[1] + " is not playing" : Kick(peer.Id, reason),
+            "ban" => Ban(user, reason),
+            "unban" => Unban(user),
+            _ => "error: unknown order " + words[0],
+        };
+        AdminLog($"order \"{line.Trim()}\": {done}");
+        return done;
     }
 }

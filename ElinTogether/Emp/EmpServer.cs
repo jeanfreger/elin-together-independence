@@ -26,6 +26,7 @@ internal static class EmpServer
     private static float _nextSave;
     private static bool _loading;
     private static string _saved = "-";
+    private static string _order = "";
 
     internal static bool Requested => _save is not null;
 
@@ -107,6 +108,24 @@ internal static class EmpServer
             return;
         }
 
+        // orders of the operator (kick, ban, unban), one per line; taken whole, so a line half written is not run
+        var orders = Path.Combine(_folder, "server.cmd");
+        if (File.Exists(orders) && session.Connection is ElinNetHost host) {
+            try {
+                var taken = orders + ".run";
+                File.Delete(taken);
+                File.Move(orders, taken);
+                foreach (var line in File.ReadAllLines(taken).Where(l => l.Trim().Length > 0)) {
+                    _order = host.RunOrder(line);
+                    EmpLog.Information("Server: order {Order}: {Result}", line, _order);
+                }
+
+                File.Delete(taken);
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                // the application writes it at the same time: next tick
+            }
+        }
+
         // nobody is there to save: the server does, while someone plays
         if (Time.unscaledTime >= _nextSave) {
             _nextSave = Time.unscaledTime + SaveSeconds;
@@ -128,17 +147,17 @@ internal static class EmpServer
     private static void Tell(string state)
     {
         try {
-            var players = state == "running"
-                ? NetSession.Instance.CurrentPlayers
-                    .Where(p => p.Index != 0)
-                    .Select(p => EClass.game.cards.globalCharas.Find(p.CharaUid)?.Name ?? "?")
-                : [];
+            var playing = state == "running" ? NetSession.Instance.CurrentPlayers.Where(p => p.Index != 0).ToList() : [];
+            var players = playing.Select(p => EClass.game.cards.globalCharas.Find(p.CharaUid)?.Name ?? "?");
             Directory.CreateDirectory(_folder);
             File.WriteAllLines(Path.Combine(_folder, "server.txt"), [
                 "state=" + state,
                 "save=" + _save,
                 "port=" + Common.EmpConstants.LocalPort,
                 "players=" + string.Join("|", players),
+                // (the Steam ids in the same order, for the operator's orders)
+                "ids=" + string.Join("|", playing.Select(p => (ulong)p.User)),
+                "order=" + _order,
                 "date=" + (state == "running" ? EClass.world.date.GetText(Date.TextFormat.Log) : ""),
                 "saved=" + _saved,
                 "time=" + DateTime.Now.ToString("HH:mm:ss"),

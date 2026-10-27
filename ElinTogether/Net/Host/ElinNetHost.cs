@@ -214,6 +214,7 @@ internal partial class ElinNetHost : ElinNetBase
         // banned, or kicked a moment ago: turned away before anything of the world is sent (ElinNetHostModeration)
         if (Refusal(peer.User) is { } refused) {
             EmpLog.Information("Player {@Peer} refused: {Reason}", peer, refused);
+            AdminLog($"refused {(ulong)peer.User} {peer.User.Name}: {refused}");
             Socket.Disconnect(peer, refused);
             return;
         }
@@ -228,6 +229,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         // (the game's tone in the message log: who, not the link's fields; the link goes to the mod's own log)
         EmpLog.Information("Player {@Peer} connected", peer);
+        AdminLog($"join {(ulong)peer.User} {peer.User.Name}");
         EmpPop.Information(Escape("emp_player_connected".Loc(WhoIs(peer))));
 
         // shou lai
@@ -255,6 +257,7 @@ internal partial class ElinNetHost : ElinNetBase
     protected override void OnPeerDisconnected(ISteamNetPeer peer, string disconnectInfo)
     {
         EmpLog.Information("Player {@Peer} disconnected: {DisconnectInfo}", peer, disconnectInfo);
+        AdminLog($"leave {(ulong)peer.User} {peer.User.Name}: {disconnectInfo}");
         EmpPop.Information(Escape("emp_player_disconnected".Loc(WhoIs(peer))));
 
         _handshakes.Remove(peer.Id);
