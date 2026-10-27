@@ -51,9 +51,13 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     public ISteamNetPeer Broadcast => _broadcast;
 
     /// <summary>
-    ///     All connected peers
+    ///     All connected peers. A copy made once per change of the list, not at every call: it is asked several
+    ///     times per peer per frame (efficiency audit 2026-10-27). Never changed in place, so a caller may go
+    ///     through it while a peer comes or goes
     /// </summary>
-    public IReadOnlyList<ISteamNetPeer> Peers => [.._peers];
+    public IReadOnlyList<ISteamNetPeer> Peers => _peersCopy ??= [.._peers];
+
+    private ISteamNetPeer[]? _peersCopy;
 
     /// <summary>
     ///     The peers without a copy, for NetMetrics
@@ -202,6 +206,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         }
 
         _peers.Clear();
+        _peersCopy = null;
         _broadcast.ClearTargets();
         _broadcast.Dispose();
 
@@ -244,6 +249,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             }
 
             _peers.Remove(peer);
+            _peersCopy = null;
             _broadcast.RemoveTarget(peer);
 
             peer.Dispose();
@@ -281,6 +287,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
 
         _peers.Add(peer);
+        _peersCopy = null;
         _broadcast.AddTarget(peer);
 
         NetCompany.Invalidate();
