@@ -119,7 +119,7 @@ internal partial class ElinNetHost
         }
 
         var roster = RosterOf(peer.User);
-        var import = EmpConfig.Server.ImportCharacter.Value;
+        var import = EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting;
         var known = SavedRemoteCharas.TryGetValue(peer.User, out var played) && game.cards.globalCharas.Find(played) is not null;
         // no question at every connection: a player who comes back gets the character it played last. Asked only
         // when nothing says which one (several characters, none of them played last), when it has nobody here
@@ -324,7 +324,7 @@ internal partial class ElinNetHost
             return;
         }
 
-        if (IsZoneSession || !EmpConfig.Server.ImportCharacter.Value) {
+        if (IsZoneSession || !EmpConfig.Server.ImportCharacter.Value || OfficialServer.Hosting) {
             EmpLog.Warning("Player {@Peer} sent a character while bringing one is not allowed", peer);
             PreparePlayerJoin(peer);
             return;

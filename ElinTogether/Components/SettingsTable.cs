@@ -5,6 +5,7 @@ using BepInEx.Configuration;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
+using ElinTogether.Net.Steam;
 
 namespace ElinTogether.Components;
 
@@ -59,6 +60,11 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
         get {
             var desc = $"emp_ui_sv_desc_{Id}".lang();
             // (under a dropdown, one line per choice: the applies-when line comes on a line of its own, last)
+            // (the official server's rule, said where the box is greyed)
+            if (Id == "import_chara" && OfficialServer.Hosting) {
+                desc = $"{desc} {"emp_ui_sv_import_official".lang()}";
+            }
+
             return Apply is null ? desc : $"{desc}{(Choice is null ? " " : "\n")}{$"emp_ui_sv_apply_{Apply}".lang()}";
         }
     }
@@ -245,7 +251,7 @@ internal static class SettingsTable
         yield return new("same_game_version", "joining", true, EmpConfig.Server.SameGameVersion, Apply: "join");
         yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
         yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
-        yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Apply: "join", Under: "characters");
+        yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Requires: () => !OfficialServer.Hosting, Apply: "join", Under: "characters");
         yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive, Under: "characters");
 
         // Playing together
