@@ -312,6 +312,7 @@ internal static class SettingsTable
         yield return new("night_passes", "time_details", true, Choice: NightPasses, Requires: () => EmpConfig.Server.OwnSleep.Value);
         yield return new("idle_minutes", "time_details", true, Choice: IdleMinutes);
         yield return new("time_stops_empty", "time_details", true, EmpConfig.Server.TimeStopsWhenEmpty);
+        yield return new("absent_quests_wait", "time_details", true, EmpConfig.Server.AbsentQuestsWait, Requires: () => EmpConfig.Server.PersonalQuests.Value);
         yield return new("world_map_lead", "time_details", true, Choice: LeadCap);
 
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");

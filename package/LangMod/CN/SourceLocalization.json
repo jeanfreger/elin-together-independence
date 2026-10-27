@@ -540,5 +540,7 @@
     "LangGeneral.emp_ui_sv_opt_max_characters_10.text": "10",
     "LangGeneral.emp_ui_sv_opt_max_characters_0.text": "不限",
     "LangGeneral.emp_ui_chara_limit.text": "你的角色数量已达到这个世界的上限：删除一个后才能创建或导入新角色。",
-    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面"
+    "LangGeneral.emp_ui_cl_record_replay.text": "在问题报告中附上最近 30 秒的画面",
+    "LangGeneral.emp_ui_sv_cfg_absent_quests_wait.text": "离开时任务等待",
+    "LangGeneral.emp_ui_sv_desc_absent_quests_wait.text": "离开游戏的玩家回来时，任务保留剩余时间：世界在其离开期间经过的天数会加到期限上。关闭：期限随世界时间流逝。"
 }

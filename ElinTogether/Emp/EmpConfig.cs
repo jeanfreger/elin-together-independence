@@ -508,6 +508,14 @@ internal partial class EmpConfig
             Server.TimeStopsWhenEmpty.Value = false;
         }
 
+        // council 2026-10-26, stage 4: on since 0.26.1082 for every world (nothing punishes being away)
+        Server.AbsentQuestsWait = config.Bind(
+            "Server",
+            "AbsentQuestsWait",
+            true,
+            "The quests of a player who left the game keep their time left: the days the world went on without it are added to their deadlines when it comes back. Otherwise they ran out as the world went on\n" +
+            "离开游戏的玩家的任务保留剩余时间：玩家回来时，世界在其离开期间经过的天数会加到任务期限上；关闭时任务期限随世界流逝");
+
         Server.SummonsFollowMaster = config.Bind(
             "Server",
             "SummonsFollowMaster",
@@ -808,6 +816,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
+        internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;
         internal static ConfigEntry<bool> PlayersAtBase { get; set; } = null!;
         internal static ConfigEntry<bool> GlobalChat { get; set; } = null!;
