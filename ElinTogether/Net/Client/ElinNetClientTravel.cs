@@ -108,6 +108,7 @@ internal partial class ElinNetClient
         // a guest leaves the zone session first, its owner applies our last actions, see OnGuestLeftZone
         if (Session.IsGuest && Session.ZoneSession is ElinNetClient zoneClient) {
             _pendingTravel = (zone, transition);
+            StopWalk();
             zoneClient.LeaveZoneSession(Session.AwayZone!.uid);
             EmpPop.Debug("emp_travel_requesting".lang());
             return false;
@@ -117,14 +118,34 @@ internal partial class ElinNetClient
             EmpLog.Information("Returning from {AwayZone} to host zone {ZoneFullName}",
                 Session.AwayZone!.ZoneFullName, zone.ZoneFullName);
 
+            StopWalk();
             SendRejoin(ZoneArrival.Create(zone.uid, transition));
             EmpPop.Debug("emp_travel_returning".lang());
             return false;
         }
 
+        StopWalk();
         RequestLease(zone, transition);
         return false;
     }
+
+    /// <summary>
+    ///     The game stops the walk at the step onto the stairs (Chara.MoveZone, skipped while the host answers): kept
+    ///     walking, the player landed in front of the stairs it came by and stepped back in (GitHub issue 10, Vernis
+    ///     mine)
+    /// </summary>
+    private static void StopWalk()
+    {
+        pc.ai?.Cancel();
+        player.nextMove = UnityEngine.Vector2.zero;
+        EInput.Consume(consumeAxis: true);
+    }
+
+    /// <summary>
+    ///     When this game last arrived on a map it was handed: the stairs there do not take it in by a step for a
+    ///     moment, see <see cref="Patches.ArrivalStairsPatch" />
+    /// </summary>
+    internal static float ArrivedAt { get; private set; } = float.MinValue;
 
     private void RequestLease(Zone zone, ZoneTransition transition)
     {
@@ -303,6 +324,7 @@ internal partial class ElinNetClient
         EmpLog.Information("Leased zone {ZoneFullName}, uid range from {UidRangeStart}, map {HasMap}",
             zone.ZoneFullName, grant.UidRangeStart, grant.Map is not null);
 
+        ArrivedAt = Time.realtimeSinceStartup;
         pc.MoveZone(zone, transition);
     }
 
