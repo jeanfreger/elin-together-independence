@@ -64,6 +64,16 @@ internal static class Bench
                           $"host upload with {players - 1} guests: {before * 5 * (players - 1) / 1024.0:0.0} -> " +
                           $"{after * 5 * (players - 1) / 1024.0:0.0} KB/s");
 
+        foreach (var moving in new[] { 0, npcs / 4, npcs }) {
+            Section($"Changed-only snapshots: the {players} players and {moving} of the {npcs} others change every tick");
+            var full = Size(Snapshot(charas));
+            var partial = Size(Snapshot(charas.Take(players + moving), true));
+            var perSecond = full + (5 - 1) * partial;
+            Console.WriteLine($"   full {full} bytes (1/s), partial {partial} bytes (4/s)");
+            Console.WriteLine($"   per peer: {before * 5 / 1024.0:0.0} -> {perSecond / 1024.0:0.0} KB/s " +
+                              $"({(perSecond - before * 5) * 100.0 / (before * 5):+0;-0}% since the audit)");
+        }
+
         Section("WorldStateDeltaList, one step of every player (CharaMoveDelta)");
         Compare(Old(OldMoves(charas.Take(players))), Size(Moves(charas.Take(players))));
 
@@ -126,7 +136,8 @@ internal static class Bench
         return list;
     }
 
-    internal static WorldStateSnapshot Snapshot(IEnumerable<Chara> charas) => new() {
+    internal static WorldStateSnapshot Snapshot(IEnumerable<Chara> charas, bool partial = false) => new() {
+        Partial = partial,
         ServerTick = 123_456,
         GameDate = [2026, 7, 14, 13, 27, 0],
         CharaSnapshots = [..charas.Select(c => new CharaStateSnapshot {
