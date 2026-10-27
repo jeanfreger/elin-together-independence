@@ -246,6 +246,31 @@ internal static class TeamKnowledge
         }
     }
 
+    /// <summary>
+    ///     In the game that keeps the book: a change of the codex that player made is in its team's ledger (learner 0:
+    ///     every team's). Not the local team's: its Player object has it the game's way
+    /// </summary>
+    internal static void Noted(int learner, CodexKind kind, string id, int num)
+    {
+        if (LocalTeam is not { } local || string.IsNullOrEmpty(id)) {
+            return;
+        }
+
+        var of = learner == 0 ? (int?)null : Teams.TeamOf(learner);
+        foreach (var team in ElinNetHost.TeamLoreBook.Keys.ToArray()) {
+            if (team == local || (of is { } only && team != only)) {
+                continue;
+            }
+
+            var lore = Stored(team) ?? WorldUnion();
+            var creature = new CodexCreature { id = id, _ints = Ints(lore.Codex.GetValueOrDefault(id)) };
+            if (CodexDelta.Change(creature, kind, num)) {
+                lore.Codex[id] = creature._ints;
+                Store(team, lore);
+            }
+        }
+    }
+
     // RecipeManager.Add without the messages: once more, and the variants of a block learnt with it (pillar, bridge)
     private static void AddKnown(Dictionary<string, int> known, string id)
     {

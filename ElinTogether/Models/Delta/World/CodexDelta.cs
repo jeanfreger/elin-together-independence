@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -43,32 +44,33 @@ public class CodexDelta : ElinDelta
     [Key(3)]
     public CodexKind Kind { get; init; }
 
+    /// <summary>
+    ///     The character of the player who collected, killed or learnt it (host option "Teams learn on their own":
+    ///     only its team's codex changes). 0 from an older game
+    /// </summary>
+    [Key(4)]
+    public int Learner { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
-        if (string.IsNullOrEmpty(Id) || Num == 0 || Num is > 9999 or < -9999 || player?.codex is not { } codex) {
+        if (string.IsNullOrEmpty(Id) || Num == 0 || Num is > 9999 or < -9999 || Kind > CodexKind.CardDrop || player?.codex is not { } codex) {
             return;
         }
 
-        var creature = codex.GetOrCreate(Id);
-        switch (Kind) {
-            case CodexKind.Card:
-                // never below zero: two players took the last card out at the same moment
-                creature.numCard = System.Math.Max(0, creature.numCard + Num);
-                break;
-            case CodexKind.Kill:
-                creature.kills = System.Math.Max(0, creature.kills + Num);
-                break;
-            case CodexKind.Weakspot:
-                creature.weakspot = System.Math.Max(0, creature.weakspot + Num);
-                break;
-            case CodexKind.Spawn:
-                creature.spawns = System.Math.Max(0, creature.spawns + Num);
-                break;
-            case CodexKind.CardDrop:
-                creature.droppedCard = true;
-                break;
-            default:
-                return;
+        // who: the sender itself on the host of the world, else as told (the visitor of a zone the sender keeps)
+        var learner = net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
+            ? sender.uid
+            : Learner;
+
+        // teams learning on their own: the host keeps it in the learner's team's book, and changes its own codex only
+        // for its own team (a guest is told only its team's)
+        if (net is not ElinNetHost) {
+            Change(codex.GetOrCreate(Id), Kind, Num);
+        } else {
+            TeamKnowledge.Noted(learner, Kind, Id, Num);
+            if (TeamKnowledge.Shares(learner, pc.uid)) {
+                Change(codex.GetOrCreate(Id), Kind, Num);
+            }
         }
 
         switch (net) {
@@ -76,27 +78,49 @@ public class CodexDelta : ElinDelta
             // was played again in their game), the world from its own link
             case ElinNetHost { IsZoneSession: true } zone:
                 if (Kind != CodexKind.Kill) {
-                    zone.SendDeltaToAllExcept(OriginPeer, this);
+                    TeamKnowledge.Tell(zone, this, learner, OriginPeer);
                 }
 
                 if (NetSession.Instance.Transport is ElinNetClient main) {
-                    main.SendWhileAway(new CodexDelta { Id = Id, Num = Num, Kind = Kind, Relayed = true });
+                    main.SendWhileAway(new CodexDelta { Id = Id, Num = Num, Kind = Kind, Relayed = true, Learner = learner });
                 }
 
                 break;
             // the players of that map know already: the others, on this map, hear it now; those alone elsewhere
             // get the codex with their next world copy
             case ElinNetHost host when Relayed:
-                foreach (var peer in host.ActiveRemoteCharas.Keys) {
-                    if (peer != OriginPeer && !host.IsAwayPeer(peer)) {
-                        host.SendDeltaTo(peer, this);
-                    }
-                }
-
+                TeamKnowledge.Tell(host, this, learner, OriginPeer, true);
                 break;
             case ElinNetHost host:
-                host.SendDeltaToAllExcept(OriginPeer, this);
+                TeamKnowledge.Tell(host, this, learner, OriginPeer);
                 break;
+        }
+    }
+
+    /// <summary>
+    ///     That change on that creature of a codex; false for a kind this game does not know
+    /// </summary>
+    internal static bool Change(CodexCreature creature, CodexKind kind, int num)
+    {
+        switch (kind) {
+            case CodexKind.Card:
+                // never below zero: two players took the last card out at the same moment
+                creature.numCard = System.Math.Max(0, creature.numCard + num);
+                return true;
+            case CodexKind.Kill:
+                creature.kills = System.Math.Max(0, creature.kills + num);
+                return true;
+            case CodexKind.Weakspot:
+                creature.weakspot = System.Math.Max(0, creature.weakspot + num);
+                return true;
+            case CodexKind.Spawn:
+                creature.spawns = System.Math.Max(0, creature.spawns + num);
+                return true;
+            case CodexKind.CardDrop:
+                creature.droppedCard = true;
+                return true;
+            default:
+                return false;
         }
     }
 }
