@@ -50,9 +50,12 @@ goes to them (see [Credits](#credits)).
   its entrance; nobody is teleported onto the host.
 - **Each at their own pace.** A monster acts when the player it fights acts, not at the host's pace, and a guest
   walks as smoothly as the host.
-- **Your time is your own.** A player who goes to bed sleeps at once; the night only passes for the world when
-  everyone sleeps at the same time. When another player travels or sleeps, the date moves on, but you are no
-  hungrier, your food does not rot and your quest deadlines do not move.
+- **Your time is your own.** A player who goes to bed sleeps at once; the night passes for the world when enough
+  players sleep at the same time (the host chooses: everyone, half, or one). A player away from the keyboard no
+  longer holds the night. When another player travels or sleeps, the date moves on, but you are no hungrier, your
+  food does not rot and your quest deadlines do not move.
+- **Big worlds.** Time can stop when nobody plays, and a long absence is caught up in steps (at most 7 days).
+  Every player of the world is listed in the adventurers' ranking.
 
 ### To each player their own
 
@@ -84,8 +87,11 @@ goes to them (see [Credits](#credits)).
 - **Dungeon quests.** Any player can take a quest that has its own zone. When one sets out, the other gets a Yes/No
   box to come along: the zone is shared and the reward goes to whoever took the quest.
 - **Map music.** The music chosen for a map in its playlist window is the same for every player on that map.
-- **Between players.** A trade window (both put items and gold, both confirm), duels where nobody dies and nothing
-  is lost, and no killing outside a duel.
+- **Between players.** A trade window (both put items and gold, both confirm; a worn item comes off when traded),
+  duels where nobody dies and nothing is lost (with a *Give up* in your own menu), and no killing outside a duel.
+- **Permadeath with friends** (host option, on by default, permadeath worlds only): a player who dies waits in the
+  world instead of the game ending, and any other player revives them at a bartender for the game's price. Nothing
+  is deleted, not even when the host dies.
 
 ### Teams (optional)
 
@@ -143,7 +149,23 @@ its own story scenes, backers list and Churyu count across world copies. The ful
   compare a few numbers per map, and a map that keeps differing is reloaded in place.
 - **Safer network data** (taken from the original mod). What another game sends is only read as the game's and its
   mods' own kinds of data; anything else is refused.
-- **A dedicated server**, like a Minecraft server: an Elin nobody plays keeps the world running.
+- **A dedicated server**, like a Minecraft server: an Elin nobody plays keeps the world running, reachable through
+  Steam or by address. It makes a backup of the world every hour, and the *Elin Together Server* app starts it again
+  if it crashes, restores a backup, starts with Windows and shows players, the admin log and live graphs.
+- **The host leaves cleanly.** When the host quits for good, the guests are told so instead of waiting on a frozen
+  screen.
+
+### Public servers: admins and safety
+
+- **Moderation.** Kick with a reason (the player cannot come back for a few minutes), ban and mute by Steam account
+  (kept in the world), admins named by the host who get Kick, Mute and Ban buttons in the *Players* tab, and a
+  *Members only* mode. Every action is written to `ElinMP/Logs/admin.log`; a dedicated server takes the same orders
+  from its app or from `ElinMP/server.cmd`.
+- **Safety against modified games.** The host refuses what a guest has no right to do (other players' items and
+  characters, made-up gold or items, chat under another name), always in a public game and on a dedicated server
+  (box *Refuse acts on what others own* otherwise). A crafted packet or map can no longer crash the host or run code.
+- **Many players.** Each player only receives what concerns its own map, players arriving together share one copy of
+  the world, and the load was measured with up to 50 simulated players.
 
 ### The same mods for everyone
 
@@ -248,8 +270,11 @@ copy of the world every 5 minutes. Delete it and create a new one when it gets l
 `modlist.txt`, the mods of the world.
 
 **Dedicated server.** `ElinTogetherServer.exe` has a second mode, "With Elin on this PC: the world runs all the
-time": Elin runs behind without a window and the players use *Join by address* (`host:55556`, UDP). `Server.bat`
-does the same with a game window. Windows only.
+time": Elin runs behind without a window; players join through the server's Steam lobby or *Join by address*
+(`host:55556`, UDP). The app starts Elin again if it stops by itself, keeps an hourly backup of the world (restored
+in one click while stopped), can start with Windows (`--elin <save>`), and has pages for moderation (kick, mute, ban,
+a message to everyone), the admin log and the server's state (players, network, memory). `Server.bat` does the same
+with a game window. Windows only.
 
 ## Games with mods
 
@@ -293,6 +318,11 @@ everyone as soon as they change.
 | Independent travel | on | Everyone goes where they want, alone or together. Off: everyone follows the host. |
 | Players choose their character when joining | off | A joining player picks one of its characters in this world, or makes a new one. Off: the one it played last. |
 | Players can bring a character from their own saves | off | The character, its equipment, bag, gold, fame and karma. Not its companions, base, quests or bank. The save is only read. |
+| Revive at the bartender (permadeath) | on | Permadeath worlds only: a dead player waits in the world and any player revives them at a bartender. Off: the game's own permadeath (the host's death deletes the world). |
+| Public game | off | Anybody who finds the game can join, not only friends; the safety checks are always on. |
+| Kicked players wait | 5 min | A kicked player cannot come back for that long (Off, 5, 15, 60 min). |
+| Members only | off | Only the players of this world (and accounts let in with `allow`) can join. |
+| Refuse acts on what others own | off | A guest's acts on others' characters and items, and floods of data, are refused. Always on in a public game and on a dedicated server. |
 | Random quests, fame and karma per player | on | 5 random quests each, with their reward, fame and karma. Story quests stay shared. |
 | Shipping per player | on | Shipping money goes to the player who put the item in. Off: all to the host. |
 | Trade window between players | on | Click another player to trade items and gold. Both confirm. |
@@ -306,7 +336,10 @@ everyone as soon as they change.
 | Every player walks at the pace of a solo game | on | The length of a step no longer depends on the other players' speed. |
 | One date for the whole world | on | Time passed by a player alone on another map counts for everyone. Off: only the host's date counts. |
 | What time does to the world happens once | on | Weather, expired quests, taxes, salaries and letters are handled by one game only. |
-| Everyone sleeps for themselves | on | A player who goes to bed sleeps at once. The night passes for the world when all sleep at the same time. |
+| Everyone sleeps for themselves | on | A player who goes to bed sleeps at once. The night passes for the world when enough players sleep at the same time. |
+| Night passes when | Everyone | Dropdown: *Everyone*, *Half* or *One* of the active players asleep. |
+| Away after | 5 min | A player without input for that long no longer holds the night, the world map or the date (Off, 5, 15, 30 min). |
+| Time stops when nobody plays | off | The world's date waits while no player is connected. |
 | World map time | Shared clock | Dropdown: *Shared clock*, *Travel together* or *Personal pace* (see above). |
 | The base counts every player | on | Raids, lucky month and days with the player count every player on the base map. |
 | Barrels and milk follow the player | on | Aging shelves, drying bricks and mother's milk use the player they are about. |
@@ -467,24 +500,23 @@ for its player.
   the mod reloads as before.
 - A player refused by the holder of a map still receives the whole world.
 - On the host's screen, walking guests can move in jumps of three tiles.
-- **More than three players**: five game windows were tested on one PC, never five real PCs. Expect the game to
-  slow down as players are added.
+- **Many players**: five game windows were tested on one PC and up to 50 simulated players (a load tool that speaks
+  the protocol), never more than three real players at once. With many players, everyone arriving at the same time
+  makes the host pause about half a second to a second per group.
 - Dungeon quests for two, when the guest took the quest: subdue, harvest and music quests. Defense quests are
   settled alone. An adventurer duel started by a guest leaves the adventurer in two places during the duel.
-- Duels between players have no arena, betting or give-up button. Equipped items cannot be traded.
+- Duels between players have no arena or betting.
 - Mods: Elin restarts once at the first join (see [Games with mods](#games-with-mods)). A mod removed from the game
   later stays subscribed for a player who chose to keep the mods. Not tried on Steam Deck, Linux or a Mac.
 - Catching up worlds played before "a share for everyone": recipes, the tickets of the debt, the wedding gifts and
   dialog gifts are not given again.
-- Not reproduced yet: from issue 5, a cane at a training dummy; from issue 6, items lost in an invisible inventory
-  slot.
 
 The full list is kept in the developer's notes, not published.
 
 ## What is left before a real release
 
 This fork is published as pre-releases for a group of friends. Here is what stands between that and a version one
-could recommend to anyone (as of 26 October 2026).
+could recommend to anyone (as of 27 October 2026).
 
 **1. Proof on real PCs**
 
@@ -492,6 +524,8 @@ could recommend to anyone (as of 26 October 2026).
   four players and a long game are only covered by a few real evenings, and each of them found defects the tests
   had not seen. It needs a small group playing every release. In particular: two real PCs with two Steam accounts.
 - A guest taking the world over ("Takeover"): played with three windows, never between two PCs.
+- A public server: the admin tools, the dedicated server joined through Steam and the bartender revive are tested on
+  one PC only.
 
 **2. Safe releases**
 
@@ -511,10 +545,11 @@ could recommend to anyone (as of 26 October 2026).
 
 **4. Missing pieces**
 
-- The riding cases after a dropped connection: being fixed.
-- A shared world time (the date only moves with the host): to be designed.
 - Mods: the host's list applied without a restart; a game whose mod list changes.
-- Duels: arena, betting, give-up. Defense quests for two.
+- Duels: arena, betting. Defense quests for two.
+- A real-time "living world" clock (the world's date moving even when nobody sleeps or travels): decided, not built.
+- Teams: each team's own recipes, codex, land taxes and story journal, then the main quest per team: decided, not
+  built.
 - The online depot of the world: automatic take-over from the depot.
 
 **5. Before recommending it**

@@ -514,5 +514,6 @@
     "LangGeneral.emp_ui_sv_cfg_permadeath_revive.text": "在酒保处复活（永久死亡）",
     "LangGeneral.emp_ui_sv_desc_permadeath_revive.text": "仅限永久死亡世界：死亡玩家的角色会留在世界中，任何人都可以在酒保处支付费用将其复活，不会删除任何内容。关闭：游戏原本的永久死亡（主机死亡会删除世界）。",
     "LangGeneral.emp_ui_chara_dead_tag.text": "（已死亡：等待在酒保处复活）",
-    "LangGeneral.emp_ui_chara_dead.text": "这个角色已经死亡，正在等待在酒保处复活。"
+    "LangGeneral.emp_ui_chara_dead.text": "这个角色已经死亡，正在等待在酒保处复活。",
+    "LangGeneral.emp_act_duel_giveup.text": "认输（结束决斗）"
 }

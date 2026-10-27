@@ -463,15 +463,11 @@ public static class PlayerTrade
 
     /// <summary>
     ///     Why this item cannot be put on the table (the text key shown to both players), null if it can. What the
-    ///     single player game refuses to hand to an ally (<c>InvOwner.AllowHold</c>) for an item not worn, plus the
-    ///     items bound to a character. Used by the trade window to list what can be offered, and again when both confirm
+    ///     single player game refuses to hand to an ally (<c>InvOwner.AllowHold</c>), plus the items bound to a
+    ///     character. A worn item may be offered: it comes off when the trade is made. Used by the trade window to list what can be offered, and again when both confirm
     /// </summary>
     internal static string? Refuse(Thing thing)
     {
-        if (thing.isEquipped) {
-            return "emp_trade_equipped";
-        }
-
         if (!thing.trait.CanBeDropped) {
             return "emp_trade_nodrop";
         }
@@ -515,6 +511,12 @@ public static class PlayerTrade
     private static void Move(Chara from, Chara to, List<(Thing Thing, int Num)> items, int gold)
     {
         foreach (var (thing, num) in items) {
+            // a worn item comes off first, as the player would take it off (README "what is left": equipped items
+            // could not be traded)
+            if (thing.isEquipped && thing.GetRootCard() is Chara wearer) {
+                wearer.body.Unequip(thing);
+            }
+
             // not stacked: the receiver's game would stack it into a pile inside one of its bags, where this
             // game does not look, and lose it
             to.AddThing(thing.Num == num ? thing : thing.Split(num), false);

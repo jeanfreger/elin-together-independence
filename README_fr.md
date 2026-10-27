@@ -51,9 +51,12 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   carte par son entrée ; personne n'est téléporté sur l'host.
 - **Chacun à son rythme.** Un monstre agit quand le joueur qu'il combat agit, pas au rythme de l'host, et un invité
   marche aussi régulièrement que l'host.
-- **Votre temps est à vous.** Celui qui se couche dort tout de suite ; la nuit ne passe pour le monde que si tous
-  dorment en même temps. Quand un autre joueur voyage ou dort, la date avance, mais vous n'avez pas plus faim,
-  votre nourriture ne pourrit pas et vos délais de quête ne bougent pas.
+- **Votre temps est à vous.** Celui qui se couche dort tout de suite ; la nuit passe pour le monde quand assez de
+  joueurs dorment en même temps (l'host choisit : tous, la moitié, ou un seul). Un joueur loin du clavier ne retient
+  plus la nuit. Quand un autre joueur voyage ou dort, la date avance, mais vous n'avez pas plus faim, votre
+  nourriture ne pourrit pas et vos délais de quête ne bougent pas.
+- **Les grands mondes.** Le temps peut s'arrêter quand personne ne joue, et une longue absence est rattrapée par
+  étapes (7 jours au plus). Chaque joueur du monde figure dans le classement des aventuriers.
 
 ### À chaque joueur le sien
 
@@ -90,8 +93,12 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   voit une boîte Oui/Non pour l'accompagner : la zone est commune et la récompense va à celui qui a pris la quête.
 - **La musique des cartes.** La musique choisie pour une carte dans sa fenêtre de liste de lecture est la même pour
   tous les joueurs présents sur cette carte.
-- **Entre joueurs.** Une fenêtre d'échange (chacun met des objets et de l'or, les deux confirment), des duels où
-  personne ne meurt et où rien n'est perdu, et pas de meurtre hors duel.
+- **Entre joueurs.** Une fenêtre d'échange (chacun met des objets et de l'or, les deux confirment ; un objet porté
+  est retiré quand on l'échange), des duels où personne ne meurt et où rien n'est perdu (avec un *Give up* dans
+  votre propre menu), et pas de meurtre hors duel.
+- **Permadeath entre amis** (option de l'host, cochée au départ, mondes en permadeath seulement) : un joueur qui
+  meurt attend dans le monde au lieu que la partie s'arrête, et n'importe quel autre joueur le ressuscite chez un
+  barman au prix du jeu. Rien n'est effacé, même quand c'est l'host qui meurt.
 
 ### Équipes (facultatif)
 
@@ -155,7 +162,25 @@ liste complète est gardée dans les notes du développeur, elle n'est pas publi
   jeux comparent quelques nombres par carte, et une carte dont l'écart dure est rechargée sur place.
 - **Des données réseau plus sûres** (reprises du mod d'origine). Ce qu'un autre jeu envoie n'est lu que comme les
   types de données du jeu et de ses mods ; tout le reste est refusé.
-- **Un serveur dédié**, comme un serveur Minecraft : un Elin que personne ne joue fait tourner le monde.
+- **Un serveur dédié**, comme un serveur Minecraft : un Elin que personne ne joue fait tourner le monde, joignable
+  par Steam ou par adresse. Il fait une sauvegarde du monde toutes les heures, et l'application *Elin Together
+  Server* le relance s'il plante, restaure une sauvegarde, démarre avec Windows et montre les joueurs, le journal
+  d'administration et des graphiques en direct.
+- **L'host part proprement.** Quand l'host quitte pour de bon, les invités en sont informés au lieu d'attendre
+  devant un écran figé.
+
+### Serveurs publics : administration et sécurité
+
+- **Modération.** Expulser avec un motif (le joueur ne peut pas revenir pendant quelques minutes), bannir et rendre
+  muet par compte Steam (gardé dans le monde), des admins nommés par l'host qui ont les boutons Kick, Mute et Ban
+  dans l'onglet *Players*, et un mode *Members only*. Chaque action est écrite dans `ElinMP/Logs/admin.log` ; un
+  serveur dédié reçoit les mêmes ordres de son application ou de `ElinMP/server.cmd`.
+- **Sécurité contre les jeux modifiés.** L'host refuse ce qu'un invité n'a pas le droit de faire (objets et
+  personnages des autres joueurs, or ou objets inventés, chat sous un autre nom), toujours dans une partie publique
+  et sur un serveur dédié (case *Refuse acts on what others own* sinon). Un paquet ou une carte fabriqués ne peuvent
+  plus faire planter l'host ni exécuter du code.
+- **Beaucoup de joueurs.** Chaque joueur ne reçoit que ce qui concerne sa propre carte, les joueurs qui arrivent
+  ensemble partagent une seule copie du monde, et la charge a été mesurée avec jusqu'à 50 joueurs simulés.
 
 ### Les mêmes mods pour tous
 
@@ -263,8 +288,11 @@ commit par minute tant que quelqu'un héberge et d'une copie du monde toutes les
 supprimez-le et créez-en un nouveau. Le dépôt garde aussi `modlist.txt`, les mods du monde.
 
 **Serveur dédié.** `ElinTogetherServer.exe` a un second mode, « With Elin on this PC: the world runs all the
-time » : Elin tourne derrière, sans fenêtre, et les joueurs utilisent *Join by address* (`adresse:55556`, UDP).
-`Server.bat` fait la même chose avec une fenêtre de jeu. Windows seulement.
+time » : Elin tourne derrière, sans fenêtre ; les joueurs rejoignent par le salon Steam du serveur ou par
+*Join by address* (`adresse:55556`, UDP). L'application relance Elin s'il s'arrête tout seul, garde une sauvegarde
+du monde toutes les heures (restaurée en un clic à l'arrêt), peut démarrer avec Windows (`--elin <save>`), et a des
+pages pour la modération (expulser, rendre muet, bannir, un message à tous), le journal d'administration et l'état
+du serveur (joueurs, réseau, mémoire). `Server.bat` fait la même chose avec une fenêtre de jeu. Windows seulement.
 
 ## Les parties avec mods
 
@@ -309,6 +337,11 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Independent travel | cochée | Chacun va où il veut, seul ou ensemble. Décochée : tout le monde suit l'host. |
 | Players choose their character when joining | décochée | En rejoignant, le joueur choisit un de ses personnages de ce monde, ou en crée un. Décochée : le dernier joué. |
 | Players can bring a character from their own saves | décochée | Le personnage, son équipement, son sac, son or, sa renommée et son karma. Pas ses compagnons, sa base, ses quêtes ni sa banque. La sauvegarde est seulement lue. |
+| Revive at the bartender (permadeath) | cochée | Mondes en permadeath seulement : un joueur mort attend dans le monde et n'importe quel joueur le ressuscite chez un barman. Décochée : le permadeath du jeu (la mort de l'host efface le monde). |
+| Public game | décochée | N'importe qui qui trouve la partie peut la rejoindre, pas seulement les amis ; les contrôles de sécurité sont toujours actifs. |
+| Kicked players wait | 5 min | Un joueur expulsé ne peut pas revenir pendant ce temps (Off, 5, 15, 60 min). |
+| Members only | décochée | Seuls les joueurs de ce monde (et les comptes admis par `allow`) peuvent rejoindre. |
+| Refuse acts on what others own | décochée | Les actes d'un invité sur les personnages et objets des autres, et les déluges de données, sont refusés. Toujours actif dans une partie publique et sur un serveur dédié. |
 | Random quests, fame and karma per player | cochée | 5 quêtes aléatoires chacun, avec récompense, renommée et karma. Les quêtes d'histoire restent communes. |
 | Shipping per player | cochée | L'argent de l'expédition va à celui qui a déposé l'objet. Décochée : tout va à l'host. |
 | Trade window between players | cochée | Clic sur un autre joueur pour échanger objets et or. Les deux confirment. |
@@ -322,7 +355,10 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Every player walks at the pace of a solo game | cochée | La durée d'un pas ne dépend plus de la vitesse des autres joueurs. |
 | One date for the whole world | cochée | Le temps passé par un joueur seul sur une autre carte compte pour tous. Décochée : seule la date de l'host compte. |
 | What time does to the world happens once | cochée | Météo, quêtes expirées, impôts, salaires et lettres sont faits par un seul jeu. |
-| Everyone sleeps for themselves | cochée | Celui qui se couche dort tout de suite. La nuit passe pour le monde quand tous dorment en même temps. |
+| Everyone sleeps for themselves | cochée | Celui qui se couche dort tout de suite. La nuit passe pour le monde quand assez de joueurs dorment en même temps. |
+| Night passes when | Everyone | Liste : *Everyone*, *Half* ou *One* des joueurs actifs endormis. |
+| Away after | 5 min | Un joueur sans action depuis ce temps ne retient plus la nuit, la carte du monde ni la date (Off, 5, 15, 30 min). |
+| Time stops when nobody plays | décochée | La date du monde attend tant qu'aucun joueur n'est connecté. |
 | Temps sur la carte du monde | Horloge commune | Liste : *Horloge commune*, *Voyager ensemble* ou *Rythme personnel* (voir plus haut). |
 | La base compte chaque joueur | cochée | Raids, mois de chance et jours avec le joueur comptent chaque joueur de la carte de la base. |
 | Tonneaux et lait suivent le joueur | cochée | Étagères d'affinage, briques à sécher et lait maternel utilisent le joueur concerné. |
@@ -485,27 +521,27 @@ l'ancien attend son joueur.
   recharge comme avant.
 - Un joueur refusé par celui qui tient une carte reçoit encore le monde entier.
 - Sur l'écran de l'host, les invités qui marchent peuvent avancer par à-coups de trois cases.
-- **Plus de trois joueurs** : cinq fenêtres du jeu ont été testées sur un seul PC, jamais cinq vrais PC.
-  Attendez-vous à ce que le jeu ralentisse quand le nombre de joueurs augmente.
+- **Beaucoup de joueurs** : cinq fenêtres du jeu ont été testées sur un seul PC et jusqu'à 50 joueurs simulés (un
+  outil de charge qui parle le protocole), jamais plus de trois vrais joueurs à la fois. Avec beaucoup de joueurs,
+  quand tout le monde arrive en même temps l'host fait une pause d'environ une demi-seconde à une seconde par
+  groupe.
 - Les zones sont créées avec les dons de l'host (chances de monstres, de sanctuaires), et les habitants d'une base ne
   « remarquent » que lui (rumeurs, cadeaux).
 - Quêtes à donjon à deux, quand c'est l'invité qui a la quête : « subjuguer », récolte et musique. La défense se
   fait seul. Un duel d'aventurier lancé par un invité laisse l'aventurier en double pendant le duel.
-- Les duels entre joueurs n'ont ni arène, ni pari, ni bouton pour abandonner. Un objet équipé ne peut pas être échangé.
+- Les duels entre joueurs n'ont ni arène ni pari.
 - Mods : Elin se relance une fois à la première connexion (voir [Les parties avec mods](#les-parties-avec-mods)).
   Un mod retiré de la partie plus tard reste abonné chez un joueur qui a choisi de garder les mods. Pas essayé sur
   Steam Deck, Linux ni Mac.
 - Rattrapage des mondes joués avant « une part pour chacun » : les recettes, les billets de la dette, les cadeaux du
   mariage et les cadeaux de dialogue ne sont pas redonnés.
-- Pas encore reproduit : issu du ticket 5, une canne devant un mannequin d'entraînement ; issu du ticket 6, des
-  objets perdus dans une case d'inventaire invisible.
 
 La liste complète est gardée dans les notes du développeur, elle n'est pas publiée.
 
 ## Ce qu'il reste avant une vraie sortie
 
 Ce fork est publié en préversions pour un groupe d'amis. Voici ce qui sépare cela d'une version qu'on pourrait
-recommander à n'importe qui (état au 26 octobre 2026).
+recommander à n'importe qui (état au 27 octobre 2026).
 
 **1. La preuve sur de vrais PC**
 
@@ -514,6 +550,8 @@ recommander à n'importe qui (état au 26 octobre 2026).
   des défauts que les tests n'avaient pas vus. Il faut un petit groupe qui joue chaque version. En particulier :
   deux vrais PC avec deux comptes Steam.
 - La reprise du monde par un invité (« Takeover ») : jouée à trois fenêtres, jamais entre deux PC.
+- Un serveur public : les outils d'administration, le serveur dédié rejoint par Steam et la résurrection chez le
+  barman ne sont testés que sur un seul PC.
 
 **2. Des versions sûres**
 
@@ -532,10 +570,12 @@ recommander à n'importe qui (état au 26 octobre 2026).
 
 **4. Ce qui manque**
 
-- Les cas de monture après une connexion perdue : en cours de correction.
-- Le temps du monde commun (la date n'avance qu'avec l'host) : à concevoir.
 - Mods : la liste de l'host appliquée sans relance ; une partie dont la liste change.
-- Duels : arène, pari, abandon. Quêtes de défense à deux.
+- Duels : arène, pari. Quêtes de défense à deux.
+- Une horloge « monde vivant » en temps réel (la date du monde qui avance même quand personne ne dort ni ne
+  voyage) : décidée, pas construite.
+- Équipes : recettes, codex, impôts fonciers et journal d'histoire propres à chaque équipe, puis la quête
+  principale par équipe : décidés, pas construits.
 - Le dépôt en ligne du monde : la reprise automatique depuis le dépôt.
 
 **5. Avant de le recommander**

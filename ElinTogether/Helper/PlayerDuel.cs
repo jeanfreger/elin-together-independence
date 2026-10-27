@@ -19,6 +19,7 @@ public static class PlayerDuel
     public const int Challenge_ = 0;
     public const int Accept_ = 1;
     public const int Decline_ = 2;
+    public const int GiveUp_ = 3;
 
     public const int Invited = 0;
     public const int Countdown = 1;
@@ -86,6 +87,25 @@ public static class PlayerDuel
             });
         }
     }
+
+    /// <summary>
+    ///     The local player gives up the duel it is in: the other one wins, as at 0 hit points (README "what is left":
+    ///     a give-up button)
+    /// </summary>
+    public static void GiveUp()
+    {
+        if (View is { Phase: Countdown or Fighting } view) {
+            Send(new() {
+                Kind = GiveUp_,
+                DuelId = view.DuelId,
+            });
+        }
+    }
+
+    /// <summary>
+    ///     The local player is in a duel being fought (or about to be)
+    /// </summary>
+    internal static bool InDuel => View is { Phase: Countdown or Fighting };
 
     /// <summary>
     ///     For the test bridge: where the duel stands, in one line
@@ -282,6 +302,15 @@ public static class PlayerDuel
     {
         if (intent.Kind == Challenge_) {
             Start(from, intent.PartnerUid, host);
+            return;
+        }
+
+        // either duellist gives up: the other wins
+        if (intent.Kind == GiveUp_) {
+            if (_sessions.Find(s => s.Id == intent.DuelId && (s.A == from || s.B == from) && s.Phase is Countdown or Fighting) is { } fought) {
+                fought.Winner = fought.A == from ? fought.B : fought.A;
+            }
+
             return;
         }
 
