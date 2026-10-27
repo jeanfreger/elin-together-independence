@@ -49,6 +49,24 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     Quest uid -> what the host drew when the quest was taken (security audit 2026-10-27, item 5): its id and its
+    ///     reward, which the player's own copy of the quest may not change. "id|rewardMoney|bonusMoney|difficulty|
+    ///     dangerLv|lv"
+    /// </summary>
+    [ElinGameIOProperty("personal_terms")]
+    private static Dictionary<int, string> PersonalTerms
+    {
+        get => field ??= [];
+        set;
+    }
+
+    // what a turned-in quest may still carry when the host has no terms for it (taken away, or before the terms):
+    // far above the game's random quests, far below what a forged one asked (any sum)
+    private const int UntermedRewardCap = 20000;
+    private const int MaxDefenseWave = 30;
+    private const int MaxDefenseBonus = 1000;
+
     // the characters of the players that settled on this map since they connected (their absence is behind them)
     private readonly HashSet<int> _backFromAbsence = [];
 
@@ -183,6 +201,9 @@ internal partial class ElinNetHost
 
         var data = LZ4Bytes.Create(quest);
         log?[quest.uid] = data.Bytes;
+        if (!IsZoneSession) {
+            PersonalTerms[quest.uid] = $"{quest.id}|{quest.rewardMoney}|{quest.bonusMoney}|{quest.difficulty}|{quest.dangerLv}|{quest.lv}";
+        }
 
         SendDeltaTo(peerId, new QuestStartDelta {
             Uid = quest.uid,
@@ -212,6 +233,16 @@ internal partial class ElinNetHost
             return;
         }
 
+        // its reward is the one the host drew, not the one its player's copy says (a forged copy asked any sum)
+        if (ElinDelta.TrustEnforced && !IsZoneSession && !HoldToTerms(taker, quest)) {
+            return;
+        }
+
+        if (ElinDelta.TrustEnforced) {
+            lastWave = Math.Min(lastWave, MaxDefenseWave);
+            bonus = Math.Min(bonus, MaxDefenseBonus);
+        }
+
         var (hostWave, hostBonus) = (QuestDefenseGame.lastWave, QuestDefenseGame.bonus);
         if (quest is QuestDefenseGame) {
             QuestDefenseGame.lastWave = lastWave;
@@ -233,9 +264,48 @@ internal partial class ElinNetHost
 
         if (!IsZoneSession) {
             PersonalLogOf(taker.uid).Remove(quest.uid);
+            PersonalTerms.Remove(quest.uid);
         }
 
         EmpLog.Debug("Player {CharaUid} completed quest {QuestUid} {QuestId}", taker.uid, quest.uid, quest.id);
+    }
+
+    /// <summary>
+    ///     The quest turned in gets back the reward the host drew when it was taken; one it has no terms for keeps
+    ///     its own, under a cap. False: not this quest (another id under that uid), refused
+    /// </summary>
+    private static bool HoldToTerms(Chara taker, Quest quest)
+    {
+        if (!PersonalTerms.TryGetValue(quest.uid, out var line) || line.Split('|') is not { Length: 6 } terms) {
+            if (quest.rewardMoney > UntermedRewardCap || quest.bonusMoney > UntermedRewardCap) {
+                EmpLog.Warning("Player {CharaUid} turns in quest {QuestUid} {QuestId} with a reward of {Money}+{Bonus}, capped",
+                    taker.uid, quest.uid, quest.id, quest.rewardMoney, quest.bonusMoney);
+                quest.rewardMoney = Math.Min(quest.rewardMoney, UntermedRewardCap);
+                quest.bonusMoney = Math.Min(quest.bonusMoney, UntermedRewardCap);
+            }
+
+            return true;
+        }
+
+        if (terms[0] != quest.id) {
+            EmpLog.Warning("Player {CharaUid} turns in quest {QuestUid} as {QuestId}, it was taken as {Taken}: refused",
+                taker.uid, quest.uid, quest.id, terms[0]);
+            return false;
+        }
+
+        // (the bonus of a quest may grow while it is played, never past its reward and its first bonus)
+        var drawn = (Money: int.Parse(terms[1]), Bonus: long.Parse(terms[2]));
+        if (quest.rewardMoney != drawn.Money || quest.bonusMoney > Math.Max(drawn.Bonus, drawn.Money)) {
+            EmpLog.Warning("Player {CharaUid} turns in quest {QuestUid} {QuestId} with a reward of {Money}+{Bonus}, drawn {Drawn}",
+                taker.uid, quest.uid, quest.id, quest.rewardMoney, quest.bonusMoney, line);
+        }
+
+        quest.rewardMoney = drawn.Money;
+        quest.bonusMoney = Math.Min(quest.bonusMoney, Math.Max(drawn.Bonus, drawn.Money));
+        quest.difficulty = int.Parse(terms[3]);
+        quest.dangerLv = int.Parse(terms[4]);
+        quest.lv = int.Parse(terms[5]);
+        return true;
     }
 
     /// <summary>
