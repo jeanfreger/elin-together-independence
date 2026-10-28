@@ -101,6 +101,7 @@ internal static class OwnSettings
                 SeedShrine = player.seedShrine,
                 LittleSaved = player.little_saved,
                 LittleDead = player.little_dead,
+                TotalFeat = player.totalFeat,
                 Log = EClass.game.log,
                 Digs = player.stats.digs,
                 Deaths = player.stats.death,
@@ -207,6 +208,9 @@ internal static class OwnSettings
             player.seedShrine = kept?.SeedShrine ?? 0;
             player.little_saved = kept?.LittleSaved ?? 0;
             player.little_dead = kept?.LittleDead ?? 0;
+            // and the levels it gained (the character sheet's "total feat", hunt 6 item 7): the host's count. None
+            // noted (a first time, or an older file): one per level above the first, as Card.LevelUp counts them
+            player.totalFeat = kept?.TotalFeat ?? Math.Max(0, chara.LV - 1);
             // the journal tells about this player (council 2026-10-28, OwnJournal): its own message history, not the
             // host's last lines (a first time in this world: none yet)
             if (NetSession.Instance.Rules.OwnJournal) {
@@ -479,6 +483,7 @@ internal static class OwnSettings
         public int SeedShrine;
         public int LittleSaved;
         public int LittleDead;
+        public int? TotalFeat;
 
         // the message history (the journal's log), see OwnJournal
         public MsgLog? Log;
