@@ -147,7 +147,8 @@ internal class TabPlayers : TabEmpBase
             return;
         }
 
-        var name = player.User.Name.TagColor(PeerColorizer.GetColor(player.Index));
+        // (a player whose Steam name is empty is shown by the name of the character)
+        var name = (string.IsNullOrWhiteSpace(player.User.Name) ? chara.Name : player.User.Name).TagColor(PeerColorizer.GetColor(player.Index));
         if (player.User.IsMe) {
             name += "  " + "emp_ui_player_you".lang();
         }

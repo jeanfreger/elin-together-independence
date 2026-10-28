@@ -894,5 +894,6 @@
     "LangGeneral.emp_ui_land_items.text": "物品{0}件",
     "LangGeneral.emp_ui_sv_note_title.text": "这是你作为房主的规则，下次创建游戏时使用。",
     "LangGeneral.emp_ui_play_refresh.text": "重新搜索",
-    "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面"
+    "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面",
+    "LangGeneral.emp_ui_sv_desc_preset_custom.text": "你自己的组合：可在下方随意修改每一条规则。"
 }

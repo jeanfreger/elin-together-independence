@@ -193,7 +193,20 @@ internal class TabServerConfiguration : TabEmpBase
                 bg.color = new(1f, 0.9f, 0.62f);
             }
 
-            var title = card.Button($"emp_ui_sv_opt_preset_{SettingsTable.Presets[i]}".lang(), () => {
+            // the whole card is the choice (title, chip, paragraph): a selectable card, no button inside
+            card.Text($"emp_ui_sv_opt_preset_{SettingsTable.Presets[i]}".lang()).SetSize(UIHelper.LabelSize);
+            if (selected) {
+                card.Chip("emp_ui_sv_preset_current".lang(), FontColor.Good);
+            }
+
+            card.TextSmall($"emp_ui_sv_desc_preset_{SettingsTable.Presets[i]}".lang(), FontColor.Gray);
+            if (_guest || !card.Layout.TryGetComponent<Image>(out var face)) {
+                continue;
+            }
+
+            var pick = card.Layout.gameObject.AddComponent<UnityEngine.UI.Button>();
+            pick.targetGraphic = face;
+            pick.onClick.AddListener(() => {
                 if (index == 2) {
                     // Custom writes nothing: it opens every group's folded rows to edit by hand
                     foreach (var g in _groups) {
@@ -206,9 +219,6 @@ internal class TabServerConfiguration : TabEmpBase
                 Capture();
                 SettingsTable.ApplyPreset(index);
             });
-            title.interactable = !_guest;
-            card.TextSmall(selected ? "emp_ui_sv_preset_current".lang() : " ", FontColor.Good);
-            card.TextSmall($"emp_ui_sv_desc_preset_{SettingsTable.Presets[i]}".lang(), FontColor.Gray);
         }
 
         if (!_guest && SettingsTable.CanUndo) {
@@ -231,8 +241,10 @@ internal class TabServerConfiguration : TabEmpBase
         const int shown = 5;
         foreach (var row in diff.Take(_allDiffs ? diff.Count : shown)) {
             var id = row.Id;
-            var button = card.ButtonRow().RowButton(row.Label, () => Jump(id));
-            button.LayoutElement().preferredWidth = UIHelper.ControlWidth * 1.6f;
+            // a compact link row, not a full-width button
+            var link = card.Text("> " + row.Label);
+            link.SetSize(UIHelper.LabelSize);
+            link.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => Jump(id));
         }
 
         if (diff.Count > shown) {

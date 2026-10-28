@@ -50,12 +50,12 @@ internal class TabPlay : TabEmpBase
 
         var status = card.Row();
         StatusDot(status, net.IsAway ? new(0.85f, 0.62f, 0.2f) : new(0.45f, 0.68f, 0.32f));
-        status.Text((net.IsAway ? "emp_ui_play_reconnecting" : "emp_ui_play_connected").lang());
+        // (the title already says "Connected": the status line gives the head count, or the reconnecting state)
+        status.Text(net.IsAway ? "emp_ui_play_reconnecting".lang() : "emp_ui_play_players_line".Loc(players.Count));
 
         if (!string.IsNullOrEmpty(host)) {
             card.TextSmall("emp_ui_play_host_line".Loc(host!), FontColor.Gray);
         }
-        card.TextSmall("emp_ui_play_players_line".Loc(players.Count), FontColor.Gray);
         if (EClass._zone is { } zone) {
             card.TextSmall("emp_ui_play_where".Loc(zone.NameWithLevel), FontColor.Gray);
         }
