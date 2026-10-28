@@ -620,6 +620,14 @@ internal partial class EmpConfig
             "Otherwise a moongate does nothing for the other players\n" +
             "其他玩家使用月之门时，只有该玩家前往主机已下载的地图，主机留在原地；关闭时月之门对其他玩家无效");
 
+        Server.StrangerVisits = config.Bind(
+            "Server",
+            "StrangerVisits",
+            false,
+            "Strangers may visit a player's map: a player holding a map away from the host also takes in players of other teams (land rules are checked first, 10 visitors at most)\n" +
+            "Off: only teammates, admins and players let in with \"allow\" share a map on a public server\n" +
+            "陌生人可以拜访玩家的地图：在主机之外持有地图的玩家也接待其他队伍的玩家（先检查土地规则，最多10名访客）；关闭时在公开服务器上只有队友、管理员和被“允许”的玩家能共享地图");
+
         Server.GuestLandingPortal = config.Bind(
             "Server",
             "GuestLandingPortal",
@@ -1040,6 +1048,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> Follow { get; set; } = null!;
         internal static ConfigEntry<bool> PrivateChat { get; set; } = null!;
         internal static ConfigEntry<bool> GuestMoongate { get; set; } = null!;
+
+        internal static ConfigEntry<bool> StrangerVisits { get; set; } = null!;
         internal static ConfigEntry<bool> GuestLandingPortal { get; set; } = null!;
         internal static ConfigEntry<bool> GuestSkyHelm { get; set; } = null!;
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;

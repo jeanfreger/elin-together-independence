@@ -860,10 +860,10 @@ internal partial class ElinNetHost
         // another player simulates the zone: join it as a guest of its zone session
         if (zone is { IsRegion: false } && GetPeerDenyReason(peer) is null && zone != _zone &&
             FindZoneHolder(zone.uid, peer) is { } holder) {
-            if (!MayHost(holder, peer)) {
+            if (!MayHost(holder, peer, out var denial)) {
                 peer.Send(new ZoneLeaseDenied {
                     ZoneUid = request.ZoneUid,
-                    Reason = "emp_travel_stranger_map",
+                    Reason = denial,
                 });
                 return;
             }
@@ -1028,15 +1028,47 @@ internal partial class ElinNetHost
     ///     in (TrustEnforced) a player is placed only under a holder it trusts already: its teammate (not the
     ///     Wanderers), or one the host vouched for (an admin, or let in with "allow"). Logged otherwise
     /// </summary>
-    private bool MayHost(ISteamNetPeer holder, ISteamNetPeer visitor)
+    private bool MayHost(ISteamNetPeer holder, ISteamNetPeer visitor) => MayHost(holder, visitor, out _);
+
+    /// <summary>
+    ///     The holder is trusted by the host's own lists to hold that visitor: an admin or a player let in with
+    ///     "allow", or a teammate (not the Wanderers)
+    /// </summary>
+    private bool TrustsHolder(ISteamNetPeer holder, UserData visitor)
     {
         if (Admins.ContainsKey(holder.User) || Members.ContainsKey(holder.User)) {
             return true;
         }
 
         var team = SavedRemoteCharas.TryGetValue(holder.User, out var held) ? Teams.TeamOf(held) : Teams.Wanderers;
-        if (team != Teams.Wanderers && SavedRemoteCharas.TryGetValue(visitor.User, out var visiting) && Teams.TeamOf(visiting) == team) {
+        return team != Teams.Wanderers && SavedRemoteCharas.TryGetValue(visitor, out var visiting) && Teams.TeamOf(visiting) == team;
+    }
+
+    /// <summary>
+    ///     Strangers of one holder at most (council 2026-10-28, Q4): a busy map is told "full", the visitor stays where it is
+    /// </summary>
+    internal const int StrangerVisitorCap = 10;
+
+    private int VisitorsOf(ISteamNetPeer holder) =>
+        _guests.Values.Count(g => g.HolderId == holder.Id) + _pendingGuests.Values.Count(g => g.HolderId == holder.Id);
+
+    /// <param name="denial">the text id to tell the visitor when it is refused</param>
+    private bool MayHost(ISteamNetPeer holder, ISteamNetPeer visitor, out string denial)
+    {
+        denial = "emp_travel_stranger_map";
+        if (TrustsHolder(holder, visitor.User)) {
             return true;
+        }
+
+        // the host box "Strangers may visit a player's map": land rules were checked before, the holder's cap is here
+        if (EmpConfig.Server.StrangerVisits.Value) {
+            if (VisitorsOf(holder) < StrangerVisitorCap) {
+                return true;
+            }
+
+            denial = "emp_travel_map_full";
+            EmpLog.Information("Refused {@Visitor} on the map of {@Holder}: {Cap} visitors already", visitor, holder, StrangerVisitorCap);
+            return false;
         }
 
         var enforce = ElinDelta.TrustEnforced;
@@ -1333,7 +1365,7 @@ internal partial class ElinNetHost
         }
 
         // a guest hands nothing back, it is only leaving
-        _guests.Remove(peer.Id);
+        var wasVisitor = _guests.Remove(peer.Id);
 
         // before the zone is handed over: visitors are called back by it, and come back with the world
         var soft = handedBack && CanRejoinSoftly(release, peer);
@@ -1342,7 +1374,7 @@ internal partial class ElinNetHost
 
         // the numbers given to its cards that waited for one, see ZoneSoftRejoin.Rebinds
         var rebound = new Dictionary<int, int>();
-        var chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound);
+        var chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound, capGainsOf: wasVisitor ? peer.Id : -1);
         ReplaceCompanions(release.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0, rebound);
         ReplaceResidents(release.Residents, ownerUid);
         ReplaceGuestCharas(release, peer);
@@ -1530,7 +1562,10 @@ internal partial class ElinNetHost
     /// </summary>
     /// <param name="register">zone session: take the uploaded uid as the saved chara of that player</param>
     /// <param name="rebound">filled with the numbers given to its cards that waited for one: old -> new</param>
-    private Chara? ReplaceRemoteChara(UserData user, LZ4Bytes data, bool register = false, Dictionary<int, int>? rebound = null)
+    /// <param name="capGainsOf">a visitor's own upload (its peer id): the gold it gained since the host's copy counts
+    ///     against the hourly gain cap like any gold it earned (public servers), the rest is cut off</param>
+    private Chara? ReplaceRemoteChara(UserData user, LZ4Bytes data, bool register = false, Dictionary<int, int>? rebound = null,
+        int capGainsOf = -1)
     {
         var uploaded = data.Decompress<Chara>();
 
@@ -1549,6 +1584,16 @@ internal partial class ElinNetHost
             EmpLog.Warning("Player {RemoteIdentity} uploaded chara {UploadedUid}, expected {Uid}, keeping host copy",
                 user, uploaded.uid, uid);
             return old;
+        }
+
+        if (capGainsOf >= 0 && old is not null && ElinDelta.TrustEnforced) {
+            foreach (var currency in CardModCurrencyDelta.CurrencyIds) {
+                var gain = (long)uploaded.GetCurrency(currency) - old.GetCurrency(currency);
+                if (gain > 0 && CardModCurrencyDelta.GainRoom(capGainsOf, currency, gain) is var allowed && allowed < gain) {
+                    EmpLog.Warning("Cut {Cut} {CurrencyId} of the upload of {RemoteIdentity}: over its hourly gain", gain - allowed, currency, user);
+                    uploaded.ModCurrency((int)(allowed - gain), currency);
+                }
+            }
         }
 
         // stale entries at its uids (copies received earlier) would get it renumbered when cached again
@@ -1597,6 +1642,13 @@ internal partial class ElinNetHost
             // gone meanwhile: only a visitor of that very holder
             if (!_visitedHolder.TryGetValue(user, out var visited) || visited != holder.Id) {
                 EmpLog.Warning("Player {@Peer} sent the character of {User}, who never visited its map: refused", holder, user);
+                continue;
+            }
+
+            // a stranger's map does not decide a visitor's character, bag or gold (council 2026-10-28, Q4): only the
+            // visitor's own upload does (the holder of another team is the authority of its map, not of the visitor)
+            if (ElinDelta.TrustEnforced && !TrustsHolder(holder, user)) {
+                EmpLog.Information("Player {@Peer} sent the character of {User}, who is not of its team: only its own upload counts", holder, user);
                 continue;
             }
 

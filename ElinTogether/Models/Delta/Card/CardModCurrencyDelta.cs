@@ -59,6 +59,28 @@ public class CardModCurrencyDelta : ElinDelta
 
     private static readonly System.Collections.Generic.Dictionary<(int Peer, string Id), (float Since, long Gained)> Gains = [];
 
+    internal static System.Collections.Generic.IEnumerable<string> CurrencyIds => HourlyGain.Keys;
+
+    /// <summary>
+    ///     How much of that gain a player may still make this hour; the part allowed is counted. A visitor's own upload
+    ///     of its character carries its gold, which cannot go through the deltas of the map it earned it on
+    /// </summary>
+    internal static long GainRoom(int peer, string id, long gain)
+    {
+        if (!HourlyGain.TryGetValue(id, out var cap)) {
+            return gain;
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (!Gains.TryGetValue((peer, id), out var gained) || now - gained.Since > 3600f) {
+            gained = (now, 0);
+        }
+
+        var allowed = System.Math.Max(0, System.Math.Min(gain, cap - gained.Gained));
+        Gains[(peer, id)] = (gained.Since, gained.Gained + allowed);
+        return allowed;
+    }
+
     // what each player paid lately: what it says it paid elsewhere (its debt in gold, land in gold bars) must have
     // left its purse
     private const float SpentWindow = 120f;
