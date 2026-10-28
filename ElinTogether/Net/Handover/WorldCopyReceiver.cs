@@ -44,6 +44,13 @@ internal static class WorldCopyReceiver
             return;
         }
 
+        // the folder is named after the host: a host that claims another id would overwrite, or push out, the copies
+        // this guest keeps of that other host's world. The id is the one of the peer we are connected to
+        if (NetSession.Instance.Transport is not ElinNetClient { Host: { } peer } || offer.Host != (ulong)peer.User) {
+            EmpLog.Warning("World copy refused: it claims host {Claimed}, the connected host is another one", offer.Host);
+            return;
+        }
+
         WorldHandover.Remember(offer);
 
         if (_closing is not null) {
