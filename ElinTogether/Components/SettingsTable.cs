@@ -354,6 +354,7 @@ internal static class SettingsTable
         yield return new("follow", "friends", true, EmpConfig.Server.Follow);
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
         yield return new("guest_moongate", "friends", true, EmpConfig.Server.GuestMoongate);
+        yield return new("stranger_visits", "friends", true, EmpConfig.Server.StrangerVisits);
         yield return new("guest_landing_portal", "friends", true, EmpConfig.Server.GuestLandingPortal);
         yield return new("guest_sky_helm", "friends", true, EmpConfig.Server.GuestSkyHelm);
         yield return new("shared_marriages", "friends", true, EmpConfig.Server.SharedMarriages);
@@ -553,6 +554,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.Follow, true);
         yield return (EmpConfig.Server.PrivateChat, true);
         yield return (EmpConfig.Server.GuestLandingPortal, true);
+        // council 2026-10-28, Q4: strangers meet in the wild; the land rules, the visitor cap and the upload filter hold
+        yield return (EmpConfig.Server.StrangerVisits, true);
         yield return (EmpConfig.Server.GuestSkyHelm, true);
         yield return (EmpConfig.Server.SharedMarriages, true);
         yield return (EmpConfig.Server.AffinityPerPlayer, true);
