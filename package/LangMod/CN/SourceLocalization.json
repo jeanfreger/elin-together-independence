@@ -894,5 +894,7 @@
     "LangGeneral.emp_ui_land_items.text": "物品{0}件",
     "LangGeneral.emp_ui_sv_note_title.text": "这是你作为房主的规则，下次创建游戏时使用。",
     "LangGeneral.emp_ui_play_refresh.text": "重新搜索",
-    "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面"
+    "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面",
+    "LangGeneral.emp_ui_sv_opt_preset_official.text": "公共服务器（官方）",
+    "LangGeneral.emp_ui_sv_desc_preset_official.text": "适用于向所有人开放的服务器：每位玩家拥有自己的角色和故事，队伍各自拥有领地，世界不能被带走或隐藏。"
 }

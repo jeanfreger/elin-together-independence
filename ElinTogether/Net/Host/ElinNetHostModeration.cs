@@ -300,12 +300,17 @@ internal partial class ElinNetHost
     private static float _restartAt;
     private static readonly List<int> RestartWarnings = [];
 
+    // the official server's daily restart (2026-10-28): the warning ends in a stop, written as the operator's stop file
+    // (saved, players sent away, then the application starts it again). A game a player hosts is never closed by it
+    private static bool _restartStops;
+
     internal string WarnRestart(int minutes)
     {
         minutes = Mathf.Clamp(minutes, 1, 600);
         _restartAt = Time.realtimeSinceStartup + minutes * 60f;
         RestartWarnings.Clear();
         RestartWarnings.AddRange(new[] { minutes, 5, 1 }.Where(m => m <= minutes).Distinct().OrderByDescending(m => m));
+        _restartStops = EmpServer.Requested;
         AdminLog($"restart warning {minutes} min");
         UpdateRestartWarnings();
         return $"Restart announced in {minutes} min";
@@ -318,6 +323,7 @@ internal partial class ElinNetHost
         }
 
         RestartWarnings.Clear();
+        _restartStops = false;
         return Announce("emp_info_restart_cancel".lang());
     }
 
@@ -326,6 +332,14 @@ internal partial class ElinNetHost
     /// </summary>
     internal void UpdateRestartWarnings()
     {
+        if (_restartStops && Time.realtimeSinceStartup >= _restartAt) {
+            _restartStops = false;
+            RestartWarnings.Clear();
+            AdminLog("restart: time is up, stopping");
+            EmpServer.StopNow();
+            return;
+        }
+
         if (RestartWarnings.Count == 0 || IsZoneSession) {
             return;
         }

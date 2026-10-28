@@ -47,7 +47,11 @@ internal static class OfficialServer
     ///     This game is the official server being open: the official server refuses imported characters (user,
     ///     2026-10-27), so ImportCharacter reads off whatever the host ticked
     /// </summary>
-    internal static bool Hosting => (EmpConfig.Server.PublicGame.Value || EmpServer.Requested) && CanHost();
+    internal static bool Hosting => BenchForce || (EmpConfig.Server.PublicGame.Value || EmpServer.Requested) && CanHost();
+
+    // set by the bench through reflection: a test PC has neither the account nor the key. It only adds the official
+    // server's own limits to the game that sets it (nothing is signed, see CanHost)
+    internal static bool BenchForce;
 
     /// <returns>the signature of that lobby, null when this game cannot sign</returns>
     internal static string? Sign(ulong lobbyId)

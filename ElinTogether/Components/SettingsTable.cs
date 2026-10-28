@@ -298,7 +298,23 @@ internal static class SettingsTable
 
     internal static IEnumerable<Choice> Choices() => Rows().Where(r => r.Choice is not null).Select(r => r.Choice!);
 
+    /// <summary>
+    ///     The table, with the rows the official server fixes greyed out while this game hosts it
+    /// </summary>
     internal static IEnumerable<SettingRow> Rows()
+    {
+        var fixedEntries = OfficialFixedEntries();
+        foreach (var row in RowsRaw()) {
+            if (row.Entry is { } e && fixedEntries.Contains(e) || row.Choice is { } c && c.Entries.All(fixedEntries.Contains)) {
+                var own = row.Requires;
+                yield return row with { Requires = () => !Helper.StoryOwner.OfficialHosting && (own?.Invoke() ?? true) };
+            } else {
+                yield return row;
+            }
+        }
+    }
+
+    private static IEnumerable<SettingRow> RowsRaw()
     {
         var pct = EmpConfig.Server.PlayerCombatTime;
 
@@ -440,7 +456,8 @@ internal static class SettingsTable
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
     // own reads as Custom, with what differs listed, and stays as it is)
-    internal static readonly string[] Presets = ["recommended", "classic", "custom"];
+    // ("official" comes after "custom" so that the indexes the pages already know (0 recommended, 1 classic, 2 custom) stay)
+    internal static readonly string[] Presets = ["recommended", "classic", "custom", "official"];
 
     /// <summary>
     ///     Classic host-led: the fallbacks off, turn-based combat, everyone follows the host, only the host
@@ -458,7 +475,133 @@ internal static class SettingsTable
         }
     }
 
-    internal static RuleSource PresetSource(int preset) => preset == 0 ? RuleSource.Defaults : Classic;
+    internal static RuleSource PresetSource(int preset) => preset switch { 0 => RuleSource.Defaults, 3 => Official, _ => Classic };
+
+    /// <summary>
+    ///     Rules the official server fixes whatever its operator ticks (plan_official_server 2026-10-28, section 1):
+    ///     the world cannot be taken away or hidden, every player is on the server, and the guest-side safety nets
+    ///     stay on. MembersOnly is not here: stage 1 of the opening is a closed test, the preset has it off
+    /// </summary>
+    internal static (ConfigEntryBase Entry, object Value)[] OfficialFixedValues() => [
+        (EmpConfig.Server.ImportCharacter, false), (EmpConfig.Server.ExportCharacter, false),
+        (EmpConfig.Server.TeamOwnStory, true), (EmpConfig.Server.TeamKnowledge, true), (EmpConfig.Server.TeamBoxes, true),
+        (EmpConfig.Server.WorldCopy, false), (EmpConfig.Server.Takeover, false), (EmpConfig.Server.AutoHost, false),
+        (EmpConfig.Server.HiddenServer, false), (EmpConfig.Server.ServerAvatar, true), (EmpConfig.Server.ServerRestsWhenEmpty, true),
+        (EmpConfig.Server.PublicGame, true), (EmpConfig.Server.SameGameVersion, true), (EmpConfig.Server.ContainerAccessLog, true),
+        (EmpConfig.Server.AdminExtras, true), (EmpConfig.Server.Teams, true), (EmpConfig.Server.TeamBases, true),
+        (EmpConfig.Server.PlayerKill, false),
+        ..Fallbacks().Select(e => ((ConfigEntryBase)e, (object)true)),
+    ];
+
+    internal static HashSet<ConfigEntryBase> OfficialFixedEntries() => [..OfficialFixedValues().Select(f => f.Entry)];
+
+    /// <summary>
+    ///     The official preset: the recommended rules with the official server's values written over them (also a
+    ///     "public server" preset for any host). (C) = still to be decided by the council: the plan's value for now
+    /// </summary>
+    internal static RuleSource Official
+    {
+        get {
+            var values = new Dictionary<ConfigEntryBase, object>();
+            foreach (var (entry, value) in OfficialFixedValues().Concat(OfficialChosenValues())) {
+                values[entry] = value;
+            }
+
+            return new(e => values.TryGetValue(e, out var v) ? v : e.DefaultValue);
+        }
+    }
+
+    private static IEnumerable<(ConfigEntryBase Entry, object Value)> OfficialChosenValues()
+    {
+        // who joins: both checks; characters: pick one of the account's, 3 at most, may be deleted, revive after permadeath
+        yield return (EmpConfig.Server.SourceValidationSet, "sources,plugins");
+        yield return (EmpConfig.Server.ChooseCharacter, true);
+        yield return (EmpConfig.Server.MaxCharacters, 3);
+        yield return (EmpConfig.Server.DeleteCharacter, true);
+        yield return (EmpConfig.Server.PermadeathRevive, true);
+        yield return (EmpConfig.Server.KickKeepOutMinutes, 60);
+        yield return (EmpConfig.Server.PublishMods, true);
+        yield return (EmpConfig.Server.LookModsOwn, false);
+        // StrictValidationMode: on after stage 1 (C, council pending); it is a file-only switch, left as it is here
+        yield return (EmpConfig.Server.MembersOnly, false);
+        // travel and time: (C, council pending) personal pace with a 24 hour lead
+        yield return (EmpConfig.Server.IndependentTravel, true);
+        yield return (EmpConfig.Server.WorldMapTime, Net.WorldMapTime.PersonalPace);
+        yield return (EmpConfig.Server.WorldMapLeadCap, 24);
+        yield return (EmpConfig.Server.PlayerCombatTime, true);
+        yield return (EmpConfig.Server.PlayerClock, true);
+        yield return (EmpConfig.Server.PlayerStepPace, true);
+        yield return (EmpConfig.Server.SharedAverageSpeed, false);
+        yield return (EmpConfig.Server.SharedWorldTime, true);
+        yield return (EmpConfig.Server.WorldKeeper, true);
+        yield return (EmpConfig.Server.OwnSleep, true);
+        yield return (EmpConfig.Server.NightPasses, NightRule.Half);
+        yield return (EmpConfig.Server.IdleMinutes, 5);
+        yield return (EmpConfig.Server.TimeStopsWhenEmpty, true);
+        yield return (EmpConfig.Server.AbsentQuestsWait, true);
+        yield return (EmpConfig.Server.CatchUpDays, 7);
+        yield return (EmpConfig.Server.LivingWorldMinutes, 0);
+        yield return (EmpConfig.Server.GuestBuild, true);
+        yield return (EmpConfig.Server.HostManagesBase, false);
+        yield return (EmpConfig.Server.Duels, true);
+        yield return (EmpConfig.Server.GuestBouts, true);
+        yield return (EmpConfig.Server.DuelArena, true);
+        yield return (EmpConfig.Server.DuelBets, false);
+        yield return (EmpConfig.Server.PlayerTrade, true);
+        yield return (EmpConfig.Server.Follow, true);
+        yield return (EmpConfig.Server.PrivateChat, true);
+        yield return (EmpConfig.Server.GuestLandingPortal, true);
+        yield return (EmpConfig.Server.GuestSkyHelm, true);
+        yield return (EmpConfig.Server.SharedMarriages, true);
+        yield return (EmpConfig.Server.AffinityPerPlayer, true);
+        // (C, council pending)
+        yield return (EmpConfig.Server.GuestMoongate, false);
+        yield return (EmpConfig.Server.TeamApproval, true);
+        yield return (EmpConfig.Server.TeamDeed, true);
+        yield return (EmpConfig.Server.TeamLeaders, true);
+        yield return (EmpConfig.Server.TeamMaxSize, 10);
+        yield return (EmpConfig.Server.TeamFoundCooldown, 30);
+        yield return (EmpConfig.Server.TeamPersonal, true);
+        yield return (EmpConfig.Server.LandRules, true);
+        yield return (EmpConfig.Server.LandAbandon, true);
+        yield return (EmpConfig.Server.AbandonDays, 30);
+        yield return (EmpConfig.Server.LandsPerTeam, 2);
+        // off until its check is green
+        yield return (EmpConfig.Server.SiblingLands, false);
+        yield return (EmpConfig.Server.SpawnZone, "start");
+        yield return (EmpConfig.Server.TeamPvp, false);
+        yield return (EmpConfig.Server.TeamBills, true);
+        yield return (EmpConfig.Server.TeamStory, true);
+        yield return (EmpConfig.Server.TeamOwnGuilds, true);
+        yield return (EmpConfig.Server.AutoReconnect, true);
+        yield return (EmpConfig.Server.AutoResync, true);
+        yield return (EmpConfig.Server.SoftRecall, true);
+        yield return (EmpConfig.Server.AutoSave, true);
+        yield return (EmpConfig.Server.EnforceOwnership, true);
+    }
+
+    /// <summary>
+    ///     At the start of a session this game hosts as the official server: the fixed rules are written over what the
+    ///     file says (no undo entry: it is not a choice of the operator)
+    /// </summary>
+    internal static void ForceOfficial()
+    {
+        if (!OfficialServer.Hosting) {
+            return;
+        }
+
+        var forcing = _forcing;
+        _forcing = true;
+        try {
+            if (Write(OfficialFixedValues())) {
+                EmpLog.Information("Official server: the fixed rules were written over the file");
+            }
+        } finally {
+            _forcing = forcing;
+        }
+    }
+
+    private static bool _forcing;
 
     /// <summary>
     ///     The rows (choices and boxes not under a choice) whose value differs between two sources: what makes a
@@ -474,14 +617,15 @@ internal static class SettingsTable
     }
 
     internal static int Preset(RuleSource current) =>
-        Differences(current, RuleSource.Defaults).Count == 0 ? 0 : Differences(current, Classic).Count == 0 ? 1 : 2;
+        Differences(current, RuleSource.Defaults).Count == 0 ? 0 : Differences(current, Classic).Count == 0 ? 1
+        : Differences(current, Official).Count == 0 ? 3 : 2;
 
     /// <summary>
     ///     Every host rule as the preset has it (Reset to recommended is preset 0); "Custom" writes nothing
     /// </summary>
     internal static void ApplyPreset(int preset)
     {
-        if (preset is 0 or 1) {
+        if (preset is 0 or 1 or 3) {
             var target = PresetSource(preset);
             Write(HostRules().Select(e => (e, target.Raw(e)!)));
         } else {
@@ -745,12 +889,14 @@ internal static class SettingsTable
     /// </summary>
     internal static bool Write(IEnumerable<(ConfigEntryBase Entry, object Value)> changes)
     {
-        var diff = changes.Where(c => !Equals(c.Entry.BoxedValue, c.Value)).ToArray();
+        // (the official server's fixed rules cannot be changed from a page, a preset, a reset or an undo)
+        var fixedEntries = Helper.StoryOwner.OfficialHosting && !_forcing ? OfficialFixedEntries() : [];
+        var diff = changes.Where(c => !Equals(c.Entry.BoxedValue, c.Value) && !fixedEntries.Contains(c.Entry)).ToArray();
         if (diff.Length == 0) {
             return false;
         }
 
-        if (!_undoing) {
+        if (!_undoing && !_forcing) {
             _undo.Push([..HostRules().Select(e => (e.Definition, e.BoxedValue))]);
         }
 
