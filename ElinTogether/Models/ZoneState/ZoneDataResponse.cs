@@ -134,8 +134,33 @@ public class ZoneDataResponse
         };
     }
 
+    // a real big map is ~40 MB compressed: this only stops a malicious host from filling the disk with 64 big files
+    private const long MaxMapBytes = 512L * 1024 * 1024;
+
+    /// <summary>
+    ///     All the files of a received map together stay under <see cref="MaxMapBytes" />, as sent (compressed)
+    /// </summary>
+    internal static bool IsMapSizeSafe(Dictionary<string, LZ4Bytes> map)
+    {
+        var total = 0L;
+        foreach (var file in map.Values) {
+            total += file?.Bytes?.Length ?? 0;
+        }
+
+        if (total <= MaxMapBytes) {
+            return true;
+        }
+
+        EmpLog.Warning("Map refused: its files hold {Bytes} bytes, over {Max}", total, MaxMapBytes);
+        return false;
+    }
+
     public void WriteToTemp()
     {
+        if (!IsMapSizeSafe(Map)) {
+            return;
+        }
+
         var basePath = ResourceFetch.GetEmpSavePath();
 
         foreach (var (id, asset) in Map) {

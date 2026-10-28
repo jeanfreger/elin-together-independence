@@ -71,6 +71,10 @@ internal static class ZoneLeaseState
         Directory.CreateDirectory(folder);
 
         // (the game writes some twenty files for a map)
+        if (!ZoneDataResponse.IsMapSizeSafe(map)) {
+            return;
+        }
+
         foreach (var (id, asset) in map.Take(64)) {
             if (!IsMapFileKey(id)) {
                 continue;
