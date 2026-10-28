@@ -94,6 +94,12 @@ internal static class OwnSettings
                 Deepest = player.stats.deepest,
                 DeepestVoid = player.stats.deepestVoid,
                 LastChuryu = player.stats.lastChuryu,
+                Mama = player.stats.mama,
+                EscapeSilverBell = player.stats.escapeSilverBell,
+                QuestRerollCost = player.questRerollCost,
+                SafeTravel = player.safeTravel,
+                StaminaRecovery = player.staminaRecovery,
+                TutorialStep = player.tutorialStep,
                 SeedFortune = player.seedFortune,
                 LuckyCoin = player.luckycoin,
                 LastFelmeraReward = player.lastFelmeraReward,
@@ -200,6 +206,14 @@ internal static class OwnSettings
             // Player.UpdateNyan. (The "you have played N hours" count, Player.realHour, is static: per process, so
             // already the player's own)
             player.stats.lastChuryu = kept?.LastChuryu ?? 0;
+            // and the counters the game keeps for its own character: the mama's gifts, the silver bell escapes, the
+            // quest reroll price, the safe-travel and stamina-recovery reserves, how far the tutorial went
+            player.stats.mama = kept?.Mama ?? 0;
+            player.stats.escapeSilverBell = kept?.EscapeSilverBell ?? 0;
+            player.questRerollCost = kept?.QuestRerollCost ?? 0;
+            player.safeTravel = kept?.SafeTravel ?? 0;
+            player.staminaRecovery = kept?.StaminaRecovery ?? 0;
+            player.tutorialStep = kept?.TutorialStep ?? 0;
             // so are its fortune rolls and lucky coins (see FortuneCountersDelta)
             player.seedFortune = kept?.SeedFortune ?? 0;
             player.luckycoin = kept?.LuckyCoin ?? 0;
@@ -490,6 +504,12 @@ internal static class OwnSettings
         public int Deepest;
         public int DeepestVoid;
         public int LastChuryu;
+        public long Mama;
+        public int EscapeSilverBell;
+        public int QuestRerollCost;
+        public int SafeTravel;
+        public int StaminaRecovery;
+        public int TutorialStep;
         public int SeedFortune;
         public int LuckyCoin;
         public int LastFelmeraReward;
