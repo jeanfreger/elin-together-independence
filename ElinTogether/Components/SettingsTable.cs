@@ -354,7 +354,7 @@ internal static class SettingsTable
         yield return new("living_world", "time_details", true, Choice: LivingWorld);
         yield return new("absent_quests_wait", "time_details", true, EmpConfig.Server.AbsentQuestsWait, Requires: () => EmpConfig.Server.PersonalQuests.Value);
         yield return new("catch_up_days", "time_details", true, Choice: CatchUpDays);
-        yield return new("world_map_lead", "time_details", true, Choice: LeadCap);
+        yield return new("world_map_lead", "time_details", true, Choice: LeadCap, Requires: () => EmpConfig.Server.WorldMapTime.Value == Net.WorldMapTime.PersonalPace);
 
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");
         yield return new("dump_spares_belt", "comfort", true, EmpConfig.Server.DumpSparesBelt);
