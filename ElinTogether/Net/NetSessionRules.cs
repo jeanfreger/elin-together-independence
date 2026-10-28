@@ -379,6 +379,13 @@ public class NetSessionRules
     [Key(129)]
     public bool TeamStory { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-28 (dev/COUNCIL_2026-10-28_team_story.md): each player, or each team, lives its own main
+    ///     story, see TeamOwnStory. An older host sends none: one story for the world, as it was
+    /// </summary>
+    [Key(130)]
+    public bool TeamOwnStory { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -397,9 +404,10 @@ public class NetSessionRules
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
-        TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
+        TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
+        TeamOwnStory = Helper.TeamOwnStory.Wanted,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

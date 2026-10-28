@@ -9,6 +9,8 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class QuestChangePhaseDelta : ElinDelta
 {
+    internal override bool InSendersStory => true;
+
     [Key(0)]
     public required int Uid { get; init; }
 

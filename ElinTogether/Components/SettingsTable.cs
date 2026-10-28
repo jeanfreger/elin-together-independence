@@ -65,6 +65,10 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
                 desc = $"{desc} {"emp_ui_sv_import_official".lang()}";
             }
 
+            if (Id is "team_own_story" or "team_knowledge" && OfficialServer.Hosting) {
+                desc = $"{desc} {"emp_ui_sv_own_story_official".lang()}";
+            }
+
             return Apply is null ? desc : $"{desc}{(Choice is null ? " " : "\n")}{$"emp_ui_sv_apply_{Apply}".lang()}";
         }
     }
@@ -304,9 +308,10 @@ internal static class SettingsTable
         yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
@@ -478,6 +483,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamKnowledge] = r.TeamKnowledge,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,
+            [EmpConfig.Server.TeamOwnStory] = r.TeamOwnStory,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,

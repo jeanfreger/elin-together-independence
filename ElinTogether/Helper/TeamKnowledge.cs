@@ -9,8 +9,9 @@ namespace ElinTogether.Helper;
 
 /// <summary>
 ///     Council 2026-10-25, host option "Teams learn on their own" (dev/PLAN_teams_knowledge.md). The recipes, the
-///     recipes crafted once and the codex live in the one Player object of the world: with the box on, each team has
-///     its own. The host keeps every team's in its save (<see cref="ElinNetHost.TeamLoreBook" />); every game, the
+///     recipes crafted once and the codex live in the one Player object of the world: with the box on, each OWNER has
+///     its own (<see cref="StoryOwner" />, the user 2026-10-28: a team shares one book, a player without a team has its
+///     own, never the Wanderers as a group). Off by default, always on for the official public server. The host keeps every team's in its save (<see cref="ElinNetHost.TeamLoreBook" />); every game, the
 ///     host's own included, holds its team's in that Player object while it plays; the vanilla save gets the union of
 ///     all teams, so a world opened without the mod, or with the box off, keeps everything anyone learnt
 /// </summary>
@@ -28,9 +29,12 @@ internal static class TeamKnowledge
     /// <summary>
     ///     The box as this game knows it: the host's own setting, a guest's from the host's rules
     /// </summary>
-    internal static bool On => KeepsBook
-        ? EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamKnowledge.Value
-        : NetSession.Instance.Rules is { UseTeams: true, TeamKnowledge: true };
+    internal static bool On => KeepsBook ? Wanted : NetSession.Instance.Rules is { TeamKnowledge: true };
+
+    /// <summary>
+    ///     The host's box, read as on whatever is stored while this game hosts the official public server
+    /// </summary>
+    internal static bool Wanted => EmpConfig.Server.TeamKnowledge.Value || StoryOwner.OfficialHosting;
 
     // the game the ledger was read against, and the team whose knowledge its Player object holds (none: the world's,
     // as the save has it)
@@ -78,13 +82,9 @@ internal static class TeamKnowledge
             flipped = true;
         }
 
-        // the host plays its team's knowledge like any player, and another team's when it changes team
-        if (On && Seeded && Teams.TeamOf(EClass.pc.uid) is var team && team != _team) {
+        // the host plays its own knowledge like any player, its team's when it is in one
+        if (On && Seeded && StoryOwner.Of(EClass.pc.uid) is var team && team != _team) {
             Hold(team);
-        }
-
-        if (On && Seeded && _team is not null) {
-            MergeGoneTeams();
         }
 
         if (flipped) {
@@ -101,7 +101,7 @@ internal static class TeamKnowledge
             Store(was, Take(EClass.player));
         }
 
-        var lore = Stored(team) ?? WorldUnion();
+        var lore = Book(team);
         Rebuild(lore);
         Put(EClass.player, lore);
         _team = team;
@@ -127,7 +127,8 @@ internal static class TeamKnowledge
     private static void Seed()
     {
         var world = Take(EClass.player);
-        foreach (var team in ElinNetHost.TeamList.Keys.Append(Teams.Wanderers).Distinct()) {
+        // (and the seed entry: a player new to the world knows what the world knew)
+        foreach (var team in StoryOwner.All().Append(StoryOwner.Of(EClass.pc.uid)).Append(StoryOwner.Seed).Distinct()) {
             Store(team, world);
         }
 
@@ -165,7 +166,7 @@ internal static class TeamKnowledge
     /// </summary>
     internal static TeamLore? For(Chara chara)
     {
-        return LocalTeam is null ? null : Of(Teams.TeamOf(chara.uid));
+        return LocalTeam is null ? null : Of(StoryOwner.Of(chara.uid));
     }
 
     /// <summary>
@@ -195,52 +196,43 @@ internal static class TeamKnowledge
     /// </summary>
     internal static TeamLore Of(int team)
     {
-        return team == LocalTeam ? Take(EClass.player) : Stored(team) ?? WorldUnion();
+        return team == LocalTeam ? Take(EClass.player) : Book(team);
+    }
+
+    /// <summary>
+    ///     What the ledger says that owner knows: an owner it never heard of knows what the world knew at the tick (a
+    ///     ledger of the time of teams only: what the Wanderers knew)
+    /// </summary>
+    private static TeamLore Book(int owner)
+    {
+        return Stored(owner) ?? Stored(StoryOwner.Seed) ?? Stored(Teams.Wanderers) ?? WorldUnion();
     }
 
     // ---- teams changing
 
     /// <summary>
-    ///     In the game that keeps the book: that player went from one team to another (joined, left for the
-    ///     Wanderers, founded a team). What it knew comes with it: the team it enters knows it all from now on, the
-    ///     team it left keeps what it knew (a team left without members keeps it too). Every player of that team is
-    ///     told
+    ///     In the game that keeps the book: that player went from one team to another (or to none). The rule of
+    ///     <see cref="StoryOwner" />: joining a team, the player knows what the team knows, or the team what the player
+    ///     knew when it has no book yet (its first member); leaving for no team, the player keeps a copy of the team's
+    ///     book as its own. Every player of the owner it enters is told. (A team that is no more keeps its entry: the
+    ///     save's union still holds what it knew)
     /// </summary>
-    internal static void Moved(int from, int to)
+    internal static void Moved(Chara chara, int fromTeam, int toTeam)
     {
+        var from = StoryOwner.Of(fromTeam, chara.uid);
+        var to = StoryOwner.Of(toTeam, chara.uid);
         if (LocalTeam is not { } local || from == to) {
             return;
         }
 
         Store(local, Take(EClass.player));
-        // (a new team: the founder's knowledge)
-        var merged = Union(new[] { Stored(to), Stored(from) ?? WorldUnion() }.OfType<TeamLore>());
-        Store(to, merged);
-        EmpLog.Information("A player came from team {From} to team {To}: the team knows {Recipes} recipes, {Creatures} creatures",
-            from, to, merged.Known.Count, merged.Codex.Count);
+        if (StoryOwner.TakesMovers(to, ElinNetHost.TeamLoreBook.ContainsKey(to))) {
+            Store(to, Of(from));
+        }
+
+        EmpLog.Information("A player went from {From} to {To}: it knows {Recipes} recipes, {Creatures} creatures",
+            StoryOwner.Name(from), StoryOwner.Name(to), Of(to).Known.Count, Of(to).Codex.Count);
         TellTeam(to);
-    }
-
-    /// <summary>
-    ///     A team that is no more: what it knew goes to the Wanderers
-    /// </summary>
-    private static void MergeGoneTeams()
-    {
-        var gone = ElinNetHost.TeamLoreBook.Keys.Where(team => team != Teams.Wanderers && !ElinNetHost.TeamList.ContainsKey(team)).ToArray();
-        if (gone.Length == 0) {
-            return;
-        }
-
-        foreach (var team in gone) {
-            if (Stored(team) is { } lore) {
-                Store(Teams.Wanderers, Union(new[] { Of(Teams.Wanderers), lore }));
-            }
-
-            ElinNetHost.TeamLoreBook.Remove(team);
-            EmpLog.Information("Team {TeamId} is gone: what it knew goes to the Wanderers", team);
-        }
-
-        TellTeam(Teams.Wanderers);
     }
 
     /// <summary>
@@ -257,7 +249,7 @@ internal static class TeamKnowledge
         }
 
         foreach (var (peer, chara) in host.ActiveRemoteCharas) {
-            if (Teams.TeamOf(chara.uid) == team) {
+            if (StoryOwner.Of(chara.uid) == team) {
                 host.SendDeltaTo(peer, new TeamLoreDelta { Lore = Of(team) });
             }
         }
@@ -283,7 +275,7 @@ internal static class TeamKnowledge
     /// </summary>
     internal static bool Shares(int learner, int other)
     {
-        return learner == 0 || !On || Teams.TeamOf(learner) == Teams.TeamOf(other);
+        return learner == 0 || !On || StoryOwner.Of(learner) == StoryOwner.Of(other);
     }
 
     /// <summary>
@@ -315,13 +307,18 @@ internal static class TeamKnowledge
             return;
         }
 
-        var of = learner == 0 ? (int?)null : Teams.TeamOf(learner);
+        var of = learner == 0 ? (int?)null : StoryOwner.Of(learner);
+        // (a player the ledger has no book for yet: its own starts now)
+        if (of is { } first && first != local && !ElinNetHost.TeamLoreBook.ContainsKey(first)) {
+            Store(first, Book(first));
+        }
+
         foreach (var team in ElinNetHost.TeamLoreBook.Keys.ToArray()) {
             if (team == local || (of is { } only && team != only)) {
                 continue;
             }
 
-            var lore = Stored(team) ?? WorldUnion();
+            var lore = Book(team);
             AddKnown(lore.Known, recipeId);
             Store(team, lore);
         }
@@ -337,13 +334,18 @@ internal static class TeamKnowledge
             return;
         }
 
-        var of = learner == 0 ? (int?)null : Teams.TeamOf(learner);
+        var of = learner == 0 ? (int?)null : StoryOwner.Of(learner);
+        // (a player the ledger has no book for yet: its own starts now)
+        if (of is { } first && first != local && !ElinNetHost.TeamLoreBook.ContainsKey(first)) {
+            Store(first, Book(first));
+        }
+
         foreach (var team in ElinNetHost.TeamLoreBook.Keys.ToArray()) {
             if (team == local || (of is { } only && team != only)) {
                 continue;
             }
 
-            var lore = Stored(team) ?? WorldUnion();
+            var lore = Book(team);
             var creature = new CodexCreature { id = id, _ints = Ints(lore.Codex.GetValueOrDefault(id)) };
             if (CodexDelta.Change(creature, kind, num)) {
                 lore.Codex[id] = creature._ints;
@@ -410,13 +412,13 @@ internal static class TeamKnowledge
             return;
         }
 
-        var team = Teams.TeamOf(crafter);
+        var team = StoryOwner.Of(crafter);
         if (team == local) {
             EClass.player.recipes.craftedRecipes.Add(recipeId);
             return;
         }
 
-        var lore = Stored(team) ?? WorldUnion();
+        var lore = Book(team);
         if (!lore.Crafted.Contains(recipeId)) {
             lore.Crafted.Add(recipeId);
             Store(team, lore);
@@ -549,8 +551,8 @@ internal static class TeamKnowledge
     internal static string Describe()
     {
         var lines = ElinNetHost.TeamLoreBook.Keys.OrderBy(k => k).Select(team => Stored(team) is { } lore
-            ? $"{team} recipes {lore.Known.Count} crafted {lore.Crafted.Count} codex {lore.Codex.Count}"
-            : $"{team} unreadable");
+            ? $"{StoryOwner.Name(team)} recipes {lore.Known.Count} crafted {lore.Crafted.Count} codex {lore.Codex.Count}"
+            : $"{StoryOwner.Name(team)} unreadable");
         return $"schema {ElinNetHost.TeamLoreState[0]} seeded {ElinNetHost.TeamLoreState[1]}\n" + string.Join("\n", lines);
     }
 }

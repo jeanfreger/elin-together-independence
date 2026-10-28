@@ -12,6 +12,8 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class DialogFlagDelta : ElinDelta
 {
+    internal override bool InSendersStory => true;
+
     [Key(0)]
     public required string Id { get; init; }
 

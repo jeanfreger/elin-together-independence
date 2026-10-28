@@ -54,6 +54,11 @@ public class ElinDeltaManager
     /// </summary>
     public void AddRemote(ElinDelta delta)
     {
+        // (the host: a story message goes to the players of that story only, see TeamOwnStory)
+        if (Helper.TeamOwnStory.Divert(this, delta)) {
+            return;
+        }
+
         _outBufferUnrefreshed.Add(delta);
     }
 

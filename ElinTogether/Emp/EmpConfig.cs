@@ -678,9 +678,9 @@ internal partial class EmpConfig
             "Server",
             "TeamKnowledge",
             false,
-            "Each team has its own recipes, crafted list and codex: what a player learns, its teammates learn, the other teams do not. The save keeps everything all teams know\n" +
+            "Each player has its own recipes, crafted list and codex: teammates share one, a player without a team has its own. The save keeps everything anyone knows. Always on for the official public server\n" +
             "Otherwise everyone shares one book of recipes and one codex, as before\n" +
-            "每个队伍有自己的配方、制作记录和图鉴：玩家学到的东西其队友也会学到，其他队伍不会。存档保留所有队伍知道的一切；关闭时所有人如前共用一套配方和图鉴");
+            "每个玩家有自己的配方、制作记录和图鉴：队友共享一套，没有队伍的玩家有自己的一套。存档保留所有人知道的一切。官方公共服务器上始终开启；关闭时所有人如前共用一套配方和图鉴");
 
         Server.TeamBills = config.Bind(
             "Server",
@@ -697,6 +697,14 @@ internal partial class EmpConfig
             "Each team keeps its own story journal: the furthest chapter of the main quest one of its players took part in (the player who made the step and the players on that map), shown on the Teams card. The story itself stays the world's\n" +
             "Otherwise no journal per team\n" +
             "每个队伍保留自己的剧情日志：其玩家参与过的主线最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上；剧情本身仍属于整个世界。关闭时没有队伍日志");
+
+        Server.TeamOwnStory = config.Bind(
+            "Server",
+            "TeamOwnStory",
+            false,
+            "Experimental. Each player lives the main story at its own pace (Ash's quest, the exploration of Nymelle and their dialogs), teammates together: a team shares one story, a player without a team has its own. Everyone starts at the story point the world is at when the box is ticked. Farris joins the first base only; a player or team reaching a floor someone already cleared takes the story on from there. Always on for the official public server\n" +
+            "The save keeps the host's own story (as it was when the box was ticked): unticked, or the save opened without the mod, the world goes on with it. Otherwise all players share one story progression, as before\n" +
+            "实验性。每个玩家按自己的节奏经历主线剧情（阿什的任务、尼梅尔的探索及其对话），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。官方公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
 
         Server.GlobalChat = config.Bind(
             "Server",
@@ -914,6 +922,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamOwnStory { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

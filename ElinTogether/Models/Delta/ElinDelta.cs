@@ -178,6 +178,8 @@ namespace ElinTogether.Models;
 [Union(982, typeof(TeamSpawnDelta))]
 // Teams learn on their own
 [Union(1010, typeof(TeamLoreDelta))]
+// Teams live their own story
+[Union(1110, typeof(StoryBundleDelta))]
 // World time (council 2026-10-26)
 [Union(983, typeof(PlayerIdleDelta))]
 // Admin tools (council 2026-10-27)
@@ -200,6 +202,12 @@ public abstract class ElinDelta : EClass
     internal virtual int OverrideKey => 0;
 
     internal virtual bool RequiresGameStarted { get; } = true;
+
+    /// <summary>
+    ///     A guest's message the host checks and applies inside the sender's own story (host option "Each player or
+    ///     team lives its own story", TeamOwnStory.As): its permit, its refusal and its apply read that story
+    /// </summary>
+    internal virtual bool InSendersStory => false;
 
     public static bool IsApplying => _applyDepth > 0;
 
@@ -365,6 +373,23 @@ public abstract class ElinDelta : EClass
     }
 
     public void Apply(ElinNetBase net)
+    {
+        if (FromPeer && InSendersStory && net is ElinNetHost storyHost) {
+            if (TeamOwnStory.KeeperDrops(storyHost, this)) {
+                return;
+            }
+
+            using (TeamOwnStory.AsSender(storyHost, OriginPeer)) {
+                ApplyHere(net);
+            }
+
+            return;
+        }
+
+        ApplyHere(net);
+    }
+
+    private void ApplyHere(ElinNetBase net)
     {
         if (FromPeer && net is ElinNetHost permitHost && !HostPermits(permitHost)) {
             try {

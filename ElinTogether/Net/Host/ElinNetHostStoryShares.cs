@@ -41,6 +41,18 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Reward number -> the story step that gave it ("quest id:phase"), when each player or team lives its own
+    ///     story (TeamOwnStory): the same step played again in another story adds nothing to the ledger, and a player
+    ///     who had that step's reward does not get it again
+    /// </summary>
+    [ElinGameIOProperty("story_reward_steps")]
+    private static Dictionary<int, string> StoryRewardSteps
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Set once the rewards a world gave before the ledger existed were written in it, see SeedOldWorld
     /// </summary>
     [ElinGameIOProperty("story_seeded")]
@@ -136,6 +148,15 @@ internal partial class ElinNetHost
                 continue;
             }
 
+            // (that step's reward had in another story)
+            var step = StoryRewardSteps.GetValueOrDefault(number);
+            if (TeamOwnStory.Had(player.uid, step)) {
+                StoryReceived[number] = received.Append(player.uid).ToArray();
+                continue;
+            }
+
+            TeamOwnStory.NoteHad(player.uid, step);
+
             try {
                 var share = new LZ4Bytes { Bytes = data }.Decompress<Thing>();
                 game.cards.AssignUIDRecursive(share);
@@ -161,7 +182,7 @@ internal partial class ElinNetHost
 
     // rewards dropped this frame and who earned them: copied at the end of the frame, once the story code is
     // done with them (charges, material, what a chest holds are set after the drop)
-    private static readonly List<(Thing Reward, int Earner)> _storyRewards = [];
+    private static readonly List<(Thing Reward, int Earner, string? Step)> _storyRewards = [];
 
     // artifacts every player must have its own of
     private static readonly HashSet<string> _ownArtifacts = ["backpack_holding", "book_story"];
@@ -183,7 +204,7 @@ internal partial class ElinNetHost
             return;
         }
 
-        _storyRewards.Add((reward, (earner ?? pc).uid));
+        _storyRewards.Add((reward, (earner ?? pc).uid, TeamOwnStory.StepKey));
     }
 
     // (the game's Duplicate makes a new thing of that kind: a chest comes with loot of its own drawn at random,
@@ -222,17 +243,24 @@ internal partial class ElinNetHost
             .ToList();
         var host = NetSession.Instance.Transport as ElinNetHost;
 
-        foreach (var (reward, earner) in rewards) {
+        foreach (var (reward, earner, step) in rewards) {
             if (reward.isDestroyed || !Multiplied(reward)) {
                 continue;
             }
 
-            // in the ledger, for who plays in this world later
-            var number = StoryRewards.Count == 0 ? 1 : StoryRewards.Keys.Max() + 1;
-            StoryRewards[number] = LZ4Bytes.Create(Whole(reward)).Bytes;
-            StoryReceived[number] = players.Select(p => p!.uid).Append(earner).Distinct().ToArray();
+            // in the ledger, for who plays in this world later (once per step of the story: another story playing it
+            // again adds nothing)
+            if (step is null || !StoryRewardSteps.ContainsValue(step)) {
+                var number = StoryRewards.Count == 0 ? 1 : StoryRewards.Keys.Max() + 1;
+                StoryRewards[number] = LZ4Bytes.Create(Whole(reward)).Bytes;
+                StoryReceived[number] = players.Select(p => p!.uid).Append(earner).Distinct().ToArray();
+                if (step is not null) {
+                    StoryRewardSteps[number] = step;
+                }
+            }
 
-            foreach (var other in players.Where(p => p!.uid != earner)) {
+            foreach (var other in players.Where(p => p!.uid != earner && !TeamOwnStory.Had(p.uid, step))) {
+                TeamOwnStory.NoteHad(other!.uid, step);
                 var share = Whole(reward);
 
                 // in its bag when it is here: at its feet it piled up with the earner's own, one tile away, and the

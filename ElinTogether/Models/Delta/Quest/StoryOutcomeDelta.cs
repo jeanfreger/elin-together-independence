@@ -13,6 +13,8 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class StoryOutcomeDelta : ElinDelta
 {
+    internal override bool InSendersStory => true;
+
     [Key(0)]
     public required string Method { get; init; }
 
@@ -41,6 +43,12 @@ public class StoryOutcomeDelta : ElinDelta
         }
 
         var target = FindTarget();
+        // (each player or team living its own story: an actor of the story counts where the sender's story shows it,
+        // read here inside that story, TeamOwnStory.As)
+        if (target is not null && !Helper.TeamOwnStory.Shown(target)) {
+            return $"outcome {Method} on {target.id}, not in the sender's story there";
+        }
+
         var hire = target is not null && EClass.Branch?.listRecruit.Exists(h => h.chara == target) == true;
         if (!host.IsAwayPeer(OriginPeer) && target is not null && !hire &&
             (target.currentZone != sender!.currentZone || target.pos.Distance(sender.pos) > ReachTiles)) {

@@ -493,7 +493,8 @@ internal static class Teams
         TeamList[id] = [chara.uid, EmpConfig.Server.TeamApproval.Value ? 0 : 1, chara.uid];
         Names[id] = name.Trim();
         EmpLog.Information("Team {TeamId} {TeamName} founded by {CharaUid}", id, name, chara.uid);
-        TeamKnowledge.Moved(from, id);
+        TeamKnowledge.Moved(chara, from, id);
+        TeamOwnStory.Moved(chara, from, id);
         GiveDeed(chara, id);
         Tell();
         return id;
@@ -543,7 +544,8 @@ internal static class Teams
         var team = TeamList[teamId];
         TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
-        TeamKnowledge.Moved(from, teamId);
+        TeamKnowledge.Moved(chara, from, teamId);
+        TeamOwnStory.Moved(chara, from, teamId);
         Tell();
         return true;
     }
@@ -559,7 +561,8 @@ internal static class Teams
         }
 
         Requests.Remove(chara.uid);
-        TeamKnowledge.Moved(from, Wanderers);
+        TeamKnowledge.Moved(chara, from, Wanderers);
+        TeamOwnStory.Moved(chara, from, Wanderers);
 
         EmpLog.Information("Chara {CharaUid} left its team", chara.uid);
         Tell();

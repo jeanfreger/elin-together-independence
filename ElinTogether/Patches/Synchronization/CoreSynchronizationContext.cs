@@ -35,6 +35,8 @@ internal class CoreSynchronizationContext : SynchronizationContext
         // (alone too: the host's own team's knowledge is put in place after a load, given back to the world when the
         // box is unticked)
         TeamKnowledge.Update();
+        // (alone too: the world team's story is the save's, the host's own team's is put in place after a load)
+        TeamOwnStory.Update();
         PlayerDuel.Always();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
