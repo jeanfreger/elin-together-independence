@@ -135,6 +135,32 @@ internal static class CharaExport
         return MessagePackSerializer.Deserialize<SessionCharaExportData>(File.ReadAllBytes(file), FileOptions);
     }
 
+    /// <summary>
+    ///     The player brings a character back unchanged: its files still waiting beside solo saves are dropped, or
+    ///     loading one of them would bring it in a second time
+    /// </summary>
+    internal static void DropIncoming(int uid)
+    {
+        try {
+            if (!Directory.Exists(IncomingFolder)) {
+                return;
+            }
+
+            foreach (var file in Directory.GetFiles(IncomingFolder, "*.lz4")) {
+                try {
+                    if (ReadIncoming(file).Uid == uid) {
+                        File.Delete(file);
+                        EmpLog.Information("Incoming file {File} of recalled chara {Uid} deleted", file, uid);
+                    }
+                } catch (Exception ex) {
+                    EmpLog.Warning(ex, "Could not check the incoming file {File}", file);
+                }
+            }
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not drop the incoming files of chara {Uid}", uid);
+        }
+    }
+
     // the swap of the last load, until a save holds it
     private static (string File, string Token)? _applied;
 
