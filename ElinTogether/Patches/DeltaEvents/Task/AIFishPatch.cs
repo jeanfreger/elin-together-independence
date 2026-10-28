@@ -173,7 +173,8 @@ internal static class AIFishPatch
     {
         return new CodeMatcher(instructions)
             .MatchStartForward(new CodeMatch(OpCodes.Ldc_I4, 1000))
-            .MatchEndForward(new CodeMatch(OpCodes.Call, AccessTools.Method(typeof(EClass), nameof(EClass.rnd))))
+            .MatchEndForward(new CodeMatch(i => i.opcode == OpCodes.Call && i.operand is System.Reflection.MethodInfo { Name: nameof(EClass.rnd) } m &&
+                                                m.DeclaringType == typeof(EClass)))  // rnd(int) and rnd(long): by name, not ambiguous
             .Advance(1)
             .InsertAndAdvance(Transpilers.EmitDelegate((int roll) => CharaProgressCompleteDelta.IsReplaying ? 1 : roll))
             .InstructionEnumeration();
