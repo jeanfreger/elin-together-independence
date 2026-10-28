@@ -58,6 +58,12 @@ public class TeamRequestDelta : ElinDelta
     [Key(2)]
     public int ZoneUid { get; init; }
 
+    /// <summary>
+    ///     A name typed by the player (a team to found), kept short by the host
+    /// </summary>
+    [Key(3)]
+    public string? Text { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return NoCharacter(sender);
@@ -70,6 +76,6 @@ public class TeamRequestDelta : ElinDelta
             return;
         }
 
-        Teams.Answer(sender, Kind, Id, ZoneUid);
+        Teams.Answer(sender, Kind, Id, ZoneUid, Text ?? "");
     }
 }

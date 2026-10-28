@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Components;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -69,6 +70,7 @@ internal static class Teams
         if (known) {
             Notice(team, asked);
         }
+        Redraw();
     }
 
     /// <summary>
@@ -89,6 +91,28 @@ internal static class Teams
                 Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
             }
         }
+    }
+
+    internal static bool IsOpen(int teamId) => TeamList.TryGetValue(teamId, out var team) && team[1] == 1;
+
+    /// <summary>
+    ///     The players who ask to join that team and wait for its leader
+    /// </summary>
+    internal static IEnumerable<int> Asking(int teamId) => Requests.Where(r => r.Value == teamId).Select(r => r.Key);
+
+    /// <summary>
+    ///     The lands that team holds
+    /// </summary>
+    internal static IEnumerable<int> LandsOf(int teamId) => Zones.Where(z => z.Value == teamId).Select(z => z.Key).OrderBy(uid => uid);
+
+    internal static string ZoneName(int zoneUid) => EClass.game.spatials.Find(zoneUid)?.Name ?? zoneUid.ToString();
+
+    /// <summary>
+    ///     That player character is in this game right now (the host's own included)
+    /// </summary>
+    internal static bool IsOnline(int charaUid)
+    {
+        return NetSession.Instance.CurrentPlayers.Any(p => p.CharaUid == charaUid);
     }
 
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
@@ -530,6 +554,17 @@ internal static class Teams
         return string.Join("\n", lines.Concat(zones).DefaultIfEmpty("no teams"));
     }
 
+    internal const int NameMax = 24;
+
+    /// <summary>
+    ///     A team name a player typed: one line, no control characters, at most <see cref="NameMax" /> characters
+    /// </summary>
+    internal static string CleanName(string? text)
+    {
+        var clean = new string((text ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+        return clean.Length > NameMax ? clean[..NameMax].Trim() : clean;
+    }
+
     /// <summary>
     ///     That player founds a team named so and leads it, leaving its former team. Only in the game that keeps the
     ///     book; 0 when it does not
@@ -627,19 +662,19 @@ internal static class Teams
     ///     The local player's choice in a team menu: answered here in the game that keeps the book, asked of the
     ///     host otherwise (wherever this player is)
     /// </summary>
-    internal static void Ask(TeamAsk kind, int id = 0, int zoneUid = 0)
+    internal static void Ask(TeamAsk kind, int id = 0, int zoneUid = 0, string text = "")
     {
         if (KeepsBook) {
-            Answer(EClass.pc, kind, id, zoneUid);
+            Answer(EClass.pc, kind, id, zoneUid, text);
         } else {
-            PersonalQuests.TellHost(new TeamRequestDelta { Kind = kind, Id = id, ZoneUid = zoneUid });
+            PersonalQuests.TellHost(new TeamRequestDelta { Kind = kind, Id = id, ZoneUid = zoneUid, Text = text });
         }
     }
 
     /// <summary>
     ///     In the game that keeps the book: what that player asks, read against the book as it is now
     /// </summary>
-    internal static void Answer(Chara chara, TeamAsk kind, int id, int zoneUid)
+    internal static void Answer(Chara chara, TeamAsk kind, int id, int zoneUid, string text = "")
     {
         if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
             return;
@@ -648,7 +683,7 @@ internal static class Teams
         var (team, asked) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray());
         switch (kind) {
             case TeamAsk.Found:
-                Found(chara, chara.NameSimple);
+                Found(chara, CleanName(text) is { Length: > 0 } name ? name : chara.NameSimple);
                 break;
             case TeamAsk.Join when TeamList.TryGetValue(id, out var wanted) && TeamOf(chara.uid) != id:
                 // at once into an open team, a team without a leader, or when the host does not ask the leaders
@@ -770,5 +805,16 @@ internal static class Teams
     private static void Tell()
     {
         (NetSession.Instance.Transport as ElinNetHost)?.TellTeams();
+        Redraw();
+    }
+
+    /// <summary>
+    ///     The team page, when it is open, shows the book as it is now
+    /// </summary>
+    private static void Redraw()
+    {
+        if (LayerElinTogether.Instance is { } page) {
+            page.Reopen();
+        }
     }
 }

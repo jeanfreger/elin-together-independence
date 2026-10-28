@@ -629,5 +629,21 @@
     "LangGeneral.emp_ui_sv_cfg_team_own_guilds.text": "公会也按玩家和队伍分开",
     "LangGeneral.emp_ui_sv_desc_team_own_guilds.text": "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭：整个团体共用一个成员身份，如前。",
     "LangGeneral.emp_ui_sv_cfg_team_boxes.text": "各队伍拥有自己的银行和快递箱",
-    "LangGeneral.emp_ui_sv_desc_team_boxes.text": "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧共享箱子里的东西仍然共享，所有人都能取。需要开启队伍。取消勾选时，各队的箱子并回共享箱子。"
+    "LangGeneral.emp_ui_sv_desc_team_boxes.text": "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧共享箱子里的东西仍然共享，所有人都能取。需要开启队伍。取消勾选时，各队的箱子并回共享箱子。",
+    "LangGeneral.emp_ui_tab_team.text": "队伍",
+    "LangGeneral.emp_tab_team.text": "队伍",
+    "LangGeneral.emp_ui_team_title.text": "队伍",
+    "LangGeneral.emp_ui_team_none.text": "你不属于任何队伍（你是流浪者）。",
+    "LangGeneral.emp_ui_team_name_ask.text": "新队伍的名称",
+    "LangGeneral.emp_ui_team_mine.text": "你的队伍：{0}",
+    "LangGeneral.emp_ui_team_leader.text": "队长：{0}（{1}）",
+    "LangGeneral.emp_ui_team_open.text": "任何人可加入",
+    "LangGeneral.emp_ui_team_closed.text": "队长审批",
+    "LangGeneral.emp_ui_team_online.text": "在线",
+    "LangGeneral.emp_ui_team_offline.text": "离线",
+    "LangGeneral.emp_ui_team_leader_tag.text": "（队长）",
+    "LangGeneral.emp_ui_team_lands.text": "土地",
+    "LangGeneral.emp_ui_team_no_land.text": "尚无土地。",
+    "LangGeneral.emp_ui_team_others.text": "其他队伍",
+    "LangGeneral.emp_ui_team_line.text": "{0}  队长 {1}  {2}人  {3}"
 }
