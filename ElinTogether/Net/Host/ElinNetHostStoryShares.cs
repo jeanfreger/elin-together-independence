@@ -175,7 +175,7 @@ internal partial class ElinNetHost
 
         var parcel = ThingGen.CreateParcel(null, owed.ToArray());
         parcel.c_idRefName = "emp_story_share".Loc(player.NameSimple);
-        world.SendPackage(parcel);
+        TeamMail.Send(player, parcel);
         EmpLog.Information("Story rewards given before player {Uid} knew of them: {Count} in a parcel in its name",
             player.uid, owed.Count);
     }
@@ -280,7 +280,7 @@ internal partial class ElinNetHost
                 } else {
                     var parcel = ThingGen.CreateParcel(null, share);
                     parcel.c_idRefName = "emp_story_share".Loc(other.NameSimple);
-                    world.SendPackage(parcel);
+                    TeamMail.Send(other, parcel);
                 }
 
                 TellShare(host, other, (here ? "emp_story_share_got" : "emp_story_share_mail").Loc(share.Name));

@@ -201,7 +201,7 @@ public class BillPayDelta : ElinDelta
         }
 
         sender.ModCurrency(-amount);
-        LowerCounters(tax, amount, bill.GetInt(35) / 1000, TeamBills.TeamOf(bill));
+        LowerCounters(tax, amount, bill.GetInt(35) / 1000, TeamBills.TeamOf(bill), sender.uid);
 
         bill.Destroy();
         Tell(host, sender.NameSimple, bill.id, amount);
@@ -209,7 +209,7 @@ public class BillPayDelta : ElinDelta
     }
 
     // what the game does to the counters of the bills (InvOwnerDeliver.PayBill), once
-    private static void LowerCounters(bool tax, int amount, int gift, int? team)
+    private static void LowerCounters(bool tax, int amount, int gift, int? team, int payer = 0)
     {
         if (tax) {
             player.stats.taxBillsPaid += amount;
@@ -217,7 +217,7 @@ public class BillPayDelta : ElinDelta
             TeamBills.OnPaid(team);
             // what the game gives back for the extra tax
             if (gift > 0) {
-                world.SendPackage(ThingGen.CreateParcel("parcel_mysiliaGift", ThingGen.Create("money2", "copper").SetNum(gift)));
+                TeamMail.Send(payer, ThingGen.CreateParcel("parcel_mysiliaGift", ThingGen.Create("money2", "copper").SetNum(gift)));
             }
         } else {
             player.unpaidBill -= amount;
@@ -244,7 +244,7 @@ public class BillPayDelta : ElinDelta
 
         // the gift is the extra tax of the bill / 1000, and the extra tax is a part of the bill's amount
         // (the team is the bill's as its holder read it: a team that owes nothing is not lowered, the world's is)
-        LowerCounters(tax, amount, Math.Clamp(Gift, 0, amount / 1000), Team >= 0 ? Team : null);
+        LowerCounters(tax, amount, Math.Clamp(Gift, 0, amount / 1000), Team >= 0 ? Team : null, host.PlayerChara(OriginPeer)?.uid ?? 0);
         Tell(host, Payer ?? "", Id!, amount);
     }
 

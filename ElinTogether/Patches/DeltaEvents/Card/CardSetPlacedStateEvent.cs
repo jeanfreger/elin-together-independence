@@ -46,6 +46,11 @@ internal static class CardSetPlacedStateEvent
             ByPlayer = byPlayer,
         });
 
+        // the host's own player installs a mail box: it owns it
+        if (connection.IsHost && newState == PlaceState.installed && byPlayer && !ElinDelta.IsApplying) {
+            Helper.TeamMail.Claim(__instance, EClass.pc.uid);
+        }
+
         return connection.IsHost;
     }
 

@@ -577,7 +577,7 @@ internal static class Teams
         } else {
             var parcel = ThingGen.CreateParcel(null, deed);
             parcel.c_idRefName = "emp_team_deed_mail".Loc(chara.NameSimple);
-            EClass.world.SendPackage(parcel);
+            TeamMail.Send(chara, parcel);
         }
 
         EmpLog.Information("Team {TeamId}: a land deed for its founder {CharaUid}", teamId, chara.uid);
