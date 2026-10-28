@@ -58,7 +58,8 @@ internal static class PlayerInTurn
         }
 
         var players = host.ConnectedPlayers();
-        if (players.Count < 2) {
+        // (a server's stand-in is not one of them: the one player it has is enough)
+        if (players.Count < (ServerAvatar.Is(EClass.pc) ? 1 : 2)) {
             return null;
         }
 

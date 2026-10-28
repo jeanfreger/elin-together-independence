@@ -107,7 +107,8 @@ public class WorldStateSnapshot : EClass
         var full = tracker?.Begin(zoneUid, NetSession.Instance.Tick) ?? true;
         var snapshots = new Dictionary<int, CharaStateSnapshot>();
         foreach (var chara in _map.charas) {
-            if (!chara.IsInActiveMap) {
+            // (a server's stand-in is nobody for the guests: it is not told to them, see ServerAvatar)
+            if (!chara.IsInActiveMap || ServerAvatar.Is(chara)) {
                 continue;
             }
 

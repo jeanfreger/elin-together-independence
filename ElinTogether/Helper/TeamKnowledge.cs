@@ -88,7 +88,7 @@ internal static class TeamKnowledge
         }
 
         // the host plays its own knowledge like any player, its team's when it is in one
-        if (On && Seeded && StoryOwner.Of(EClass.pc.uid) is var team && team != _team) {
+        if (On && Seeded && StoryOwner.Of(ServerAvatar.LocalUid()) is var team && team != _team) {
             Hold(team);
         }
 
@@ -133,7 +133,7 @@ internal static class TeamKnowledge
     {
         var world = Take(EClass.player);
         // (and the seed entry: a player new to the world knows what the world knew)
-        foreach (var team in StoryOwner.All().Append(StoryOwner.Of(EClass.pc.uid)).Append(StoryOwner.Seed).Distinct()) {
+        foreach (var team in StoryOwner.All().Append(StoryOwner.Of(ServerAvatar.LocalUid())).Append(StoryOwner.Seed).Distinct()) {
             Store(team, world);
         }
 

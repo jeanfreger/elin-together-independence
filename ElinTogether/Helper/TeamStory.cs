@@ -69,7 +69,11 @@ internal static class TeamStory
         if (QuestRewardPatch.Earner is { } alone) {
             Record(alone, __instance.phase, true);
         } else {
-            Record(QuestRewardPatch.Receiver ?? EClass.pc, __instance.phase, false);
+            // (never the server's stand-in: it plays no story, see ServerAvatar)
+            var receiver = QuestRewardPatch.Receiver ?? EClass.pc;
+            if (!ServerAvatar.Is(receiver)) {
+                Record(receiver, __instance.phase, false);
+            }
         }
     }
 
@@ -85,7 +89,9 @@ internal static class TeamStory
 
         var players = new List<Chara> { stepper };
         if (!alone) {
-            players.Add(EClass.pc);
+            if (!ServerAvatar.Is(EClass.pc)) {
+                players.Add(EClass.pc);
+            }
             if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } host) {
                 players.AddRange(host.ActiveRemoteCharas.Where(p => !host.IsAwayPeer(p.Key)).Select(p => p.Value));
             }

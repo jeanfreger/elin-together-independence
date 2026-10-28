@@ -157,7 +157,7 @@ internal static class TeamMail
         var name = now == 0 ? "emp_mailbox_everyone".lang() : EClass.game.cards.globalCharas.Find(now)?.NameSimple ?? "?";
         p.TrySetAct("emp_mailbox_owner".Loc(name), () => {
             var team = Teams.TeamOfZone(EClass._zone);
-            var players = (team > 0 ? Teams.MembersOf(team) : ElinNetHost.PlayerCharaUids()).Append(EClass.pc.uid).Prepend(0).Distinct().ToList();
+            var players = (team > 0 ? Teams.MembersOf(team) : ElinNetHost.PlayerCharaUids()).Append(EClass.pc.uid).Where(uid => !ServerAvatar.IsUid(uid)).Prepend(0).Distinct().ToList();
             var next = players[(players.IndexOf(now) + 1) % players.Count];
             card.SetInt(OwnerKey, next);
             NetSession.Instance.Connection?.Delta.AddRemote(CardSettingDelta.Create(card, CardSettingDelta.MailOwner));

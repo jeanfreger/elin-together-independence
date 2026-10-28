@@ -161,7 +161,7 @@ internal static class TeamOwnStory
         }
 
         // the host plays its own story like any player, its team's when it is in one
-        if (On && Seeded && OwnerOf(EClass.pc.uid) is var owner && owner != _owner) {
+        if (On && Seeded && OwnerOf(ServerAvatar.LocalUid()) is var owner && owner != _owner) {
             Hold(owner);
         }
 
@@ -313,7 +313,7 @@ internal static class TeamOwnStory
     private static void Seed()
     {
         var world = Take();
-        var host = OwnerOf(EClass.pc.uid);
+        var host = OwnerOf(ServerAvatar.LocalUid());
         foreach (var owner in StoryOwner.All().Append(host).Append(SeedOwner).Distinct()) {
             Store(owner, world);
         }
@@ -422,7 +422,7 @@ internal static class TeamOwnStory
     internal static bool KeeperDrops(ElinNetHost host, ElinDelta delta)
     {
         if (!host.IsZoneSession || !On || !IsStoryDelta(delta) || host.PlayerChara(delta.OriginPeer) is not { } sender ||
-            OwnerOf(sender.uid) == OwnerOf(EClass.pc.uid)) {
+            OwnerOf(sender.uid) == OwnerOf(ServerAvatar.LocalUid())) {
             return false;
         }
 
@@ -490,7 +490,7 @@ internal static class TeamOwnStory
         // another story, a delta of this one would overwrite it)
         if (NetSession.Instance.ZoneSession is ElinNetHost { IsZoneSession: true } zone && ReferenceEquals(zone.Delta, manager) &&
             On && IsStoryDelta(delta)) {
-            var keeper = OwnerOf(EClass.pc.uid);
+            var keeper = OwnerOf(ServerAvatar.LocalUid());
             foreach (var (peer, visitor) in zone.PeerPlayers()) {
                 if (OwnerOf(visitor.uid) == keeper) {
                     zone.SendDeltaTo(peer, delta);
@@ -621,7 +621,7 @@ internal static class TeamOwnStory
         var current = CurrentOwner;
         var owners = (NetSession.Instance.Transport as ElinNetHost)?.PeerCharas().Select(p => OwnerOf(p.CharaUid)).ToList() ?? [];
         if (!EmpServer.Requested) {
-            owners.Add(OwnerOf(EClass.pc.uid));
+            owners.Add(OwnerOf(ServerAvatar.LocalUid()));
         }
 
         return owners.Distinct().Where(owner => owner != SeedOwner && owner != current)
@@ -678,7 +678,7 @@ internal static class TeamOwnStory
 
         _nextCatchUp = UnityEngine.Time.unscaledTime + 2f;
         var host = NetSession.Instance.Transport as ElinNetHost;
-        var players = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Distinct()
+        var players = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Where(uid => !ServerAvatar.IsUid(uid)).Distinct()
             .Select(uid => EClass.game.cards.globalCharas.Find(uid)).OfType<Chara>().ToList();
         foreach (var owner in players.Select(p => (Player: p, Owner: OwnerOf(p.uid))).Where(p => p.Player.currentZone is Zone_Nymelle)
                      .GroupBy(p => p.Owner)) {
@@ -766,7 +766,7 @@ internal static class TeamOwnStory
     private static IEnumerable<Chara> StoryPlayers(int owner)
     {
         var host = NetSession.Instance.Transport as ElinNetHost;
-        return (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Distinct()
+        return (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Where(uid => !ServerAvatar.IsUid(uid)).Distinct()
             .Where(uid => OwnerOf(uid) == owner)
             .Select(uid => EClass.game.cards.globalCharas.Find(uid)).OfType<Chara>();
     }
@@ -809,7 +809,7 @@ internal static class TeamOwnStory
         }
 
         var host = NetSession.Instance.Transport as ElinNetHost;
-        var owners = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Select(OwnerOf).Distinct().ToList();
+        var owners = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Where(uid => !ServerAvatar.IsUid(uid)).Select(OwnerOf).Distinct().ToList();
         foreach (var owner in owners.Where(o => !HasDebt(o))) {
             using (As(owner)) {
                 var quest = Quest.Create("debt").SetClient(loytel, false);
@@ -984,7 +984,7 @@ internal static class TeamOwnStory
             return false;
         }
 
-        var uid = (earner ?? EClass.pc).uid;
+        var uid = earner?.uid ?? ServerAvatar.LocalUid();
         if (!Had(uid, step)) {
             NoteHad(uid, step);
             return false;

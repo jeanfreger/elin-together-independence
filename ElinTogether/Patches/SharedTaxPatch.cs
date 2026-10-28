@@ -1,4 +1,5 @@
 using System;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -12,7 +13,8 @@ namespace ElinTogether.Net
         /// </summary>
         internal int HighestFame()
         {
-            var fame = player.fame;
+            // (a server's stand-in has no fame of its own, see ServerAvatar)
+            var fame = ServerAvatar.Is(pc) ? 0 : player.fame;
             foreach (var peer in Socket.Peers) {
                 if (SavedRemoteCharas.TryGetValue(peer.User, out var uid) &&
                     PlayerStandings.TryGetValue(uid, out var standing) && standing.Length >= 2) {

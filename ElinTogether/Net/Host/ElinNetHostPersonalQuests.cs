@@ -140,7 +140,8 @@ internal partial class ElinNetHost
     /// </summary>
     internal List<Chara> ConnectedPlayers()
     {
-        var list = new List<Chara> { pc };
+        // (a server's stand-in is no player, see ServerAvatar)
+        var list = ServerAvatar.Is(pc) ? [] : new List<Chara> { pc };
         foreach (var peer in Socket.Peers) {
             if (PlayerChara(peer.Id) is { } chara && !list.Contains(chara)) {
                 list.Add(chara);

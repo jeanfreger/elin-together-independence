@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using ElinTogether.Common;
 using ElinTogether.Helper;
 
 namespace ElinTogether.Net;
@@ -50,6 +52,7 @@ internal partial class ElinNetHost
             // a world the server saved already: nothing to exchange, only the table to keep right
             table[AvatarSchema] = 1;
             table[AvatarUid] = pc.uid;
+            MirrorOwnerStanding();
             return false;
         }
 
@@ -113,6 +116,7 @@ internal partial class ElinNetHost
         table[AvatarOwnerX] = x;
         table[AvatarOwnerZ] = z;
         table[AvatarUid] = standIn.uid;
+        MirrorOwnerStanding();
         EmpLog.Information("Server: the character {Owner} of player {User} is a player's now, the server plays {StandIn}",
             former.uid, owner, standIn.uid);
 
@@ -124,5 +128,136 @@ internal partial class ElinNetHost
 
         EmpLog.Warning("Server: the world could not be saved after the exchange of characters, played as it is");
         return false;
+    }
+
+    /// <summary>
+    ///     The Steam id of the owner of the world a server holds (0: none)
+    /// </summary>
+    internal static ulong AvatarOwnerUserId()
+    {
+        return (ulong)ServerAvatarTable[AvatarOwnerUser];
+    }
+
+    /// <summary>
+    ///     The uid of the character the owner of the world plays now: the one it plays by its Steam id (it may have
+    ///     made another since the exchange), else the one that was exchanged. 0 when the server has no owner
+    /// </summary>
+    internal static int AvatarOwnerCharaUid()
+    {
+        var table = ServerAvatarTable;
+        return table[AvatarOwnerUser] != 0 && SavedRemoteCharas.TryGetValue((ulong)table[AvatarOwnerUser], out var uid)
+            ? uid
+            : (int)table[AvatarOwnerUid];
+    }
+
+    /// <summary>
+    ///     The stand-in carries the standing of the owner in the game's own fame and karma (<c>player.fame</c>):
+    ///     whatever the game reads for "the player" without asking who (the fame tax, the level of what the world
+    ///     makes, the town boards) then reads the owner's. The owner's own game keeps the count; this is a copy that is
+    ///     refreshed before every save and after the world's hooks. A change made to it outside a player's scope
+    ///     (a deed nobody did) is dropped here, so that nothing is charged twice
+    /// </summary>
+    internal static void MirrorOwnerStanding()
+    {
+        if (!ServerAvatar.Is(pc) || AvatarOwnerCharaUid() is not (> 0 and var uid) ||
+            !PlayerStandings.TryGetValue(uid, out var standing) || standing.Length < 2) {
+            return;
+        }
+
+        if (player.fame == standing[StandingFame] && player.karma == standing[StandingKarma]) {
+            return;
+        }
+
+        EmpLog.Debug("Server: the stand-in's fame {Fame} and karma {Karma} become the owner's {OwnerFame} and {OwnerKarma}",
+            player.fame, player.karma, standing[StandingFame], standing[StandingKarma]);
+        player.fame = standing[StandingFame];
+        player.karma = standing[StandingKarma];
+    }
+
+    /// <summary>
+    ///     The server stops, or a world it left is opened by a game that plays a character: the stand-in is the local
+    ///     character, and <paramref name="me" /> is the owner of the world. The owner's character takes the place
+    ///     again (the same swap as the migration, the other way), the stand-in is destroyed, and the world on disk is
+    ///     the one of a game hosted from the menu. True when exchanged, the caller saves
+    /// </summary>
+    internal static bool GiveBackToOwner(ulong me)
+    {
+        var table = ServerAvatarTable;
+        if (!ServerAvatar.Is(pc) || me == 0 || (ulong)table[AvatarOwnerUser] != me) {
+            return false;
+        }
+
+        if (game.cards.globalCharas.Find(AvatarOwnerCharaUid()) is not { isDead: false } owner || owner == pc ||
+            pc.party is null || CharaExport.IsAway(owner)) {
+            EmpLog.Warning("Server: the owner's character cannot take its place back (missing, dead, away or the stand-in has no party)");
+            return false;
+        }
+
+        var standIn = pc;
+        Exchange(owner, 0, me);
+        DropStandIn(standIn);
+        EmpLog.Information("Server: the character {Owner} of player {User} is the local one again, the stand-in {StandIn} is gone",
+            owner.uid, me, standIn.uid);
+        return true;
+    }
+
+    /// <summary>
+    ///     A stand-in that is no longer the local character leaves the world: nobody plays it, owns it, or knows it
+    /// </summary>
+    private static void DropStandIn(Chara standIn)
+    {
+        var uid = standIn.uid;
+        foreach (var user in SavedRemoteCharas.Where(p => p.Value == uid).Select(p => p.Key).ToList()) {
+            SavedRemoteCharas.Remove(user);
+        }
+
+        foreach (var user in PcOwners.Where(p => p.Value == uid).Select(p => p.Key).ToList()) {
+            PcOwners.Remove(user);
+        }
+
+        foreach (var roster in PlayerRosters.Values) {
+            roster.Remove(uid);
+        }
+
+        PcOrphans.Remove(uid);
+        PlayerStandings.Remove(uid);
+        PersonalQuestLogs.Remove(uid);
+
+        // (a character of the home faction is not destroyed: it leaves the faction first)
+        standIn.SetFaction(EClass.game.factions.Wilds);
+        standIn.Destroy();
+
+        // the backup stays made (schema 1): a later exchange does not make a second one
+        var table = ServerAvatarTable;
+        table[AvatarUid] = 0;
+        table[AvatarOwnerZone] = 0;
+    }
+
+    /// <summary>
+    ///     Another player took the place of a stand-in left in a world (TakeOverPc): nothing keeps it any more
+    /// </summary>
+    private static void DropStandInAfterTakeOver(Chara? standIn)
+    {
+        if (standIn is not null && standIn != pc && ServerAvatar.Is(standIn)) {
+            DropStandIn(standIn);
+        }
+    }
+
+    private bool _kickedForStop;
+
+    /// <summary>
+    ///     The server is asked to stop: every player is put out (once), and this says when none is left, so that the
+    ///     owner's character can be given back to the world without a game playing it
+    /// </summary>
+    internal bool EmptiedForStop()
+    {
+        if (!_kickedForStop) {
+            _kickedForStop = true;
+            foreach (var peer in Socket.Peers.ToArray()) {
+                Socket.Disconnect(peer, EmpDisconnectInfo.HostShutdown);
+            }
+        }
+
+        return Socket.Peers.Count == 0 && ActiveRemoteCharas.Count == 0;
     }
 }

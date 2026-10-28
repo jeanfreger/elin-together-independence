@@ -80,6 +80,13 @@ internal static class PlayerKarma
             return true;
         }
 
+        // a deed nobody did on a server: the stand-in has no karma to lose, and the owner's is its game's (never
+        // charged twice, the mirror of the stand-in's standing is refreshed from the books, see MirrorOwnerStanding)
+        if (culprit is null && ServerAvatar.Is(EClass.pc)) {
+            EmpLog.Debug("Karma {Karma} of a deed nobody did is not taken from the server's stand-in", karma);
+            return true;
+        }
+
         // an action of a player played again here: its own game took it
         return culprit is null && ElinDelta.IsApplying;
     }

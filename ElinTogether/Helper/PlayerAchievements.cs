@@ -54,7 +54,8 @@ internal static class PlayerAchievements
 
         // (the host's own player; a guest standing in as "the player" also reads IsPC, it is still the guest's)
         if (owner is null || owner.IsPC && !owner.IsRemotePlayer) {
-            return true;
+            // a server plays no character: nothing it settles is the account's of the machine it runs on
+            return !ServerAvatar.Active;
         }
 
         // another player's: its own game is told by the one that runs the map, never kept here

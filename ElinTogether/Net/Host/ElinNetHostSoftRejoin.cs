@@ -99,7 +99,7 @@ internal partial class ElinNetHost
                 .ToList(),
             GameDate = [..world.date.raw],
             Charas = zone.map.charas
-                .Where(c => c.IsGlobal && c != chara && !own.Contains(c) && c.CompanionOwnerUid != chara.uid)
+                .Where(c => c.IsGlobal && c != chara && !own.Contains(c) && c.CompanionOwnerUid != chara.uid && !ServerAvatar.Is(c))
                 .Select(c => LZ4Bytes.Create(c))
                 .ToList(),
             Travel = travel,

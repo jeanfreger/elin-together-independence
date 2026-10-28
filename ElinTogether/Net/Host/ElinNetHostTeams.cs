@@ -215,7 +215,8 @@ internal partial class ElinNetHost
     /// </summary>
     internal static IEnumerable<int> PlayerCharaUids()
     {
-        return SavedRemoteCharas.Values.Append(player.uidChara).Distinct();
+        // (a server's stand-in is no player, see ServerAvatar)
+        return SavedRemoteCharas.Values.Append(player.uidChara).Where(uid => !ServerAvatar.IsUid(uid)).Distinct();
     }
 
     /// <summary>

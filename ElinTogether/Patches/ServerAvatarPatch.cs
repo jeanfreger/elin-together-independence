@@ -1,4 +1,5 @@
 using ElinTogether.Helper;
+using ElinTogether.Net;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
@@ -167,5 +168,49 @@ internal static class ServerAvatarPatch
     internal static bool OnTickConditions(Chara __instance)
     {
         return !ServerAvatar.Is(__instance);
+    }
+
+    /// <summary>
+    ///     It never travels: the map it stands on is the server's, and every rule that tells where the host's own
+    ///     character is (the leases, the world map, the trips of a quest) reads it. A move the game or the mod asks
+    ///     of it is refused; the callers that wait for the move (the host following a taker into a quest zone) take
+    ///     the refusal for a move that did not happen. Its first placement (no zone yet) is allowed
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.MoveZone), typeof(Zone), typeof(ZoneTransition))]
+    internal static bool OnMoveZone(Chara __instance, Zone z)
+    {
+        if (!ServerAvatar.Is(__instance) || __instance.currentZone is null || z == __instance.currentZone) {
+            return true;
+        }
+
+        EmpLog.Debug("Server: the stand-in does not travel to {ZoneFullName}", z?.ZoneFullName);
+        return false;
+    }
+
+    /// <summary>
+    ///     The standing the stand-in carries is the owner's (see MirrorOwnerStanding): put right before every save, so
+    ///     that what is on disk never holds a stray change, and after the days and months the world's hooks run in
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Game), nameof(Game.Save))]
+    internal static void OnSave()
+    {
+        ElinNetHost.MirrorOwnerStanding();
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(GameDate), nameof(GameDate.AdvanceDay))]
+    internal static void OnAdvanceDay()
+    {
+        ElinNetHost.MirrorOwnerStanding();
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(GameDate), nameof(GameDate.AdvanceMonth))]
+    internal static void OnAdvanceMonth()
+    {
+        ElinNetHost.MirrorOwnerStanding();
     }
 }

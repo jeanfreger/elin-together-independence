@@ -273,7 +273,10 @@ internal partial class ElinNetHost
             return false;
         }
 
+        // (a server's stand-in left in the world by a crash goes with the exchange, see ServerAvatar)
+        var standIn = ServerAvatar.Is(pc) ? pc : null;
         Exchange(mine, formerOwner, me);
+        DropStandInAfterTakeOver(standIn);
         return true;
     }
 
