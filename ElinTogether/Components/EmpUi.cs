@@ -242,9 +242,9 @@ internal static class EmpUi
     {
         var box = parent.Vertical();
         box.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        box.Layout.childAlignment = TextAnchor.UpperCenter;
-        box.Layout.padding = new(20, 20, 24, 24);
-        box.Layout.spacing = UIHelper.RowSpacing * 2f;
+        box.Layout.childAlignment = TextAnchor.MiddleCenter;
+        box.Layout.padding = new(16, 16, 4, 4);
+        box.Layout.spacing = UIHelper.RowSpacing;
 
         var text = box.Text(message, FontColor.Gray);
         text.alignment = TextAnchor.MiddleCenter;
