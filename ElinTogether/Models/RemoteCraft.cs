@@ -34,9 +34,12 @@ internal static class RemoteCraft
         _standIns++;
         // the level of what is made (CraftUtil, bottles, loot) follows the crafter's fame, not the host's (H5-04)
         var fame = withFame ? PlayerFame.As(crafter) : null;
+        // and the recipe levels and kill list are its team's when the box of teams is on
+        var lore = TeamKnowledge.Lend(crafter);
 
         return new() {
             OnExit = () => {
+                lore?.Invoke();
                 fame?.Dispose();
                 EClass.player.chara = self;
                 _standIns--;
