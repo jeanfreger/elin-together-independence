@@ -44,7 +44,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
         }
 
-        if (NetSession.Instance.Transport is ElinNetHost) {
+        // the world's rules: the host edits them, a guest reads the host's (the tab's own guest view)
+        if (NetSession.Instance.Transport is ElinNetHost or ElinNetClient) {
             _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
             DecorateLastTab("icon_LayerJournal", "emp_tip_tab_server");
         }
@@ -55,6 +56,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         DecorateLastTab("icon_Inspect", "emp_tip_tab_lobby");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_m_system", "emp_tip_tab_client");
+        _tabs.Add(CreateTab<TabHelp>("emp_ui_tab_help", "emp_tab_help"));
+        DecorateLastTab("icon_LayerHelp", "emp_tip_tab_help");
 
         foreach (var tab in _tabs) {
             UIHelper.WrapTexts(tab);
