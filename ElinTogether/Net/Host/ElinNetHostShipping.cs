@@ -87,6 +87,21 @@ internal partial class ElinNetHost
         return (num, money);
     }
 
+    /// <summary>
+    ///     Money owed to a player outside any sale (a team's monthly salary): handed over as shipping is, at once when
+    ///     its character is on this map, else when it stands here again
+    /// </summary>
+    internal void PayPlayer(int charaUid, long money)
+    {
+        if (pc is not null && charaUid == pc.uid) {
+            pc.Pick(ThingGen.Create("money").SetNum((int)Math.Min(money, int.MaxValue)));
+            return;
+        }
+
+        GetShippingAccount(charaUid)[AccountOwedMoney] += money;
+        PayShipping(charaUid);
+    }
+
     private static long[] GetShippingAccount(int charaUid)
     {
         if (!ShippingAccounts.TryGetValue(charaUid, out var account) || account.Length < 2) {

@@ -94,6 +94,14 @@ internal static class Teams
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
 
     /// <summary>
+    ///     The player characters of a team (none for the Wanderers: they are no group)
+    /// </summary>
+    internal static IEnumerable<int> MembersOf(int teamId)
+    {
+        return TeamList.TryGetValue(teamId, out var team) ? MembersOf(team) : [];
+    }
+
+    /// <summary>
     ///     A guest's copy of the unpaid tax bills of each team (<see cref="TeamBills.Told" />)
     /// </summary>
     internal static Dictionary<int, int> ToldBills => _bills;

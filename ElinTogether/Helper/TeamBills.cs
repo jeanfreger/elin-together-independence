@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.LangMod;
@@ -140,7 +141,7 @@ internal static class TeamBills
             return false;
         }
 
-        PaySalary(__instance);
+        PaySalary(__instance, branches);
 
         // the extra tax a player chose to give is the world's: on the first bill only
         var extra = EClass.player.extraTax;
@@ -169,7 +170,7 @@ internal static class TeamBills
     }
 
     // as Faction.OnAdvanceMonth gives the month's income
-    private static void PaySalary(Faction faction)
+    private static void PaySalary(Faction faction, List<FactionBranch> branches)
     {
         var num = 0;
         num += faction.GetResidentTax();
@@ -183,8 +184,39 @@ internal static class TeamBills
         if (EClass.pc.homeBranch.policies.IsActive(2711) && (bank.GetCurrency() > 0 || !bank.things.IsFull())) {
             bank.ModCurrency(num);
             Msg.Say("bankIncome", Lang._currency(num, "money"));
-        } else {
-            EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(num)));
+            return;
+        }
+
+        // one share per team, paid to its members (their own accounts) instead of the world's mailbox: what a team's
+        // lands earn is not the host's. The guilds' salary (what the lands do not explain) goes with the first team
+        // that has players, like the extra tax
+        var shares = branches.GroupBy(b => Teams.TeamOfZone(b.owner)).OrderBy(g => g.Key)
+            .Select(g => (Members: Teams.MembersOf(g.Key).ToArray(),
+                Share: g.Sum(b => b.GetResidentTax() + EClass.game.spatials.ranks.GetIncome(b.owner)))).ToList();
+        var salary = Math.Max(0, num - shares.Sum(s => s.Share));
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        var left = num;
+        foreach (var (members, own) in shares) {
+            var share = own;
+            if (members.Length > 0) {
+                share += salary;
+                salary = 0;
+            }
+
+            share = Math.Min(share, left);
+            if (host is null || members.Length == 0 || share <= 0) {
+                continue;
+            }
+
+            left -= share;
+            foreach (var uid in members) {
+                host.PayPlayer(uid, share / members.Length + (uid == members[0] ? share % members.Length : 0));
+            }
+        }
+
+        // (lands of no team, and what the split left: the world's mailbox, as before)
+        if (left > 0) {
+            EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(left)));
         }
     }
 
