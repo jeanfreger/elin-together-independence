@@ -193,6 +193,15 @@ internal static class SettingsTable
         source => source.Raw(EmpConfig.Server.CatchUpDays) is int days ? Array.IndexOf(CatchUpSteps, days) : -1,
         i => [(EmpConfig.Server.CatchUpDays, CatchUpSteps[i])]);
 
+    // council 2026-10-26 (stage 6, Living world): real minutes per game day, 0 off (another number typed in the file
+    // reads as Custom and is kept)
+    private static readonly int[] LivingSteps = [0, 20, 40, 60, 120];
+
+    internal static Choice LivingWorld => new("living_world", [..LivingSteps.Select(m => m.ToString())],
+        () => [EmpConfig.Server.LivingWorldMinutes],
+        source => source.Raw(EmpConfig.Server.LivingWorldMinutes) is int minutes ? Array.IndexOf(LivingSteps, minutes) : -1,
+        i => [(EmpConfig.Server.LivingWorldMinutes, LivingSteps[i])]);
+
     internal static Choice IdleMinutes => new("idle_minutes", [..IdleSteps.Select(m => m.ToString())],
         () => [EmpConfig.Server.IdleMinutes],
         source => source.Raw(EmpConfig.Server.IdleMinutes) is int minutes ? Array.IndexOf(IdleSteps, minutes) : -1,
@@ -342,6 +351,7 @@ internal static class SettingsTable
         yield return new("night_passes", "time_details", true, Choice: NightPasses, Requires: () => EmpConfig.Server.OwnSleep.Value);
         yield return new("idle_minutes", "time_details", true, Choice: IdleMinutes);
         yield return new("time_stops_empty", "time_details", true, EmpConfig.Server.TimeStopsWhenEmpty);
+        yield return new("living_world", "time_details", true, Choice: LivingWorld);
         yield return new("absent_quests_wait", "time_details", true, EmpConfig.Server.AbsentQuestsWait, Requires: () => EmpConfig.Server.PersonalQuests.Value);
         yield return new("catch_up_days", "time_details", true, Choice: CatchUpDays);
         yield return new("world_map_lead", "time_details", true, Choice: LeadCap);
@@ -368,6 +378,7 @@ internal static class SettingsTable
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
         EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
+        EmpConfig.Server.LivingWorldMinutes,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
@@ -500,6 +511,7 @@ internal static class SettingsTable
             [EmpConfig.Server.IdleMinutes] = r.IdleMinutes,
             [EmpConfig.Server.TimeStopsWhenEmpty] = r.TimeStopsWhenEmpty,
             [EmpConfig.Server.CatchUpDays] = r.CatchUpDays,
+            [EmpConfig.Server.LivingWorldMinutes] = r.LivingWorldMinutes,
         };
         return new(e => values.TryGetValue(e, out var v) ? v : null);
     }

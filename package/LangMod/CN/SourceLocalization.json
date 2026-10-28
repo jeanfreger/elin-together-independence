@@ -612,5 +612,12 @@
     "LangGeneral.emp_team_story_caught_up_farris.text": "法里斯已经和别人离开了这里：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_boss.text": "别人已经击败了尼梅尔的守护者：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_crystal.text": "别人已经在水晶旁听过菲亚玛的话：你的剧情从那里继续。",
-    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有一份。"
+    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有一份。",
+    "LangGeneral.emp_ui_sv_cfg_living_world.text": "活的世界（现实时间）",
+    "LangGeneral.emp_ui_sv_desc_living_world.text": "关闭：日期像以前一样随玩家的回合推进。\n20 分钟：世界的时钟跟随现实时间，每 20 现实分钟过一天，不论玩家行动还是静止。无人游玩时停止（“无人游玩时时间停止”），按夜晚规则度过的夜晚会一直睡到早晨。每位玩家自己的行动仍按自己的回合进行。\n40 分钟：同上，每 40 现实分钟一天。\n60 分钟：同上，每现实一小时一天。\n120 分钟：同上，每现实两小时一天。",
+    "LangGeneral.emp_ui_sv_opt_living_world_0.text": "关闭",
+    "LangGeneral.emp_ui_sv_opt_living_world_20.text": "一天 = 20 分钟",
+    "LangGeneral.emp_ui_sv_opt_living_world_40.text": "一天 = 40 分钟",
+    "LangGeneral.emp_ui_sv_opt_living_world_60.text": "一天 = 1 小时",
+    "LangGeneral.emp_ui_sv_opt_living_world_120.text": "一天 = 2 小时"
 }
