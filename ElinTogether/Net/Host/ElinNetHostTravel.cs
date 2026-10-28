@@ -678,6 +678,21 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     The same to every player standing on this quest zone with the host: a defense's horns are offered from what
+    ///     the event holds (its wave, its rounds), which only ticks here (hunt 6 item 1)
+    /// </summary>
+    internal void SendQuestZoneStateHere()
+    {
+        if (IsZoneSession || _zone is not { IsInstance: true } zone) {
+            return;
+        }
+
+        foreach (var chara in ActiveRemoteCharas.Values.Where(c => c.currentZone == zone).ToList()) {
+            SendQuestZoneState(chara, zone);
+        }
+    }
+
+    /// <summary>
     ///     What the quest events of the zone hold here, for the copy of the zone its taker made itself, see
     ///     ElinNetClient.OnQuestZoneState
     /// </summary>

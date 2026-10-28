@@ -59,4 +59,38 @@ internal static class ZoneEventPlayersPatch
             ? taker
             : EClass.pc;
     }
+
+    /// <summary>
+    ///     A defense quest's danger starts from the fame of "the player" (ZoneEventDefenseGame.OnVisit, a fame content):
+    ///     the host's, when it came along to a guest's defense. The taker's fame, as for the quest's level (H5-01)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ZoneEventDefenseGame), nameof(ZoneEventDefenseGame.OnVisit))]
+    internal static void OnDefenseVisit(ZoneEventDefenseGame __instance, out ScopeExit? __state)
+    {
+        __state = NetSession.Instance.Connection is ElinNetHost host && host.AccompaniedTaker(__instance.uidQuest) is { } taker
+            ? PlayerFame.As(taker)
+            : null;
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(ZoneEventDefenseGame), nameof(ZoneEventDefenseGame.OnVisit))]
+    internal static void OnDefenseVisitEnd(ScopeExit? __state)
+    {
+        __state?.Dispose();
+    }
+
+    /// <summary>
+    ///     The horns of a defense are offered from what its event holds (wave, rounds, the call for help), which ticks
+    ///     only where the zone is run: the players standing there with the host are told every few rounds (hunt 6
+    ///     item 1), their horns asked of the host (CardActReplayEvent)
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ZoneEventDefenseGame), nameof(ZoneEventDefenseGame._OnTickRound))]
+    internal static void OnDefenseRound(ZoneEventDefenseGame __instance)
+    {
+        if (__instance.rounds % 5 == 0 && NetSession.Instance.Connection is ElinNetHost { IsZoneSession: false } host) {
+            host.SendQuestZoneStateHere();
+        }
+    }
 }

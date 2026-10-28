@@ -35,6 +35,8 @@ internal static class CardActReplayEvent
         }
 
         yield return AccessTools.DeclaredMethod(typeof(TraitWell), nameof(Trait.TrySetAct));
+        // the war horns of a defense quest (next wave, retreat, call for help): the waves are the host's (hunt 6 item 1)
+        yield return AccessTools.DeclaredMethod(typeof(TraitCoreDefense), nameof(Trait.TrySetAct));
     }
 
     [HarmonyPrefix]
@@ -72,6 +74,8 @@ internal static class CardActReplayEvent
         }
     }
 
+    internal const string RetreatHorn = "actEvacDefense";
+
     private static bool Request(ElinNetClient client, Trait trait, ActPlan.Item item, DynamicAct act, int index,
         Func<bool>? own)
     {
@@ -84,7 +88,7 @@ internal static class CardActReplayEvent
             Card = card,
             RootCard = card.GetRootCard(),
             User = EClass.pc,
-            Held = trait is not TraitWell,
+            Held = trait is not (TraitWell or TraitCoreDefense),
             Pos = item.pos,
             Target = item.tc,
             Index = index,
@@ -115,6 +119,11 @@ internal static class CardActReplayEvent
         // the scope opens its window and the leash flips its bit here, where the player is: the request only keeps the
         // host's part in step. For the others the host does it all, and ends the turn as the lambda did
         if (trait is TraitLeash or TraitStethoscope) {
+            return own?.Invoke() ?? false;
+        }
+
+        // the retreat evacuates the one who blew it, in its own game: the host only marks the zone won and retreated
+        if (trait is TraitCoreDefense && act.id == RetreatHorn) {
             return own?.Invoke() ?? false;
         }
 

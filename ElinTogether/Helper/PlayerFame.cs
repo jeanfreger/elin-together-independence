@@ -83,13 +83,14 @@ internal static class QuestForTaker
 {
     /// <summary>
     ///     Draw again what depends on the player, as Quest.Init does: the danger level, the difficulty of a harvest
-    ///     or a concert (their skills) and what follows from it. To be called while the taker stands in for the
+    ///     or a concert (their skills), the dish of a meal quest (cooking) and what follows from it. To be called while the taker stands in for the
     ///     local player (see PlayerStandIn), which also gives its fame
     /// </summary>
     internal static void Rescale(Quest quest)
     {
         var oldBase = quest.BaseMoney;
         var oldDifficulty = quest.difficulty;
+        var oldExtra = quest.GetExtraMoney();
 
         if (quest.difficultyType is Quest.DifficultyType.Farm or Quest.DifficultyType.Music) {
             var skill = quest.difficultyType == Quest.DifficultyType.Farm ? 250 : 241;
@@ -102,11 +103,17 @@ internal static class QuestForTaker
             quest.OnInit();
         }
 
+        if (quest.difficultyType is Quest.DifficultyType.Meal) {
+            // the dish asked for is drawn from the cook's skill, its level sets the difficulty
+            // (QuestSupplySpecific.SetIdThing, hunt 6 item 5): the taker's cooking, not the host's
+            quest.OnInit();
+        }
+
         var fameLv = EClass.pc.FameLv;
         quest.dangerLv = Mathf.Max(fameLv + EClass.rnd(fameLv / 10 + 5) - EClass.rnd(fameLv / 10 + 5), 1);
 
         // not for a quest whose money does not follow (it would draw a new one, or read the old one)
-        if (quest.BaseMoney != oldBase || quest.difficulty != oldDifficulty) {
+        if (quest.BaseMoney != oldBase || quest.difficulty != oldDifficulty || quest.GetExtraMoney() != oldExtra) {
             quest.rewardMoney = (quest.BaseMoney + EClass.rnd(quest.BaseMoney / 4) + quest.GetExtraMoney()) *
                                 (55 + quest.difficulty * 15) / 100;
         }

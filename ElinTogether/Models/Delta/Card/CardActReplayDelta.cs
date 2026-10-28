@@ -69,7 +69,7 @@ public class CardActReplayDelta : ElinDelta
             return;
         }
 
-        // only the entries of the closed list, held by the sender or within its reach
+        // only the entries of the closed list, held by the sender or within its reach (a well, a defense's core)
         var root = card.GetRootCard();
         if (Held
                 ? card.trait is not (TraitTicketFurniture or TraitSyringe or TraitStethoscope or TraitLeash or TraitWrench or
@@ -77,7 +77,7 @@ public class CardActReplayDelta : ElinDelta
                     TraitDeedLostRing) ||
                   (card.trait is TraitDeedDivorce or TraitDeedLostRing && !SharedMarriages.Enabled) ||
                   root != sender
-                : card.trait is not TraitWell || root.pos.Distance(sender.pos) > 2) {
+                : card.trait is not (TraitWell or TraitCoreDefense) || root.pos.Distance(sender.pos) > 2) {
             return;
         }
 
@@ -92,6 +92,18 @@ public class CardActReplayDelta : ElinDelta
         }
 
         using var simulate = Simulate();
+
+        // ZoneEventDefenseGame.Horn_Retreat without its evacuation, which reads "the player" (here the host's own
+        // return): the one who blew it evacuates in its own game (CardActReplayEvent), the zone is won and retreated
+        if (card.trait is TraitCoreDefense && Id == CardActReplayEvent.RetreatHorn) {
+            if (_zone.events.GetEvent<ZoneEventDefenseGame>() is { CanRetreat: true, retreated: false, instance: { } instance } defense) {
+                defense.retreated = true;
+                instance.status = ZoneInstance.Status.Success;
+            }
+
+            host.SendQuestZoneStateHere();
+            return;
+        }
 
         // these two open a window or flip a bit in the client's own game, as for the host: the host only keeps
         // the part of the world that is its own
@@ -140,6 +152,11 @@ public class CardActReplayDelta : ElinDelta
             }
         } finally {
             EClass.player.wellWished = wished;
+        }
+
+        // what the horn changed (the wave, the call for help) offers other horns in the players' games
+        if (card.trait is TraitCoreDefense) {
+            host.SendQuestZoneStateHere();
         }
 
         // a well sets its charges directly, nothing else sends them (the holy one counts in the host's player)

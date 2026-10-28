@@ -188,6 +188,8 @@ namespace ElinTogether.Models;
 // Hunt 5, each player's own (2026-10-27)
 [Union(1040, typeof(BackerGiftDelta))]
 [Union(1041, typeof(AchievementDelta))]
+// Hunt 6, the base moved for everyone (2026-10-28)
+[Union(1120, typeof(BaseRelocateDelta))]
 // Element
 [Union(1000, typeof(ElementChangeDelta))]
 // Duels, council 7 steps 5 to 7
