@@ -30,7 +30,8 @@ public class StoryBundle
     public List<string> Completed { get; set; } = [];
 
     /// <summary>
-    ///     Dialog choices of the story (Player.dialogFlags) told to Ash and Fiama
+    ///     Dialog choices of the story (Player.dialogFlags): every one (<see cref="AllDialog" />), or only those told to
+    ///     Ash and Fiama in a story written before
     /// </summary>
     [Key(3)]
     public Dictionary<string, int> Dialog { get; set; } = [];
@@ -71,4 +72,11 @@ public class StoryBundle
     /// </summary>
     [Key(9)]
     public Dictionary<string, int>? Flags { get; set; }
+
+    /// <summary>
+    ///     <see cref="Dialog" /> holds every dialog flag (what any drama remembers was said or chosen), not only Ash's
+    ///     and Fiama's: false in a story written before
+    /// </summary>
+    [Key(10)]
+    public bool AllDialog { get; set; }
 }

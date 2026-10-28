@@ -710,9 +710,9 @@ internal partial class EmpConfig
             "Server",
             "TeamOwnStory",
             false,
-            "Experimental. Each player lives the main story at its own pace (Ash's quest, the exploration of Nymelle and their dialogs), teammates together: a team shares one story, a player without a team has its own. Everyone starts at the story point the world is at when the box is ticked. Farris joins the first base only; a player or team reaching a floor someone already cleared takes the story on from there. Always on for the official public server\n" +
+            "Experimental. Each player lives the story at its own pace (Ash's quest, the exploration of Nymelle, every dialog choice, the key items, Loytel's debt and the extra tax), teammates together: a team shares one story, a player without a team has its own. Everyone starts at the story point the world is at when the box is ticked. Farris joins the first base only; a player or team reaching a floor someone already cleared takes the story on from there. Always on for the official public server\n" +
             "The save keeps the host's own story (as it was when the box was ticked): unticked, or the save opened without the mod, the world goes on with it. Otherwise all players share one story progression, as before\n" +
-            "实验性。每个玩家按自己的节奏经历主线剧情（阿什的任务、尼梅尔的探索及其对话），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。官方公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
+            "实验性。每个玩家按自己的节奏经历剧情（阿什的任务、尼梅尔的探索、所有对话选择、关键物品、欠洛伊特的债务和额外税金），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。官方公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
 
         Server.GlobalChat = config.Bind(
             "Server",

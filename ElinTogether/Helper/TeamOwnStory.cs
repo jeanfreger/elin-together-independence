@@ -11,8 +11,8 @@ namespace ElinTogether.Helper;
 /// <summary>
 ///     Council 2026-10-28, host option "Each player or team lives its own story" (experimental, off by default: one
 ///     story for all as before; always on for the official public server; dev/COUNCIL_2026-10-28_team_story.md). The story is the main quest (QuestMain, 0-700) and the exploration of
-///     Nymelle (QuestExploration, 0-6), with the dialog choices told to Ash and Fiama, and the key items (the user's
-///     "etc.", 2026-10-28: what the story-owner's progress holds). The user, 2026-10-28: "each player
+///     Nymelle (QuestExploration, 0-6), with every dialog choice, the key items, Loytel's debt and the extra tax (the
+///     user's "etc.", 2026-10-28: what the story-owner's progress holds). The user, 2026-10-28: "each player
 ///     does the story at its own pace, and does it as a team". So the story has an OWNER: the player's team when it is
 ///     in a team (teammates share one story), otherwise the player alone (owner -chara uid: players without a team
 ///     never share one). The host keeps every owner's story in its save (<see cref="ElinNetHost.TeamStoryBundles" />);
@@ -37,12 +37,16 @@ internal static class TeamOwnStory
     private static readonly HashSet<string> StoryIds = ["main", "exploration", "debt"];
     private static readonly HashSet<string> StoryTypes = [nameof(QuestMain), nameof(QuestExploration), nameof(QuestDebt)];
 
-    // the dialog choices of the story (Ash's and Fiama's dramas: setFlag ash1, tutorial1, fiama1)
+    // the dialog choices of the main story (Ash's and Fiama's dramas: setFlag ash1, tutorial1, fiama1). Every dialog
+    // flag is the story's (what a drama remembers was said or chosen is that story's progress, the user 2026-10-28):
+    // these alone were, in a story written before
     private static readonly string[] DialogIds = ["ash1", "tutorial1", "fiama1"];
 
-    // what the story sets in Player.flags (QuestDebt.GiveReward: Loytel's mart and its level)
+    // what the story sets in Player.flags (QuestDebt.GiveReward: Loytel's mart and its level; Fiama's dreams as her
+    // story goes on, Chara.ShowDialog "fiama")
     private static readonly System.Reflection.PropertyInfo[] StoryFlagProps = new[] {
         nameof(Player.Flags.gotLoytelMart), nameof(Player.Flags.loytelMartLv),
+        nameof(Player.Flags.storyFiama), nameof(Player.Flags.fiamaFirstDream), nameof(Player.Flags.fiamaStoryBookGiven),
     }.Select(name => typeof(Player.Flags).GetProperty(name)!).ToArray();
 
     // the game that keeps the book: the host of the world, or a game playing alone
@@ -405,12 +409,12 @@ internal static class TeamOwnStory
     private static readonly HashSet<string> StoryFlags = [..DialogIds.Select(id => "d:" + id), ..StoryFlagProps.Select(p => "f:" + p.Name)];
 
     /// <summary>
-    ///     A value the story remembers (DialogFlagSync's id): a dialog flag of the story, a key item, the debt, the extra
-    ///     tax, a flag the story sets
+    ///     A value the story remembers (DialogFlagSync's id): a dialog flag, a key item, the debt, the extra tax, a flag
+    ///     the story sets
     /// </summary>
     internal static bool IsStoryFlag(string id)
     {
-        return StoryFlags.Contains(id) || id.StartsWith("k:") || id is "p:debt" or "p:extraTax";
+        return StoryFlags.Contains(id) || id.StartsWith("d:") || id.StartsWith("k:") || id is "p:debt" or "p:extraTax";
     }
 
     /// <summary>
@@ -949,7 +953,8 @@ internal static class TeamOwnStory
         var quests = EClass.game.quests;
         var player = EClass.player;
         bundle.Completed = [..quests.completedIDs.Where(StoryIds.Contains), ..quests.completedTypes.Where(StoryTypes.Contains)];
-        bundle.Dialog = DialogIds.Where(player.dialogFlags.ContainsKey).ToDictionary(id => id, id => player.dialogFlags[id]);
+        bundle.Dialog = new(player.dialogFlags);
+        bundle.AllDialog = true;
         bundle.KeyItems = new(player.keyItems);
         bundle.Debt = player.debt;
         bundle.ExtraTax = player.extraTax;
@@ -972,7 +977,11 @@ internal static class TeamOwnStory
             (StoryTypes.Contains(done) ? quests.completedTypes : quests.completedIDs).Add(done);
         }
 
-        foreach (var id in DialogIds) {
+        if (bundle.AllDialog) {
+            player.dialogFlags.Clear();
+        }
+
+        foreach (var id in bundle.AllDialog ? bundle.Dialog.Keys : (IEnumerable<string>)DialogIds) {
             if (bundle.Dialog.TryGetValue(id, out var value)) {
                 player.dialogFlags[id] = value;
             } else {
@@ -1047,7 +1056,7 @@ internal static class TeamOwnStory
         StoryBundle? world = null;
         foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.ToArray()) {
             if (Stored(owner) is not { } bundle ||
-                (bundle.KeyItems is not null && bundle.Debt is not null && bundle.ExtraTax is not null &&
+                (bundle.AllDialog && bundle.KeyItems is not null && bundle.Debt is not null && bundle.ExtraTax is not null &&
                  StoryFlagProps.All(p => bundle.Flags?.ContainsKey(p.Name) == true))) {
                 continue;
             }
@@ -1059,6 +1068,17 @@ internal static class TeamOwnStory
                 bundle.Quests = LZ4Bytes.Create(Read(bundle.Quests).Concat(quests.list.OfType<QuestDebt>()).ToList<Quest>()).Bytes;
                 bundle.Offers = LZ4Bytes.Create(Read(bundle.Offers).Concat(quests.globalList.OfType<QuestDebt>()).ToList<Quest>()).Bytes;
                 bundle.Completed = [..bundle.Completed, ..world.Completed.Where(done => done is "debt" or nameof(QuestDebt))];
+            }
+
+            if (!bundle.AllDialog) {
+                // (the other dialogs were the world's then: its own choices with Ash and Fiama over the world's)
+                var dialog = world.Dialog.Where(d => !DialogIds.Contains(d.Key)).ToDictionary(d => d.Key, d => d.Value);
+                foreach (var (id, value) in bundle.Dialog) {
+                    dialog[id] = value;
+                }
+
+                bundle.Dialog = dialog;
+                bundle.AllDialog = true;
             }
 
             bundle.KeyItems ??= world.KeyItems;
@@ -1140,7 +1160,7 @@ internal static class TeamOwnStory
     internal static string Describe()
     {
         var lines = ElinNetHost.TeamStoryBundles.Keys.OrderBy(k => k).Select(team => Stored(team) is { } bundle
-            ? $"{Name(team)} main {bundle.Main} exploration {bundle.Exploration} dialog {string.Join(",", bundle.Dialog.Select(d => $"{d.Key}={d.Value}"))}"
+            ? $"{Name(team)} main {bundle.Main} exploration {bundle.Exploration} dialog {string.Join(",", bundle.Dialog.Where(d => DialogIds.Contains(d.Key)).Select(d => $"{d.Key}={d.Value}"))}"
             : $"{Name(team)} unreadable");
         return $"schema {State[0]} seeded {State[1]} world {State[2]} lothria {State[3]} local {LocalOwner?.ToString() ?? "-"}\n" +
                string.Join("\n", lines);
