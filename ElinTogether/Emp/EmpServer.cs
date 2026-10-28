@@ -35,6 +35,9 @@ internal static class EmpServer
     private static int _lastPlayers;
     private static int _ownFrameRate;
     private static bool _resting;
+    private static bool _stopping;
+    private static float _stopAt;
+    private const float StopWaitSeconds = 20f;
     private static readonly DateTime _started = DateTime.Now;
 
     internal static bool Requested => _save is not null;
@@ -116,9 +119,30 @@ internal static class EmpServer
             return;
         }
 
-        if (File.Exists(Path.Combine(_folder, "server.stop"))) {
-            EmpLog.Information("Server: asked to stop, saving");
+        if (_stopping || File.Exists(Path.Combine(_folder, "server.stop"))) {
             File.Delete(Path.Combine(_folder, "server.stop"));
+            if (!_stopping) {
+                _stopping = true;
+                _stopAt = Time.unscaledTime;
+                EmpLog.Information("Server: asked to stop, saving");
+            }
+
+            // the world is saved as a game hosted from the menu would hold it: the players leave, the owner's
+            // character takes the local place back from the stand-in (ServerAvatar). A player who is slow to go is
+            // waited for a little; then the world is saved as it is (a crash save is mended when it is opened)
+            if (ServerAvatar.Active && ServerAvatar.Is(EClass.pc) && session.Connection is ElinNetHost stopping) {
+                if (!stopping.EmptiedForStop() && Time.unscaledTime - _stopAt < StopWaitSeconds) {
+                    Tell("stopping");
+                    return;
+                }
+
+                try {
+                    ElinNetHost.GiveBackToOwner(ElinNetHost.AvatarOwnerUserId());
+                } catch (Exception ex) {
+                    EmpLog.Warning(ex, "Server: the owner's character could not take its place back, saved as it is");
+                }
+            }
+
             EClass.game.Save(false, true);
             Tell("stopped");
             Application.Quit();

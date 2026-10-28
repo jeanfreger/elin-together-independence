@@ -705,6 +705,19 @@ internal partial class ElinNetHost
                     EmpLog.Information("World taken over from a copy: handover {Handover}", HandoverNumber);
                 }
 
+                // a world a server left in a crash holds its stand-in as the local character (ServerAvatar): its owner
+                // gets its character back, loaded again as below; anyone else takes the place as of any world taken
+                // over, TakeOverPc drops the stand-in then
+                if (GiveBackToOwner(LocalUser)) {
+                    var (back, backCloud) = (Game.id, game.isCloud);
+                    if (game.Save(false, true)) {
+                        core.actionsNextFrame.Add(() => Game.Load(back, backCloud));
+                        return;
+                    }
+
+                    EmpLog.Warning("The world could not be saved after the owner's character took its place back, played as it is");
+                }
+
                 if (!TakeOverPc()) {
                     // (not when the creation screen of a new player just took the place of the game)
                     if (takenOver && scene.mode != Scene.Mode.Title) {
