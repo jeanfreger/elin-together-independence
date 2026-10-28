@@ -39,7 +39,7 @@ internal record PlayerRowInfo(
 /// </summary>
 internal static class EmpUi
 {
-    private const float PortraitW = 42f;
+    private const float PortraitW = 48f;
     private const float PortraitH = 56f;
     private const float BadgeSize = 20f;
     private const float MarkSlotWidth = 64f;
@@ -368,7 +368,8 @@ internal static class EmpUi
     public static YKHorizontal PlayerRow(this YKLayout parent, PlayerRowInfo info,
         IReadOnlyList<(string Label, Action Act)> actions)
     {
-        var row = Line(parent);
+        // (the portrait in a column of its own, the text starting after it: 14 of air, not the usual 10)
+        var row = Line(parent, spacing: 14f);
         row.LayoutElement().minHeight = PortraitH + 4f;
 
         AddPortrait(row, info.Chara);
@@ -401,6 +402,14 @@ internal static class EmpUi
         }
 
         return row;
+    }
+
+    /// <summary>
+    ///     Just the portrait, in its own fixed-width column (a character sheet's header: the facts go beside it)
+    /// </summary>
+    public static void Portrait(this YKHorizontal row, Chara? chara)
+    {
+        AddPortrait(row, chara);
     }
 
     private static void AddPortrait(YKHorizontal row, Chara? chara)
