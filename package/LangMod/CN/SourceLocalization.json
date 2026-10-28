@@ -167,7 +167,7 @@
     "LangGeneral.emp_ui_sv_desc_world_time.text": "独自在其他地图的玩家所经过的时间对所有人有效，最晚的日期就是世界的日期。关闭：只以房主的日期为准。",
     "LangGeneral.emp_ui_sv_cfg_world_keeper.text": "天气、税和信件只发生一次",
     "LangGeneral.emp_ui_sv_desc_world_keeper.text": "天气、任务过期、税金、工资和信件只由一位玩家处理。关闭：每个持有地图的玩家都会处理。",
-    "LangGeneral.emp_ui_depot_take.text": "从仓库取出世界并主持",
+    "LangGeneral.emp_ui_depot_take.text": "主持共享世界",
     "LangGeneral.emp_ui_depot_put.text": "把这个存档放入仓库",
     "LangGeneral.emp_ui_depot_held.text": "{0} 正在主持这个世界。请通过 Steam 加入：让对方邀请你，或在好友列表中对其使用“加入游戏”。如果对方刚离开，请最多等待 3 分钟。",
     "LangGeneral.emp_ui_depot_empty.text": "仓库里还没有世界。请开始或读取一个游戏，然后再次打开此面板，在大厅页选择“把这个存档放入仓库”。",
@@ -895,5 +895,7 @@
     "LangGeneral.emp_ui_sv_note_title.text": "这是你作为房主的规则，下次创建游戏时使用。",
     "LangGeneral.emp_ui_play_refresh.text": "重新搜索",
     "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面",
-    "LangGeneral.emp_ui_sv_desc_preset_custom.text": "你自己的组合：可在下方随意修改每一条规则。"
+    "LangGeneral.emp_ui_sv_desc_preset_custom.text": "你自己的组合：可在下方随意修改每一条规则。",
+    "LangGeneral.emp_ui_official_title.text": "官方服务器",
+    "LangGeneral.emp_ui_official_open.text": "开放中，{0}/{1} 名玩家"
 }

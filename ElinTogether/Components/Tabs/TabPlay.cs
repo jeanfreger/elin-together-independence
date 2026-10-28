@@ -25,9 +25,11 @@ internal class TabPlay : TabEmpBase
         if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
             BuildConnected();
         } else {
+            // the project's own public game first: its card is the most visible thing of the page
+            var official = BuildOfficialCard();
             BuildHost();
             BuildJoin();
-            BuildPublicServers();
+            BuildPublicServers(official);
         }
 
 #if DEBUG
@@ -225,7 +227,43 @@ internal class TabPlay : TabEmpBase
     }
 #endif
 
-    private void BuildPublicServers()
+    /// <summary>
+    ///     The official server: its own card at the top, always there (also closed), with its state and Join. Filled
+    ///     when the lobby list answers (BuildPublicServers)
+    /// </summary>
+    private YKVertical BuildOfficialCard()
+    {
+        var card = this.Card("emp_ui_official_title".lang(), EmpUi.Icon("icon_medal"));
+        card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
+        return card;
+    }
+
+    private static void FillOfficial(YKVertical card, LobbyData? lobby)
+    {
+        // (drop the "searching" line, keep the header)
+        for (var i = card.transform.childCount - 1; i >= 1; i--) {
+            UnityEngine.Object.Destroy(card.transform.GetChild(i).gameObject);
+        }
+
+        if (lobby is not { } found) {
+            card.TextSmall("emp_ui_official_closed".lang(), FontColor.Gray);
+            return;
+        }
+
+        var line = card.Row();
+        StatusDot(line, new(0.45f, 0.68f, 0.32f));
+        line.Chip("emp_ui_lobby_official".lang(), FontColor.Good);
+        line.Text("emp_ui_official_open".Loc(found.MemberCount, OfficialServer.MaxPlayers));
+        card.TextSmall("emp_ui_lobby_public".lang(), FontColor.Gray);
+        if (!EClass.core.IsGameStarted) {
+            card.ButtonRow().RowButton("emp_ui_lobby_official_join".lang(), () => {
+                LayerElinTogether.Instance?.Close();
+                NetSession.Instance.Lobby.ConnectLobby(found);
+            });
+        }
+    }
+
+    private void BuildPublicServers(YKVertical officialCard)
     {
         var card = this.Card("emp_ui_play_public_title".lang(), EmpUi.Icon("icon_zones"));
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
@@ -244,18 +282,14 @@ internal class TabPlay : TabEmpBase
             }
 
             // the project's own public game first (user, 2026-10-27), checked by its signature, not by its name
-            var sorted = lobbies.Select(l => (Lobby: l, Official: OfficialServer.IsOfficial(l)))
-                .OrderByDescending(l => l.Official).ToArray();
+            var all = lobbies.Select(l => (Lobby: l, Official: OfficialServer.IsOfficial(l))).ToArray();
+            FillOfficial(officialCard, all.Where(l => l.Official).Select(l => (LobbyData?)l.Lobby).FirstOrDefault());
+            var sorted = all.Where(l => !l.Official).ToArray();
             var total = sorted.Sum(l => l.Lobby.MemberCount);
             status.text = sorted.Length == 0 ? "emp_ui_play_none".lang() : "emp_ui_lobby_tally".Loc(total);
             if (sorted.Length == 0) {
                 // (a next step, as on every empty page)
                 list.ButtonRow().RowButton("emp_ui_play_refresh".lang(), () => LayerElinTogether.Instance?.Reopen());
-            }
-
-            // on the title screen the official server always has its place, even closed: a quiet line, never a dialog
-            if (!EClass.core.IsGameStarted && !sorted.Any(l => l.Official)) {
-                list.TextSmall("emp_ui_official_closed".lang(), FontColor.Gray);
             }
 
             for (var i = 0; i < sorted.Length; i++) {
