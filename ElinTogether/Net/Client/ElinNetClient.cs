@@ -12,6 +12,13 @@ internal partial class ElinNetClient : ElinNetBase
 {
     private DateTime _lastTimeout = DateTime.Now;
 
+    // the wait starts once the component is ready: its start (a release build patches the whole mod there, 20 s on
+    // a slow PC) counted as time without an answer, and the guest gave up at its first frame (issue #24)
+    private void Start()
+    {
+        _lastTimeout = DateTime.Now;
+    }
+
     public override bool IsHost => false;
     public ISteamNetPeer Host => Socket.FirstPeer;
     public bool IsJoiningLobby { get; private set; }

@@ -249,6 +249,23 @@ internal class EmpConsole
         server.StartServer(true);
     }
 
+    /// <summary>
+    ///     Bench: as a Steam lobby join does, the client exists first and connects only some seconds later (issue #24)
+    /// </summary>
+    [ConsoleCommand("connect_udp_after")]
+    internal static string AddClientToUdpPortAfter(int seconds = 5)
+    {
+        NetSession.Instance.InitializeComponent<ElinNetClient>();
+        EmpMod.Instance.StartCoroutine(Later());
+        return $"Connecting in {seconds}s";
+
+        IEnumerator Later()
+        {
+            yield return new WaitForSecondsRealtime(seconds);
+            (NetSession.Instance.Transport as ElinNetClient)?.ConnectLocalPort();
+        }
+    }
+
     [ConsoleCommand("connect_udp")]
     internal static void AddClientToUdpPort()
     {
@@ -279,6 +296,13 @@ internal class EmpConsole
     /// <summary>
     ///     Bench: a dead link ends the session after the timeout as in a release build, a debug build waits for good
     /// </summary>
+    [ConsoleCommand("slow_start")]
+    internal static string SlowStart(int ms = 20000)
+    {
+        ElinNetBase.SlowStartMs = ms;
+        return $"Next connection components start {ms} ms late";
+    }
+
     [ConsoleCommand("link_timeout")]
     internal static string LinkTimeout(int on = 1)
     {

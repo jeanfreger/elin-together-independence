@@ -40,9 +40,19 @@ public abstract partial class ElinNetBase : EMono
         }
     }
 
+#if DEBUG
+    // bench: a start as slow as a release build's on a slow PC (it patches the whole mod there, issue #24)
+    internal static int SlowStartMs;
+#endif
+
     private void Awake()
     {
         Initialize();
+#if DEBUG
+        if (SlowStartMs > 0) {
+            System.Threading.Thread.Sleep(SlowStartMs);
+        }
+#endif
 
 #if !DEBUG
         if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {

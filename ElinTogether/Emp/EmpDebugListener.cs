@@ -75,6 +75,13 @@ internal sealed class EmpDebugListener : MonoBehaviour
             AudioListener.volume = 0f;
         }
 
+        // and its vsync: a minimized window waiting for vsync ran at about 4 fps, so every frame time the bench
+        // measured was the window's, not the game's (2026-10-28)
+        if (_muted && QualitySettings.vSyncCount != 0) {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 30;
+        }
+
         while (_queue.TryDequeue(out var request)) {
             Execute(request);
         }
