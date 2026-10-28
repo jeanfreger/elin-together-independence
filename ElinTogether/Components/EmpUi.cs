@@ -41,6 +41,7 @@ internal static class EmpUi
 {
     private const float PortraitW = 48f;
     private const float PortraitH = 56f;
+    private const float SpriteW = 40f;
     private const float BadgeSize = 20f;
     private const float MarkSlotWidth = 64f;
 
@@ -430,6 +431,17 @@ internal static class EmpUi
             var portrait = UnityEngine.Object.Instantiate(_portraitPrefab, holder, false);
             Stretch(portrait.Rect());
             portrait.SetChara(chara);
+            // (the game's Portrait also draws the pixel sprite over the face: that one goes in a column of its own)
+            if (portrait.imageChara != null) {
+                portrait.imageChara.gameObject.SetActive(false);
+            }
+
+            var spriteHolder = NewBox(row.transform, "SpriteBox", SpriteW, PortraitH);
+            var sprite = NewImage(spriteHolder, "CharaImage", Color.white);
+            Stretch(sprite.rectTransform);
+            sprite.preserveAspect = true;
+            chara.SetImage(sprite);
+            Stretch(sprite.rectTransform);
             return;
         }
 
