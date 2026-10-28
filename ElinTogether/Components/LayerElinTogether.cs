@@ -9,7 +9,9 @@ namespace ElinTogether.Components;
 
 internal class LayerElinTogether : YKLayer<LayerCreationData>
 {
-    private static Vector2 _browsedPosition = Vector2.zero;
+    // First opening: a little right and down of the centre, so the window clears the debug box that the game's popup
+    // stack draws at the top left (it hid the first tab and the caption); later openings keep where the player left it
+    private static Vector2 _browsedPosition = new(120f, -30f);
     private static string _lastOpenedTab = "";
     private readonly bool _resetHyp = Lang.setting.hyphenation;
 
