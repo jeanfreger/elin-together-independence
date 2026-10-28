@@ -32,8 +32,40 @@ public class ZoneInvestDelta : ElinDelta
     /// </summary>
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
+        // the paid gold is the sender's word too: it must be the game's price (CalcMoney.InvestZone / InvestShop; they
+        // read EClass.pc, so the sender's stats here). A tenth less is allowed: its skill (exp it just gained) may be
+        // ahead of this copy of it, and a member's merchant discount (the guild rank is shared) is the lowest price
+        if (sender is not null && Price(sender) is var price && Cost < price - price / 10) {
+            return $"an investment of {Cost} for a price of {price}";
+        }
+
         var paid = CardModCurrencyDelta.TakeSpent(OriginPeer, Cost);
         return paid < Cost ? $"an investment of {Cost} with {paid} gold paid" : null;
+    }
+
+    private long Price(Chara sender)
+    {
+        // CalcMoney.Invest with the sender as the player
+        long Invest(long a)
+        {
+            var num = a * 100 / (long)(100f + System.Math.Max(0, sender.CHA / 2 + sender.Evalue(292)) * 2f);
+            return num is >= 0 and < 100000000 ? num : 100000000;
+        }
+
+        if (Merchant is null) {
+            var dev = (long)_zone.development;
+            return System.Math.Max(Invest(dev * 50), Invest(dev * dev / 4 + 500));
+        }
+
+        if (Merchant.Find() is not Chara { isDead: false } merchant) {
+            return 0;
+        }
+
+        // (as a member: the lowest price)
+        var member = 100 / (110 + Guild.Merchant.relation.rank / 2f);
+        long Shop(long a) => Invest((long)(a * member));
+        long count = merchant.c_invest;
+        return System.Math.Max(Shop(count * 700), Shop(count * count * 80 + 200));
     }
 
     protected override void OnApply(ElinNetBase net)
