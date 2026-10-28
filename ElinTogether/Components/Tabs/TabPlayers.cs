@@ -110,7 +110,9 @@ internal class TabPlayers : TabEmpBase
         head.Layout.childAlignment = TextAnchor.UpperLeft;
         head.Portrait(chara);
         var lines = head.Vertical();
-        lines.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        // (no size fitter: the row measures this column itself, so Actions starts under the taller of the two)
+        lines.Layout.childControlHeight = true;
+        lines.Layout.childForceExpandHeight = false;
         lines.LayoutElement().flexibleWidth = 1f;
         lines.Layout.spacing = 2f;
         lines.Text(name).SetSize(UIHelper.LabelSize + 4);
