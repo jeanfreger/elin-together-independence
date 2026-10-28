@@ -53,6 +53,8 @@ internal static class EmpUi
 
     private static Portrait? _portraitPrefab;
     private static bool _portraitLooked;
+    private static Material? _iconMaterial;
+    private static bool _iconMaterialLooked;
 
     // ---------------------------------------------------------------- helpers
 
@@ -438,20 +440,35 @@ internal static class EmpUi
             }
 
             var spriteHolder = NewBox(row.transform, "SpriteBox", SpriteW, PortraitH);
-            var sprite = NewImage(spriteHolder, "CharaImage", Color.white);
-            Stretch(sprite.rectTransform);
-            sprite.preserveAspect = true;
-            chara.SetImage(sprite);
-            Stretch(sprite.rectTransform);
+            CharaSprite(spriteHolder, chara);
             return;
         }
 
         // no Portrait prefab found: the character's own sprite, as the game's people lists show it
+        CharaSprite(holder, chara);
+    }
+
+    private static void CharaSprite(Transform holder, Chara chara)
+    {
         var image = NewImage(holder, "CharaImage", Color.white);
         Stretch(image.rectTransform);
         image.preserveAspect = true;
         chara.SetImage(image);
         Stretch(image.rectTransform);
+        // Card.SetImage packs the card's colour into image.color (neutral = 0.5 grey) for the material of the game's
+        // item icons ("UI obj", which decodes it); under the default UI material the sprite came out half as bright
+        if (!_iconMaterialLooked) {
+            _iconMaterialLooked = true;
+            _iconMaterial = Resources.LoadAll<ButtonGrid>("UI").Select(b => b.icon != null ? b.icon.material : null)
+                .FirstOrDefault(m => m != null);
+        }
+
+        if (_iconMaterial != null) {
+            image.material = _iconMaterial;
+        } else {
+            // (what the game's Portrait does with its pixel sprite: the plain sprite, untinted)
+            image.color = Color.white;
+        }
     }
 
     private static void AddBadge(YKHorizontal row, PlayerBadge badge)
