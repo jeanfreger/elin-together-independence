@@ -205,6 +205,7 @@ namespace ElinTogether.Models;
 [Union(1211, typeof(ContainerLogAnswer))]
 // Closed lands: a player is moved out (council 2026-10-28)
 [Union(1200, typeof(TeamEvictDelta))]
+[Union(1225, typeof(SiblingLandDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

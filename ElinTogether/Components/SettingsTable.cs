@@ -347,6 +347,7 @@ internal static class SettingsTable
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("land_rules", "together", true, EmpConfig.Server.LandRules, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
+        yield return new("sibling_lands", "together", true, EmpConfig.Server.SiblingLands, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("land_abandon", "together", true, EmpConfig.Server.LandAbandon, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("abandon_days", "together", true, Choice: AbandonDays, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value && EmpConfig.Server.LandAbandon.Value);
         yield return new("lands_per_team", "together", true, Choice: LandsPerTeam, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
@@ -542,6 +543,7 @@ internal static class SettingsTable
             [EmpConfig.Server.AdminExtras] = r.AdminExtras,
             [EmpConfig.Server.TeamLeaders] = r.TeamLeaders,
             [EmpConfig.Server.LandRules] = r.LandRules,
+            [EmpConfig.Server.SiblingLands] = r.SiblingLands,
             [EmpConfig.Server.TeamMaxSize] = r.TeamMaxSize,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,

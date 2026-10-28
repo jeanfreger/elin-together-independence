@@ -457,6 +457,13 @@ public class NetSessionRules
     [Key(143)]
     public bool AdminExtras { get; set; }
 
+    /// <summary>
+    ///     Several lands on one world-map tile (<see cref="Helper.SiblingLands" />). An older host sends none: one land
+    ///     per tile, as it was
+    /// </summary>
+    [Key(144)]
+    public bool SiblingLands { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -482,6 +489,7 @@ public class NetSessionRules
         AdminExtras = EmpConfig.Server.AdminExtras.Value,
         TeamLeaders = EmpConfig.Server.TeamLeaders.Value,
         LandRules = EmpConfig.Server.LandRules.Value,
+        SiblingLands = EmpConfig.Server.SiblingLands.Value,
         TeamMaxSize = System.Math.Max(0, EmpConfig.Server.TeamMaxSize.Value),
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
