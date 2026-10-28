@@ -50,8 +50,6 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     private readonly List<Group> _groups = [];
-    private UIInputText? _searchInput;
-    private UIText? _noMatch;
     private bool _guest;
     private RuleSource _src = RuleSource.Current;
     private RuleSource _target = RuleSource.Defaults;
@@ -116,9 +114,6 @@ internal class TabServerConfiguration : TabEmpBase
                 if (preset == Custom) {
                     BuildDifferences(page, rows);
                 }
-
-                BuildSearch(page);
-                _noMatch = Vertical(page).TextSmall("emp_ui_sv_nomatch".lang(), FontColor.Gray);
             }),
         };
         foreach (var id in SettingsTable.Cards) {
@@ -281,21 +276,6 @@ internal class TabServerConfiguration : TabEmpBase
                 LayerElinTogether.Instance?.Reopen();
             });
         }
-    }
-
-    private void BuildSearch(YKLayout page)
-    {
-        // the game's own input field (YKLayout.InputText: UIInputText over an InputField)
-        var input = Vertical(page).InputText(_search);
-        input.LayoutElement().flexibleWidth = 1f;
-        if (input.field.placeholder is Text placeholder) {
-            placeholder.text = "emp_ui_sv_search".lang();
-        }
-        input.field.onValueChanged.AddListener(text => {
-            _search = text;
-            ApplyFilter();
-        });
-        _searchInput = input;
     }
 
     /// <summary>
@@ -546,7 +526,6 @@ internal class TabServerConfiguration : TabEmpBase
             }
         }
 
-        _noMatch?.gameObject.SetActive(searching && !any);
         Relayout();
     }
 
@@ -564,10 +543,6 @@ internal class TabServerConfiguration : TabEmpBase
 
         var line = group.Lines.First(l => l.Row.Id == rowId);
         _search = "";
-        if (_searchInput != null) {
-            _searchInput.Text = "";
-        }
-
         ShowSubTab(PageOf(group));
         ApplyFilter();
         if (GetComponentInParent<ScrollRect>() is not { content: { } content } scroll) {

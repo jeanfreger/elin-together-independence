@@ -141,10 +141,15 @@ internal class TabTeam : TabEmpBase
         foreach (var member in members) {
             var chara = CharaOf(member);
             var target = member;
+            // the "..." of a member the leader manages: the same two choices as the member's page, one click nearer
+            IReadOnlyList<(string, System.Action)> actions = manages && member != me
+                ? [("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, target)),
+                    ("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, target))]
+                : [];
             var row = list.PickRow(new PlayerRowInfo(Teams.PlayerName(member), MemberLine(chara, member), chara), member == picked, () => {
                 _picked = target;
                 LayerElinTogether.Instance?.Reopen();
-            });
+            }, actions);
             if (member == leader) {
                 AddCrown(row);
             }
@@ -179,7 +184,8 @@ internal class TabTeam : TabEmpBase
         var card = page.Card(Teams.PlayerName(member));
         var head = card.Row();
         if (chara != null) {
-            head.PlayerRow(new("", "", chara), []).LayoutElement().flexibleWidth = 0f;
+            // (the portrait alone: a whole player row here kept an empty flexible name column between it and the facts)
+            head.Portrait(chara);
         }
         var lines = head.Vertical();
         lines.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
