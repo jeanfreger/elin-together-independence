@@ -11,6 +11,12 @@ namespace ElinTogether.Net;
 internal static class NetFragments
 {
     /// <summary>
+    ///     Pieces of big messages received so far: a world arriving piece by piece moves it, the small snapshots a
+    ///     departed guest still gets every tick do not (the rejoin watchdog reads it)
+    /// </summary>
+    public static long PiecesReceived;
+
+    /// <summary>
     ///     Stands where a whole message has its type hash
     /// </summary>
     public const uint Magic = 0xE7F2A61D;

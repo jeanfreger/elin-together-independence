@@ -1090,8 +1090,9 @@ internal partial class ElinNetClient
             return;
         }
 
-        // silence, not total time: a big world arriving piece by piece over a slow link is not stuck (every piece
-        // counts in the peer's received bytes)
+        // silence, not total time: a big world arriving piece by piece over a slow link is not stuck (pieces of big
+        // messages only: the lean snapshots a departed guest still gets every tick would reset it forever, bench
+        // travel_watchdog_check 2026-10-28)
         // (up to RejoinMaxSeconds in all: a host that keeps talking but never sends the world is stuck too)
         if (!_rejoining) {
             _rejoinSince = 0;
@@ -1099,8 +1100,8 @@ internal partial class ElinNetClient
             _rejoinSince = now;
         }
 
-        if (_rejoining && now - _rejoinSince < RejoinMaxSeconds && Host is { } link && link.Stat.BytesReceived != _rejoinBytes) {
-            _rejoinBytes = link.Stat.BytesReceived;
+        if (_rejoining && now - _rejoinSince < RejoinMaxSeconds && NetFragments.PiecesReceived != _rejoinBytes) {
+            _rejoinBytes = NetFragments.PiecesReceived;
             _travelSince = now;
         }
 

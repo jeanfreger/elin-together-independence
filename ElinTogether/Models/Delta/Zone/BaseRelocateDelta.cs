@@ -70,9 +70,11 @@ public class BaseRelocateDelta : ElinDelta
     {
         if (net is ElinNetHost { IsZoneSession: false } host) {
             // all of it read again here, whatever the sender believed (and when the permit only logs)
+            string? why = null;
             if (Moved || Refused || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
-                WhyNot(sender, out var zone, out var deed) is not null) {
-                EmpLog.Information("Base {ZoneUid} not relocated for peer {Peer}", ZoneUid, OriginPeer);
+                (why = WhyNot(sender, out var zone, out var deed)) is not null) {
+                EmpLog.Information("Base {ZoneUid} not relocated for peer {Peer}: {Why}", ZoneUid, OriginPeer,
+                    why ?? (Moved || Refused ? "an answer, not a request" : "no character"));
                 OnHostRefused(host);
                 return;
             }

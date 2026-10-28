@@ -114,6 +114,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
                     // a piece of a big message: nothing for the listener before the last one, see SteamNetPeer.Send
                     if (NetFragments.IsFragment(bytes)) {
+                        NetFragments.PiecesReceived++;
                         // a player not in yet sends small things (versions, a character): a big message from it is
                         // refused before it is pieced together (security audit 2026-10-27: 64 MB were read first)
                         if (IsHost && !peer.Trusted && NetFragments.ReadInt(bytes, 16) > UntrustedMessageSize) {
