@@ -788,5 +788,6 @@
     "LangGeneral.emp_tip_tab_server.text": "房主设定的世界规则",
     "LangGeneral.emp_tip_tab_info.text": "服务器公告与规则",
     "LangGeneral.emp_tip_tab_lobby.text": "创建或加入游戏",
-    "LangGeneral.emp_tip_tab_client.text": "个人设置"
+    "LangGeneral.emp_tip_tab_client.text": "个人设置",
+    "LangGeneral.emp_ui_set_by_host.text": "由房主设置"
 }
