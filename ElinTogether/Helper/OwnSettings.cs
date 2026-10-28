@@ -88,6 +88,7 @@ internal static class OwnSettings
                 SpawnZone = player.uidSpawnZone,
                 LastTown = player.uidLastTown,
                 Hotbars = player.hotbars,
+                PartySetups = player.partySetups,
                 Flags = DialogFlagSync.OwnFlags(player),
                 Deepest = player.stats.deepest,
                 DeepestVoid = player.stats.deepestVoid,
@@ -218,6 +219,10 @@ internal static class OwnSettings
                 player.stats.death2 = kept?.EarlyDeaths ?? 0;
                 player.stats.slept = kept?.Slept ?? 0;
             }
+
+            // the party setups this player saved (the party window's five slots, hunt 6 item 6): the host's slots
+            // listed the host's companions (its own keep their numbers in the host's copy). None noted: empty
+            player.partySetups = kept?.PartySetups ?? new Player.PartySetup[Player.MaxPartySetup];
 
             if (kept is null) {
                 return;
@@ -448,6 +453,7 @@ internal static class OwnSettings
         public Dictionary<string, string>? HangIcons;
         public int SpawnZone;
         public int LastTown;
+        public Player.PartySetup[]? PartySetups;
 
         // windows of the cards the player carries, by card number; which of them were open
         public Dictionary<int, Window.SaveData> Bags = [];
