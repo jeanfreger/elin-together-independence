@@ -108,10 +108,14 @@ internal class TabPlayers : TabEmpBase
         head.Layout.padding = new(12, 8, 4, 12);
         head.Layout.spacing = 14f;
         head.Layout.childAlignment = TextAnchor.UpperLeft;
+        // (a row fits its MIN height by default, 32: the row must take its preferred one, the taller of portrait and
+        // facts, so Actions starts under the whole head)
+        head.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
         head.Portrait(chara);
         var lines = head.Vertical();
-        // (no size fitter: the row measures this column itself, so Actions starts under the taller of the two)
-        lines.Layout.childControlHeight = true;
+        // (the game's TopicDefault lines report no preferred height: a column that controls heights squashes them to
+        // zero, all drawn on one line; left alone they keep the prefab's 22 and the column sums those)
+        lines.Layout.childControlHeight = false;
         lines.Layout.childForceExpandHeight = false;
         lines.LayoutElement().flexibleWidth = 1f;
         lines.Layout.spacing = 2f;
