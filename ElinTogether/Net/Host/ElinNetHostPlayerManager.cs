@@ -550,6 +550,10 @@ internal partial class ElinNetHost
         }
 
         TellMarriages();
+        foreach (var (chara, peer, _) in joins) {
+            TellAffinities(chara, peer.Id);
+        }
+
         TellTeams();
         TellModeration();
 

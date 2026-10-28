@@ -194,6 +194,8 @@ namespace ElinTogether.Models;
 [Union(1000, typeof(ElementChangeDelta))]
 // Duels, council 7 steps 5 to 7
 [Union(1030, typeof(AdventurerBoutDelta))]
+// Affinity per player (2026-10-28)
+[Union(1170, typeof(PlayerAffinitiesDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
