@@ -59,6 +59,11 @@ public class ElinDeltaManager
             return;
         }
 
+        // (the host: a change inside a team's bank or delivery box goes to that team's players only, see TeamBoxes)
+        if (Helper.TeamBoxes.Divert(this, delta)) {
+            return;
+        }
+
         _outBufferUnrefreshed.Add(delta);
     }
 
