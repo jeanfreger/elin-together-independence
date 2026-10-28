@@ -694,7 +694,8 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnZoneGuestRequest(ZoneGuestRequest request)
     {
-        var accepted = Session.IsZoneAuthority && Session.AwayZone?.uid == request.ZoneUid &&
+        // (a game that plays on a hidden server opens no listening socket, its account is the server's)
+        var accepted = !Helper.HiddenServer.Playing && Session.IsZoneAuthority && Session.AwayZone?.uid == request.ZoneUid &&
                        _zone == Session.AwayZone && _pendingTravel is null && !_rejoining;
 
         if (accepted) {

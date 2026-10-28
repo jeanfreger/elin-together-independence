@@ -68,6 +68,11 @@ public partial class SteamNetManager
         var localhost = new SteamNetworkingIPAddr();
         localhost.Clear();
         localhost.m_port = port;
+        // a hidden server (HiddenServer) is joined by the game that started it, on this machine: no firewall question,
+        // no port for the network. The friends come through Steam (the lobby, below)
+        if (EmpServer.Hidden) {
+            localhost.ParseString($"127.0.0.1:{port}");
+        }
 
         var options = SteamNetConfig.Default.Create();
         _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(ref localhost, options.Length, options);
@@ -106,7 +111,9 @@ public partial class SteamNetManager
         EmpLog.Debug("Received connection request from {RemoteIdentity}",
             user);
 
-        // local udp connections never go through the steam lobby that issues the keys
+        // local udp connections never go through the steam lobby that issues the keys. On a hidden server the seat of
+        // the same account as the server's is the owner's: it is let in, and has to show the token of the game that
+        // started the server in its first handshake (ElinNetHost.AcceptOwnerSeat), else it is put out there
         var isLocalDebug = IsLocalUdp && info.m_addrRemote.IsLocalHost();
 
         // debug instance sharing the Steam account, see SteamNetPeer.UseDevIdentity

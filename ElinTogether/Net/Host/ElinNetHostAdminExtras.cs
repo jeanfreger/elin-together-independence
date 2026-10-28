@@ -50,7 +50,7 @@ internal partial class ElinNetHost
     /// </summary>
     internal ulong UserOf(int peerId)
     {
-        return peerId == 0 ? (ulong)UserData.Me : Socket.Peers.FirstOrDefault(p => p.Id == peerId) is { } peer ? (ulong)peer.User : 0UL;
+        return peerId == 0 ? Helper.ServerAvatar.HostUser : Socket.Peers.FirstOrDefault(p => p.Id == peerId) is { } peer ? (ulong)peer.User : 0UL;
     }
 
     internal static bool AdminExtrasOn => EmpConfig.Server.AdminExtras.Value;
@@ -62,7 +62,7 @@ internal partial class ElinNetHost
         }
 
         if (on) {
-            if (user == UserData.Me || Admins.ContainsKey(user)) {
+            if (user == Helper.ServerAvatar.HostUser || Admins.ContainsKey(user)) {
                 return "The host and the admins need no moderator role";
             }
 
@@ -85,7 +85,7 @@ internal partial class ElinNetHost
             return "Moderators, freeze and jail are off (host box)";
         }
 
-        if (user == UserData.Me) {
+        if (user == Helper.ServerAvatar.HostUser) {
             return "The host cannot be frozen";
         }
 

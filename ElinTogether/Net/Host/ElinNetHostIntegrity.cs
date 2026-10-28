@@ -121,6 +121,10 @@ internal partial class ElinNetHost
 
     private void OnNetHandshakeResponse(NetIntegrityResponse response, ISteamNetPeer peer)
     {
+        if (!AcceptOwnerSeat(response, peer)) {
+            return;
+        }
+
         // another version of Elin: let in and told, unless the host wants the same one for everyone
         var otherGame = !BuildVersionIntegrity.SameGame(response.ClientGameVersion);
         // a zone session decides nothing of its own: the host of the game let this player in with its rules, the
