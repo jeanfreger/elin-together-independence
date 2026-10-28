@@ -403,16 +403,16 @@ public class NetSessionRules
     public bool TeamOwnGuilds { get; set; }
 
     /// <summary>
-    ///     Each player has its own affinity with each resident, see AffinityPerPlayer. An older host sends none: one
-    ///     value for the group, as it was
-    /// </summary>
-    /// <summary>
     ///     Each team keeps its own bank and delivery box, see TeamBoxes. An older host sends none: the world's boxes,
     ///     as they were
     /// </summary>
     [Key(133)]
     public bool TeamBoxes { get; set; }
 
+    /// <summary>
+    ///     Each player has its own affinity with each resident, see AffinityPerPlayer. An older host sends none: one
+    ///     value for the group, as it was
+    /// </summary>
     [Key(135)]
     public bool AffinityPerPlayer { get; set; }
 
