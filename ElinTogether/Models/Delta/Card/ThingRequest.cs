@@ -82,6 +82,14 @@ public class ThingRequest : ElinDelta
             return;
         }
 
+        // the bank or the delivery box of another team (Teams keep their own): only the sender's own and the world's
+        if (net is ElinNetHost boxKeeper && boxKeeper.ActiveRemoteCharas.TryGetValue(OriginPeer, out var owner) && !TeamBoxes.CanTake(owner, thing)) {
+            EmpLog.Warning("Rejecting ThingRequest {RequestId} from peer {PeerIndex}, uid {Uid} is in another team's box",
+                Id, OriginPeer, thing.uid);
+            Respond(net, null);
+            return;
+        }
+
         // a limited item of a shop: no more than what is left of it for that player (its own game says no first,
         // when it knows; see LimitedStockPatch)
         var num = Math.Min(Num, thing.Num);

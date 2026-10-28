@@ -47,9 +47,10 @@ internal static class WorldBoxPatch
         ElinNetClient.EmptyWorldContainer(ShippingHelper.WorldBox(box));
     }
 
-    private static int BankGold()
+    // the bank a gesture is about: the world's, or the host's own owner's (its window opens on it, see TeamBoxes)
+    private static int BankGold(Card? bank = null)
     {
-        return EClass.game?.cards?.container_deposit?.GetCurrency() ?? 0;
+        return (bank ?? TeamBoxes.BankOf(EClass.pc))?.GetCurrency() ?? 0;
     }
 
     /// <summary>
@@ -84,20 +85,20 @@ internal static class WorldBoxPatch
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ThingRequest), "OnApply")]
-    internal static void OnPlayerTake(ThingRequest __instance, ElinNetBase net, out int __state)
+    internal static void OnPlayerTake(ThingRequest __instance, ElinNetBase net, out (Card? Bank, int Gold) __state)
     {
         __state = net is ElinNetHost { IsZoneSession: false } && __instance.Num > 0 &&
                   __instance.Thing?.Find() is Thing { id: "money", parent: Card box } &&
                   ShippingHelper.OtherWorldBox(box) == ShippingHelper.BoxBank
-            ? BankGold()
-            : -1;
+            ? (box, BankGold(box))
+            : (null, -1);
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ThingRequest), "OnApply")]
-    internal static void OnPlayerTaken(ThingRequest __instance, ElinNetBase net, int __state)
+    internal static void OnPlayerTaken(ThingRequest __instance, ElinNetBase net, (Card? Bank, int Gold) __state)
     {
-        if (__state >= 0 && __state - BankGold() is var taken and > 0 && net is ElinNetHost host &&
+        if (__state.Gold >= 0 && __state.Gold - BankGold(__state.Bank) is var taken and > 0 && net is ElinNetHost host &&
             host.ActiveRemoteCharas.GetValueOrDefault(__instance.OriginPeer) is { } who) {
             BillPayDelta.TellBank(host, who.NameSimple, taken, false);
         }

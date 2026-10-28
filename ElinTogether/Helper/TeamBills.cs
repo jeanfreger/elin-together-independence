@@ -159,7 +159,7 @@ internal static class TeamBills
             EmpLog.Information("Team {TeamId}: a tax bill of {Tax} for {Lands} lands", team, tax, lands.Count());
             Msg.Say("emp_team_bill".Loc(Teams.NameOf(team), Lang._currency(tax, "money")));
             // (paid by the bank at once when the policy says so: OnPaidBill lowers the team's count)
-            __instance.TryPayBill(bill);
+            TeamBoxes.AsTeam(team, () => __instance.TryPayBill(bill));
         }
 
         Msg.Say("bills", EClass.player.taxBills.ToString());
@@ -183,10 +183,16 @@ internal static class TeamBills
         }
 
         var bank = EClass.game.cards.container_deposit;
-        if (EClass.pc.homeBranch.policies.IsActive(2711) && (bank.GetCurrency() > 0 || !bank.things.IsFull())) {
+        var bankPays = EClass.pc.homeBranch.policies.IsActive(2711) && (bank.GetCurrency() > 0 || !bank.things.IsFull());
+        // (each team's share goes in its own bank when they keep their own, see TeamBoxes)
+        if (bankPays && !TeamBoxes.On) {
             bank.ModCurrency(num);
             Msg.Say("bankIncome", Lang._currency(num, "money"));
             return;
+        }
+
+        if (bankPays) {
+            Msg.Say("bankIncome", Lang._currency(num, "money"));
         }
 
         // one share per team, paid to its members (their own accounts) instead of the world's mailbox: what a team's
@@ -211,13 +217,20 @@ internal static class TeamBills
             }
 
             left -= share;
+            if (bankPays) {
+                TeamBoxes.BankOfTeam(Teams.TeamOf(members[0]))!.ModCurrency(share);
+                continue;
+            }
+
             foreach (var uid in members) {
                 host.PayPlayer(uid, share / members.Length + (uid == members[0] ? share % members.Length : 0));
             }
         }
 
-        // (lands of no team, and what the split left: the world's mailbox, as before)
-        if (left > 0) {
+        // (lands of no team, and what the split left: the world's bank or mailbox, as before)
+        if (left > 0 && bankPays) {
+            bank.ModCurrency(left);
+        } else if (left > 0) {
             EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(left)));
         }
     }

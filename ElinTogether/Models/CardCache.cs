@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Net;
 
@@ -131,11 +132,13 @@ public static class CardCache
     // off map
     internal static void CacheGlobalContainers()
     {
-        ReadOnlySpan<Thing?> containers = [
+        // (and the boxes of each owner, see TeamBoxes)
+        var containers = new List<Thing?> {
             EClass.game?.cards.container_shipping,
             EClass.game?.cards.container_deliver,
             EClass.game?.cards.container_deposit,
-        ];
+        };
+        containers.AddRange(TeamBoxes.All());
 
         foreach (var container in containers) {
             if (container is null) {

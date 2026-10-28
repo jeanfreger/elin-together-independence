@@ -12,7 +12,7 @@ public class CardAddThingDelta : ElinDelta
     public required RemoteCard Thing { get; init; }
 
     [Key(1)]
-    public required RemoteCard Parent { get; init; }
+    public required RemoteCard Parent { get; set; }
 
     [Key(2)]
     public required bool TryStack { get; init; }
@@ -95,6 +95,22 @@ public class CardAddThingDelta : ElinDelta
         if (net is ElinNetHost boxHost && OriginPeer != 0 && ShippingHelper.OtherWorldBox(parent) is var box and not 0 &&
             boxHost.ForwardShippingDeposit(thing, 0, box)) {
             return;
+        }
+
+        // Teams keep their own bank and delivery box: what a player puts in the world's goes to its owner's, chosen
+        // here from the sender, and nobody puts anything in another owner's (the others are told where it landed)
+        if (net is ElinNetHost boxKeeper && OriginPeer != 0 && TeamBoxes.On) {
+            if (TeamBoxes.Target(boxKeeper, OriginPeer, parent) is not { } landing) {
+                EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, the box of uid {Uid} is another team's",
+                    nameof(CardAddThingDelta), OriginPeer, parent.uid);
+                Rebind(net, Thing, thing);
+                return;
+            }
+
+            if (landing != parent) {
+                parent = landing;
+                Parent = landing;
+            }
         }
 
         // gold a player puts in the bank: a line for everyone (the withdrawals are told by WorldBoxPatch)
