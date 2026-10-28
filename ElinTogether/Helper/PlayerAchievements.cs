@@ -52,7 +52,8 @@ internal static class PlayerAchievements
             owner = pc;
         }
 
-        if (owner is null || owner.IsPC) {
+        // (the host's own player; a guest standing in as "the player" also reads IsPC, it is still the guest's)
+        if (owner is null || owner.IsPC && !owner.IsRemotePlayer) {
             return true;
         }
 
