@@ -1278,6 +1278,8 @@ internal partial class ElinNetHost
             Guest = new() {
                 HostUser = holder.User,
                 Port = ready.Port,
+                VirtualPort = ready.VirtualPort,
+                Local = ready.Local,
             },
         });
 
