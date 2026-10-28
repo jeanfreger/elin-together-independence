@@ -150,6 +150,11 @@ internal class TabSessionInfo : TabEmpBase
         }
         if (ModerationDelta.AdminIds.Contains(player.User)) {
             label += "  " + "emp_ui_admin_tag".lang();
+        } else if (ModerationDelta.ModeratorIds.Contains(player.User)) {
+            label += "  " + "emp_ui_mod_tag".lang();
+        }
+        if (ModerationDelta.FrozenIds.Contains(player.User)) {
+            label += "  " + "emp_ui_frozen_tag".lang();
         }
         parent.Text(label);
 
@@ -168,8 +173,21 @@ internal class TabSessionInfo : TabEmpBase
         var self = NetSession.Instance.Self;
         ulong me = self?.User ?? UserData.Me;
         var mine = self is not null ? player.Index == self.Index : player.User.IsMe;
-        if (player.Index == 0 || mine || ModerationDelta.AdminIds.Contains(target) ||
-            !(isHost || ModerationDelta.AdminIds.Contains(me))) {
+        var admin = isHost || ModerationDelta.AdminIds.Contains(me);
+        var extras = isHost ? ElinNetHost.AdminExtrasOn : NetSession.Instance.Rules.AdminExtras;
+        var moderator = !admin && extras && ModerationDelta.ModeratorIds.Contains(me);
+        if (mine && admin) {
+            var own = parent.ButtonRow();
+            if (extras) {
+                own.RowButton("emp_ui_set_jail".lang(), () => Order("setjail", 0, player.Index));
+            }
+            if (ContainerLog.On) {
+                own.RowButton("emp_ui_container_logs".lang(), () => ContainerLog.Ask(0));
+            }
+        }
+
+        if (player.Index == 0 || mine || ModerationDelta.AdminIds.Contains(target) || !(admin || moderator) ||
+            (moderator && ModerationDelta.ModeratorIds.Contains(target))) {
             return;
         }
 
@@ -177,10 +195,30 @@ internal class TabSessionInfo : TabEmpBase
         row.RowButton("emp_ui_kick".lang(), () => Order("kick", target, player.Index));
         row.RowButton((ModerationDelta.IsMuted(target) ? "emp_ui_unmute" : "emp_ui_mute").lang(),
             () => Order(ModerationDelta.IsMuted(target) ? "unmute" : "mute", target, player.Index));
+        if (!admin) {
+            return;
+        }
+
         row.RowButton("emp_ui_ban".lang(), () => Order("ban", target, player.Index));
         if (isHost) {
             row.RowButton("emp_ui_make_admin".lang(), () => {
                 (NetSession.Instance.Transport as ElinNetHost)?.MakeAdmin(target, true);
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
+
+        if (!extras) {
+            return;
+        }
+
+        var held = ModerationDelta.FrozenIds.Contains(target);
+        var extra = parent.ButtonRow();
+        extra.RowButton((held ? "emp_ui_unfreeze" : "emp_ui_freeze").lang(), () => Order(held ? "unfreeze" : "freeze", target, player.Index));
+        extra.RowButton("emp_ui_jail".lang(), () => Order("jail", target, player.Index));
+        if (isHost) {
+            var mod = ModerationDelta.ModeratorIds.Contains(target);
+            extra.RowButton((mod ? "emp_ui_unmake_mod" : "emp_ui_make_mod").lang(), () => {
+                (NetSession.Instance.Transport as ElinNetHost)?.MakeModerator(target, !mod);
                 LayerElinTogether.Instance?.Reopen();
             });
         }
@@ -205,6 +243,18 @@ internal class TabSessionInfo : TabEmpBase
                         break;
                     case "unmute":
                         host.Unmute(target);
+                        break;
+                    case "freeze":
+                        host.Freeze(target);
+                        break;
+                    case "jail":
+                        host.Freeze(target, true);
+                        break;
+                    case "unfreeze":
+                        host.Release(target);
+                        break;
+                    case "setjail":
+                        host.SetJail(EClass._zone);
                         break;
                 }
 

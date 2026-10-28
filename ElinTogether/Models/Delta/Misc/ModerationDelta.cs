@@ -22,11 +22,24 @@ public class ModerationDelta : ElinDelta
     /// </summary>
     internal static HashSet<ulong> AdminIds { get; } = [];
 
+    /// <summary>
+    ///     The moderators and the frozen or jailed players of this world (admin extras, council 2026-10-28)
+    /// </summary>
+    internal static HashSet<ulong> ModeratorIds { get; } = [];
+
+    internal static HashSet<ulong> FrozenIds { get; } = [];
+
     [Key(0)]
     public required ulong[] Mutes { get; init; }
 
     [Key(1)]
     public ulong[] Admins { get; set; } = [];
+
+    [Key(2)]
+    public ulong[] Moderators { get; set; } = [];
+
+    [Key(3)]
+    public ulong[] Frozen { get; set; } = [];
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -39,6 +52,10 @@ public class ModerationDelta : ElinDelta
         Muted.UnionWith(Mutes);
         AdminIds.Clear();
         AdminIds.UnionWith(Admins);
+        ModeratorIds.Clear();
+        ModeratorIds.UnionWith(Moderators);
+        FrozenIds.Clear();
+        FrozenIds.UnionWith(Frozen);
     }
 
     internal static bool IsMuted(ulong user)

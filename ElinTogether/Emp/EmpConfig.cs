@@ -516,6 +516,22 @@ internal partial class EmpConfig
             "Only the players of this world come in: those who have a character here, its admins, and those let in with allow. Steam friends and a public game's strangers too are refused\n" +
             "只有此世界的玩家可以加入：在这里有角色的玩家、管理员以及用 allow 放行的玩家。Steam 好友和公开游戏的陌生人也会被拒绝");
 
+        Server.ContainerAccessLog = config.Bind(
+            "Server",
+            "ContainerAccessLog",
+            false,
+            "The host keeps, per container of a player's or team's land (and the bank and delivery boxes), who put or took what and when (the last 50 entries). The land's team and the admins read it from the container's right-click menu\n" +
+            "Unticked, nothing is recorded or shown\n" +
+            "主机为玩家或队伍领地中的每个容器（以及银行和快递箱）记录谁在何时放入或取出了什么（最近50条）。该领地的队伍成员和管理员可在容器右键菜单中查看；取消勾选时不记录也不显示");
+
+        Server.AdminExtras = config.Bind(
+            "Server",
+            "AdminExtras",
+            false,
+            "Moderators (can only mute and kick), and for admins: freeze (the player cannot act until released) and jail (sent to the zone the admin chose and frozen there). Not the host, not other admins\n" +
+            "Unticked, those orders are refused\n" +
+            "版主（只能禁言和踢出），以及管理员的冻结（玩家在解除前无法行动）和关押（送到管理员指定的地图并冻结）。不适用于主机和其他管理员；取消勾选时这些命令被拒绝");
+
         Server.NightPasses = config.Bind(
             "Server",
             "NightPasses",
@@ -936,6 +952,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<int> KickKeepOutMinutes { get; set; } = null!;
         internal static ConfigEntry<int> MaxCharacters { get; set; } = null!;
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
+        internal static ConfigEntry<bool> ContainerAccessLog { get; set; } = null!;
+        internal static ConfigEntry<bool> AdminExtras { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;

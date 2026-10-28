@@ -188,7 +188,16 @@ internal partial class ElinNetHost
         ModerationDelta.Muted.UnionWith(Mutes.Keys);
         ModerationDelta.AdminIds.Clear();
         ModerationDelta.AdminIds.UnionWith(Admins.Keys);
-        Delta.AddRemote(new ModerationDelta { Mutes = [..Mutes.Keys], Admins = [..Admins.Keys] });
+        ModerationDelta.ModeratorIds.Clear();
+        ModerationDelta.ModeratorIds.UnionWith(Moderators.Keys);
+        ModerationDelta.FrozenIds.Clear();
+        ModerationDelta.FrozenIds.UnionWith(Frozen.Keys);
+        Delta.AddRemote(new ModerationDelta {
+            Mutes = [..Mutes.Keys],
+            Admins = [..Admins.Keys],
+            Moderators = [..Moderators.Keys],
+            Frozen = [..Frozen.Keys],
+        });
     }
 
     /// <summary>
@@ -221,18 +230,26 @@ internal partial class ElinNetHost
         ulong host = UserData.Me;
         var sender = Socket.Peers.FirstOrDefault(p => p.Id == originPeer);
         ulong from = sender is null ? 0UL : sender.User;
-        if (sender is null || !Admins.ContainsKey(from) || order.Target == host || Admins.ContainsKey(order.Target)) {
-            AdminLog($"refused order {order.Verb} {order.Target} from {from}: not an admin, or about the host or an admin");
+        // a moderator (admin extras) only mutes, unmutes and kicks, and not a fellow moderator
+        var admin = Admins.ContainsKey(from);
+        var moderator = !admin && AdminExtrasOn && Moderators.ContainsKey(from) &&
+                        order.Verb is "kick" or "mute" or "unmute" && !Moderators.ContainsKey(order.Target);
+        if (sender is null || !(admin || moderator) || order.Target == host || Admins.ContainsKey(order.Target)) {
+            AdminLog($"refused order {order.Verb} {order.Target} from {from}: not an admin or moderator for it, or about the host or an admin");
             return;
         }
 
         var target = Socket.Peers.FirstOrDefault(p => (ulong)p.User == order.Target);
         var done = order.Verb switch {
             "kick" => target is null ? "not playing" : Kick(target.Id, order.Reason),
-            "ban" => Ban(order.Target, order.Reason),
-            "unban" => Unban(order.Target),
+            "ban" when admin => Ban(order.Target, order.Reason),
+            "unban" when admin => Unban(order.Target),
             "mute" => Mute(order.Target, order.Reason),
             "unmute" => Unmute(order.Target),
+            "freeze" when admin => Freeze(order.Target),
+            "jail" when admin => Freeze(order.Target, true),
+            "unfreeze" or "unjail" when admin => Release(order.Target),
+            "setjail" when admin => SetJail(PlayerChara(originPeer)?.currentZone),
             _ => "unknown order",
         };
         AdminLog($"by admin {from} {sender.User.Name}: {order.Verb} {order.Target}: {done}");
@@ -303,6 +320,13 @@ internal partial class ElinNetHost
             return "Said to everyone";
         }
 
+        // the zone the host stands in becomes the jail
+        if (line.Trim().Equals("setjail", StringComparison.OrdinalIgnoreCase)) {
+            var jailed = SetJail(EClass._zone);
+            AdminLog($"order \"setjail\": {jailed}");
+            return jailed;
+        }
+
         var words = line.Trim().Split([' '], 3, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 2) {
             return "error: " + line;
@@ -335,6 +359,11 @@ internal partial class ElinNetHost
             "allow" => Allow(user),
             "admin" => MakeAdmin(user, true),
             "unadmin" => MakeAdmin(user, false),
+            "mod" => MakeModerator(user, true),
+            "unmod" => MakeModerator(user, false),
+            "freeze" => Freeze(user),
+            "jail" => Freeze(user, true),
+            "unfreeze" or "unjail" => Release(user),
             _ => "error: unknown order " + words[0],
         };
         AdminLog($"order \"{line.Trim()}\": {done}");

@@ -200,6 +200,9 @@ namespace ElinTogether.Models;
 [Union(1030, typeof(AdventurerBoutDelta))]
 // Affinity per player (2026-10-28)
 [Union(1170, typeof(PlayerAffinitiesDelta))]
+// Container access log (2026-10-28)
+[Union(1210, typeof(ContainerLogRequest))]
+[Union(1211, typeof(ContainerLogAnswer))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

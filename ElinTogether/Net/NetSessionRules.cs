@@ -416,6 +416,18 @@ public class NetSessionRules
     [Key(135)]
     public bool AffinityPerPlayer { get; set; }
 
+    /// <summary>
+    ///     The host keeps who put or took what per container (ContainerLog). An older host sends none: no log
+    /// </summary>
+    [Key(142)]
+    public bool ContainerLog { get; set; }
+
+    /// <summary>
+    ///     Moderators, freeze and jail (AdminCommandDelta). An older host sends none: off
+    /// </summary>
+    [Key(143)]
+    public bool AdminExtras { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -437,6 +449,8 @@ public class NetSessionRules
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBoxes = Helper.TeamBoxes.Wanted,
+        ContainerLog = EmpConfig.Server.ContainerAccessLog.Value,
+        AdminExtras = EmpConfig.Server.AdminExtras.Value,
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,

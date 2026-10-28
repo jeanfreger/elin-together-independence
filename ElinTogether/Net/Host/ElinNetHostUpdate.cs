@@ -349,6 +349,7 @@ internal partial class ElinNetHost
         /**/
 
         SweepStaleCellEntries();
+        KeepFrozen();
 
         // collect peer connection stats into player states
         foreach (var peer in Socket.Peers) {
