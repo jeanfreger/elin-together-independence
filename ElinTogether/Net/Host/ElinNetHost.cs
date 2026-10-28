@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using ElinTogether.Common;
+using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
@@ -97,7 +98,7 @@ internal partial class ElinNetHost : ElinNetBase
         // host also registers self state
         var selfState = States[0] = new() {
             Index = 0,
-            User = UserData.Me,
+            User = ServerAvatar.HostUser,
             CharaUid = player.uidChara,
         };
 

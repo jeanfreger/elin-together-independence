@@ -39,7 +39,7 @@ internal partial class ElinNetHost
 #if DEBUG
         EmpConfig.Dev.Identity.Value != 0 ? SteamNetPeer.DevIdentityBase + (ulong)EmpConfig.Dev.Identity.Value :
 #endif
-        UserData.Me;
+        ServerAvatar.HostUser;
 
     /// <summary>
     ///     Former local characters whose player is not known (a world last hosted before the owner was written): the
