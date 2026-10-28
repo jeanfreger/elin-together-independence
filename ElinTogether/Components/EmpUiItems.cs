@@ -59,7 +59,12 @@ internal static class EmpUiItems
     /// </summary>
     public static void EmptyText(this YKLayout parent, string message)
     {
-        var text = parent.Text(message, FontColor.Gray);
+        // (a short centred box: the line sits in the middle of it, not under a tall empty area)
+        var box = parent.Vertical();
+        box.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        box.Layout.childAlignment = TextAnchor.MiddleCenter;
+        box.Layout.padding = new(16, 16, 4, 4);
+        var text = box.Text(message, FontColor.Gray);
         text.alignment = TextAnchor.MiddleCenter;
     }
 }

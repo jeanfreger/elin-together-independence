@@ -130,7 +130,18 @@ internal static class EmpUi
     {
         var row = Line(parent);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
+        GrowWithText(row);
         return row;
+    }
+
+    /// <summary>
+    ///     A row takes the height of its tallest child (a description that wraps to two lines) instead of keeping
+    ///     its minimum and letting the text run into the row below
+    /// </summary>
+    private static void GrowWithText(YKHorizontal row)
+    {
+        row.Layout.childControlHeight = true;
+        row.Layout.childForceExpandHeight = false;
     }
 
     /// <summary>
@@ -187,7 +198,17 @@ internal static class EmpUi
     public static YKVertical Card(this YKLayout parent, string title, Sprite? icon = null)
     {
         var card = parent.MakeCard();
-        card.HeaderCard(title, icon);
+        var header = card.HeaderCard(title, icon);
+        // the header prefab carries a small placeholder picture of its own: a card without a real sprite must draw
+        // nothing there (never the placeholder), and one with a sprite draws only that one
+        foreach (var image in header.GetComponentsInChildren<Image>(true)) {
+            if (image.gameObject != header.gameObject && image != header.image1) {
+                image.gameObject.SetActive(false);
+            }
+        }
+        if (header.image1 != null && header.image1.sprite == null) {
+            header.image1.gameObject.SetActive(false);
+        }
         return card;
     }
 
@@ -221,9 +242,9 @@ internal static class EmpUi
     {
         var box = parent.Vertical();
         box.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        box.Layout.childAlignment = TextAnchor.UpperCenter;
-        box.Layout.padding = new(20, 20, 24, 24);
-        box.Layout.spacing = UIHelper.RowSpacing * 2f;
+        box.Layout.childAlignment = TextAnchor.MiddleCenter;
+        box.Layout.padding = new(16, 16, 4, 4);
+        box.Layout.spacing = UIHelper.RowSpacing;
 
         var text = box.Text(message, FontColor.Gray);
         text.alignment = TextAnchor.MiddleCenter;
@@ -372,6 +393,7 @@ internal static class EmpUi
     {
         var row = Line(parent);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
+        GrowWithText(row);
 
         var col = row.Vertical();
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -413,7 +435,7 @@ internal static class EmpUi
         group.alpha = 0f;
         group.blocksRaycasts = false;
 
-        var slot = Line(row, TextAnchor.MiddleLeft, 0f);
+        var slot = Line(row, TextAnchor.MiddleRight, 0f);
         var slotElement = slot.LayoutElement();
         slotElement.preferredWidth = UIHelper.ControlWidth;
         slotElement.minWidth = UIHelper.ControlWidth;

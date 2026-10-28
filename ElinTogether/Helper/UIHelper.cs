@@ -42,7 +42,9 @@ public static class UIHelper
     public static UIButton FixedWidth(this UIButton button)
     {
         var element = button.LayoutElement();
-        element.preferredWidth = ButtonWidth;
+        // the normal width, wider when the label needs it (a long label ran out of its button)
+        var wanted = button.mainText != null ? button.mainText.preferredWidth + 48f : 0f;
+        element.preferredWidth = Mathf.Max(ButtonWidth, wanted);
         element.flexibleWidth = 0f;
         return button;
     }
