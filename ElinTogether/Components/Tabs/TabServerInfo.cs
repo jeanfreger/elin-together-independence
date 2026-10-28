@@ -106,8 +106,7 @@ internal class TabServerInfo : TabEmpBase
             return;
         }
 
-        var card = this.MakeCard();
-        card.HeaderSmall("emp_info_announce".lang());
+        var card = this.Card("emp_info_announce".lang());
         var row = card.ButtonRow();
         row.RowButton("emp_info_say".lang(), () => Dialog.InputName("emp_info_say", "", (cancel, text) => {
             if (!cancel && text.Length > 0) {

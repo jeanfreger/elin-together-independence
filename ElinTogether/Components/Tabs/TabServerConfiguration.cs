@@ -490,7 +490,7 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         _noMatch?.gameObject.SetActive(!any);
-        this.RebuildLayout(true);
+        Relayout();
     }
 
     /// <summary>

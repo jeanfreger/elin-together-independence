@@ -240,8 +240,8 @@ internal class TabPlay : TabEmpBase
 
     private static void FillOfficial(YKVertical card, LobbyData? lobby)
     {
-        // (drop the "searching" line, keep the header)
-        for (var i = card.transform.childCount - 1; i >= 1; i--) {
+        // (drop the "searching" line: the header is outside the body)
+        for (var i = card.transform.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(card.transform.GetChild(i).gameObject);
         }
 
@@ -302,7 +302,7 @@ internal class TabPlay : TabEmpBase
 
             // (these lines come after the layer was laid out, see LayerElinTogether.OnLayout)
             UIHelper.WrapTexts(this);
-            this.RebuildLayout(true);
+            Relayout();
         }
     }
 

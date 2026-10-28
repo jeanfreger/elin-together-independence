@@ -73,7 +73,7 @@ internal class TabPlayers : TabEmpBase
 
             head!.mainText.text = Label();
             inner.gameObject.SetActive(Opened.Contains(id));
-            this.RebuildLayout(true);
+            Relayout();
         });
         // (the button was added after the body: it goes first)
         head.transform.SetAsFirstSibling();

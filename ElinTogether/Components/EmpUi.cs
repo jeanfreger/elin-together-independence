@@ -193,23 +193,51 @@ internal static class EmpUi
     // ---------------------------------------------------------------- (c) Card
 
     /// <summary>
-    ///     A card: the game's parchment box, its brown header (with an optional icon) and the mod's padding
+    ///     A section as the character sheet and the journal draw one: the game's header (round grey bullet, title,
+    ///     thin underline) over its lines, no box around them. Returns the body (the icon is kept for the callers:
+    ///     the game's header has no icon slot, so there is never an empty gap before the title)
     /// </summary>
     public static YKVertical Card(this YKLayout parent, string title, Sprite? icon = null)
     {
-        var card = parent.MakeCard();
-        var header = card.HeaderCard(title, icon);
-        // the header prefab carries a small placeholder picture of its own: a card without a real sprite must draw
-        // nothing there (never the placeholder), and one with a sprite draws only that one
-        foreach (var image in header.GetComponentsInChildren<Image>(true)) {
-            if (image.gameObject != header.gameObject && image != header.image1) {
-                image.gameObject.SetActive(false);
-            }
+        var section = parent.Vertical();
+        section.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        section.LayoutElement().flexibleWidth = 1f;
+        section.Layout.padding = new(2, 2, 2, 12);
+        section.Layout.spacing = 2f;
+        section.SectionHeader(title);
+
+        // (the lines start under the title, as the character sheet's do)
+        var body = section.Vertical();
+        body.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        body.Layout.padding = new(22, 8, 0, 0);
+        body.Layout.spacing = UIHelper.RowSpacing;
+        return body;
+    }
+
+    /// <summary>
+    ///     The character sheet's section header (WindowChara.moldHeader) on a line of its own, at its own width (its
+    ///     underline follows the title); the game's HeaderInner, or a plain header, where the sheet has none
+    /// </summary>
+    public static void SectionHeader(this YKLayout parent, string title)
+    {
+        var line = Line(parent, spacing: 0f);
+        line.Layout.childControlWidth = false;
+        line.Layout.childControlHeight = false;
+        var element = line.LayoutElement();
+        element.minHeight = element.preferredHeight = 38f;
+
+        if (EmpUiParts.SectionHeader is { } mold) {
+            var header = UnityEngine.Object.Instantiate(mold, line.transform, false);
+            header.gameObject.SetActive(true);
+            header.SetText(title);
+            return;
         }
-        if (header.image1 != null && header.image1.sprite == null) {
-            header.image1.gameObject.SetActive(false);
+
+        var item = ((UINote)line).AddHeader("HeaderInner", title);
+        item.transform.SetParent(line.transform, false);
+        foreach (var image in item.GetComponentsInChildren<Image>(true)) {
+            image.gameObject.SetActive(true);
         }
-        return card;
     }
 
     // ---------------------------------------------------------------- (e) Chip
