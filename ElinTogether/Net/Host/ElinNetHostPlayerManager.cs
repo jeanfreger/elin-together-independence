@@ -118,6 +118,15 @@ internal partial class ElinNetHost
             GiveOrphanTo(peer.User);
         }
 
+        // a saved character that is the host's own, or is played by another peer right now, is nobody's to hand out
+        // (from upstream 6f0fda1; not its "must carry remote_chara" part: ours is set only once a join completes,
+        // so a join that broke half way would lose its character)
+        if (SavedRemoteCharas.TryGetValue(peer.User, out var saved) && game.cards.globalCharas.Find(saved) is { } taken &&
+            (taken == pc || taken.IsPC || ActiveRemoteCharas.Any(kv => kv.Key != peer.Id && kv.Value == taken))) {
+            EmpLog.Warning("Discarding saved remote chara {Uid} of {@Peer}, it is not a free player chara", saved, peer);
+            SavedRemoteCharas.Remove(peer.User);
+        }
+
         var roster = RosterOf(peer.User);
         var import = EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting;
         // (a character taken to a solo save is not played here until it comes back)
