@@ -518,7 +518,10 @@ public class SteamNetLobbyManager : EClass
         }
 
         if (data.lobby.KickListContains(UserData.Me)) {
+            // the host's friend/invited filter or a ban kicked us: say so instead of resetting silently
+            EmpLog.Information("Kicked out of lobby {LobbyId} by the host", data.lobby);
             NetSession.Instance.ResetSession();
+            EmpPop.Block("emp_lobby_not_allowed".lang());
         }
     }
 
