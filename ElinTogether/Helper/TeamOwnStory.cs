@@ -432,6 +432,20 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool Divert(ElinDeltaManager manager, ElinDelta delta)
     {
+        // a zone a player keeps: its own story deltas go to the visitors of its own owner only (the other visitors play
+        // another story, a delta of this one would overwrite it)
+        if (NetSession.Instance.ZoneSession is ElinNetHost { IsZoneSession: true } zone && ReferenceEquals(zone.Delta, manager) &&
+            On && IsStoryDelta(delta)) {
+            var keeper = OwnerOf(EClass.pc.uid);
+            foreach (var (peer, visitor) in zone.PeerPlayers()) {
+                if (OwnerOf(visitor.uid) == keeper) {
+                    zone.SendDeltaTo(peer, delta);
+                }
+            }
+
+            return true;
+        }
+
         if (NetSession.Instance.Transport is not ElinNetHost host || !ReferenceEquals(host.Delta, manager) ||
             RouteOf(host, delta) is not { } owner) {
             return false;
