@@ -178,6 +178,8 @@ internal partial class ElinNetClient
     {
         var rows = request.Charas.Where(c => c.Away is not null).Select(target => new ChoiceRow(target.Label, () =>
             Dialog.YesNo("emp_ui_chara_recall_confirm".lang(target.Label), () => {
+                // the host frees the character: its copy waiting beside a solo save must not come in again
+                CharaExport.DropIncoming(target.Uid);
                 Host.Send(new SessionCharaExportRequest {
                     Uid = target.Uid,
                     Recall = true,

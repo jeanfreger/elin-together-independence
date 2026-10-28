@@ -1056,7 +1056,11 @@ internal partial class ElinNetClient
     // the world of a return is the biggest message there is: more time for it
     private const float RejoinStuckSeconds = 90f;
 
+    private const float RejoinMaxSeconds = 600f;
+
     private float _travelSince;
+    private float _rejoinSince;
+    private long _rejoinBytes;
 
     private void UpdateTravelWatchdog()
     {
@@ -1066,6 +1070,7 @@ internal partial class ElinNetClient
         var now = Time.realtimeSinceStartup;
         if (!waiting) {
             _travelSince = 0;
+            _rejoinSince = 0;
             return;
         }
 
@@ -1083,6 +1088,20 @@ internal partial class ElinNetClient
             SendRejoin();
             EmpPop.Debug("emp_travel_returning".lang());
             return;
+        }
+
+        // silence, not total time: a big world arriving piece by piece over a slow link is not stuck (every piece
+        // counts in the peer's received bytes)
+        // (up to RejoinMaxSeconds in all: a host that keeps talking but never sends the world is stuck too)
+        if (!_rejoining) {
+            _rejoinSince = 0;
+        } else if (_rejoinSince <= 0) {
+            _rejoinSince = now;
+        }
+
+        if (_rejoining && now - _rejoinSince < RejoinMaxSeconds && Host is { } link && link.Stat.BytesReceived != _rejoinBytes) {
+            _rejoinBytes = link.Stat.BytesReceived;
+            _travelSince = now;
         }
 
         if (_rejoining && now - _travelSince >= RejoinStuckSeconds) {

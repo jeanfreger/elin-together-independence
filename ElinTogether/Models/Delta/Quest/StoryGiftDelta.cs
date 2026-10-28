@@ -50,6 +50,11 @@ public class StoryGiftDelta : ElinDelta
 
     private static readonly System.Collections.Generic.Dictionary<int, (float Since, int Gifts, long Gold, long Value)> Given = [];
 
+    private static bool IsThingRow(Thing thing)
+    {
+        return thing.id is not null && EClass.sources.things.map.ContainsKey(thing.id);
+    }
+
     private string? OverBudget()
     {
         Thing thing;
@@ -57,6 +62,11 @@ public class StoryGiftDelta : ElinDelta
             thing = Data.Decompress<Thing>();
         } catch (System.Exception) {
             return "a gift that cannot be read";
+        }
+
+        // not a thing row (a character id, an id nothing knows): there is no value to read, and no thing to create
+        if (!IsThingRow(thing)) {
+            return $"a gift {thing.id} that is not a thing";
         }
 
         var gold = thing.trait is TraitCurrency && thing.id == "money" ? (long)thing.Num : 0;
@@ -87,6 +97,12 @@ public class StoryGiftDelta : ElinDelta
         }
 
         var thing = Data.Decompress<Thing>();
+        // (also with trust not enforced: nothing can be created from it)
+        if (!IsThingRow(thing)) {
+            EmpLog.Warning("Story gift {ThingId} from peer {PeerIndex} is not a thing, dropped", thing.id, OriginPeer);
+            return;
+        }
+
         Bound(thing);
         game.cards.AssignUIDRecursive(thing);
         CardCache.Add(thing);

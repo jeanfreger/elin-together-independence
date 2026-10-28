@@ -48,6 +48,25 @@ public class CharaMakeAllyRequestDelta : ElinDelta
     // the client's last payment in a dialog (thing, amount, frame)
     private static (Card Thing, int Num, int Frame)? _payment;
 
+    /// <summary>
+    ///     A character the game only hires for a price (the invite dialog: it cannot be invited, and asks for the
+    ///     items of its recruitItems) comes with what was paid for it. A free recruit (a story, a spell, a pet, an
+    ///     invitable monster) has no price and goes through. Whether the payment itself is right is TakePayment's
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (Owner is null || JoinOnly || Paid is not null) {
+            return null;
+        }
+
+        if (Owner.Find() is not Chara { isDead: false } chara || chara.IsPCParty || chara.trait.CanInvite ||
+            chara.source.recruitItems.IsEmpty()) {
+            return null;
+        }
+
+        return $"a recruit of {chara.id} that is hired for {chara.source.recruitItems[0]}, with nothing paid";
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is not ElinNetHost host) {

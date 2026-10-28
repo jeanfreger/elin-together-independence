@@ -82,6 +82,10 @@ internal partial class ElinNetHost
         AdminLog($"export character {chara.uid} ({chara.Name}, {CharaExport.Summary(chara)}) of {peer.User} to its solo save {save}");
         EmpLog.Information("Player {@Peer} takes {Name} to its solo save {Save}", peer, chara.Name, save);
 
+        // saved before the copy leaves: a crash before the next autosave would reload the character playable while
+        // the player's incoming file brings a second one into the solo save
+        EmpAutoHost.SaveFromMessage("a character left for a solo save");
+
         peer.Send(new SessionCharaExportData {
             Uid = chara.uid,
             Chara = data,
@@ -154,5 +158,8 @@ internal partial class ElinNetHost
         PlayerStandings.Remove(away.uid);
         away.Destroy();
         away.RemoveGlobal();
+
+        // the same on the way back: a crash must not reload the old away character beside the one now played
+        EmpAutoHost.SaveFromMessage("a character came back from a solo save");
     }
 }
