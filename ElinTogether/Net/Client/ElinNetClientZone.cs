@@ -308,6 +308,10 @@ internal partial class ElinNetClient
 
             // as Game.Load does after its own Scene.Init: the windows that were open before the world was replaced
             Helper.OwnSettings.Reopen();
+
+            // the world copy of a guest walking in from its own world map: Player.MoveZone, which pays the journey on
+            // arrival in a town, runs only on the other entries (EnterHostMap), never here (hunt 6 item 3, H603)
+            OwnerPartyPatch.PayTravel(currentZone);
         } else if (_softReturnZone != 0) {
             // council 11, slice 2: the first map since we came back without a copy of the world
             if (!EnterBySoftReturn(currentZone)) {
