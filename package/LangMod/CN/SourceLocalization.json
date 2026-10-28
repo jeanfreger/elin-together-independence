@@ -551,8 +551,8 @@
     "LangGeneral.emp_ui_sv_opt_catch_up_days_1.text": "1 天",
     "LangGeneral.emp_ui_sv_opt_catch_up_days_3.text": "3 天",
     "LangGeneral.emp_ui_sv_opt_catch_up_days_7.text": "7 天",
-    "LangGeneral.emp_ui_sv_cfg_team_knowledge.text": "队伍各自学习",
-    "LangGeneral.emp_ui_sv_desc_team_knowledge.text": "每个队伍拥有自己的配方、制作记录和图鉴：玩家学到的东西，队友也会学到，其他队伍不会。剧情奖励的配方会给到每个队伍，存档保留所有队伍的知识。关闭：所有人共用一套配方和图鉴（如前）。",
+    "LangGeneral.emp_ui_sv_cfg_team_knowledge.text": "每个玩家或队伍各自学习",
+    "LangGeneral.emp_ui_sv_desc_team_knowledge.text": "每个玩家拥有自己的配方、制作记录和图鉴；队友共享一套，没有队伍的玩家有自己的一套。剧情奖励的配方会给到每个人，存档保留所有人的知识。关闭：所有人共用一套配方和图鉴（如前）。",
     "LangGeneral.emp_ui_sv_cfg_guest_bouts.text": "其他玩家也能与冒险者决斗",
     "LangGeneral.emp_ui_sv_desc_guest_bouts.text": "其他玩家与冒险者的决斗和主机相同：决斗期间冒险者离开城镇，结束后恢复返回；下次决斗前的一周对所有人相同，胜利会被记录，奖励来自冒险者本身。关闭：该玩家只在自己的游戏中与副本战斗，世界中不会留下任何结果。",
     "LangGeneral.emp_ui_sv_cfg_duel_arena.text": "与主机的决斗在竞技场进行",
@@ -612,5 +612,5 @@
     "LangGeneral.emp_team_story_caught_up_farris.text": "法里斯已经和别人离开了这里：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_boss.text": "别人已经击败了尼梅尔的守护者：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_crystal.text": "别人已经在水晶旁听过菲亚玛的话：你的剧情从那里继续。",
-    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有剧情。"
+    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有一份。"
 }

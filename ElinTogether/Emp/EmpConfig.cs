@@ -678,9 +678,9 @@ internal partial class EmpConfig
             "Server",
             "TeamKnowledge",
             false,
-            "Each team has its own recipes, crafted list and codex: what a player learns, its teammates learn, the other teams do not. The save keeps everything all teams know\n" +
+            "Each player has its own recipes, crafted list and codex: teammates share one, a player without a team has its own. The save keeps everything anyone knows. Always on for the official public server\n" +
             "Otherwise everyone shares one book of recipes and one codex, as before\n" +
-            "每个队伍有自己的配方、制作记录和图鉴：玩家学到的东西其队友也会学到，其他队伍不会。存档保留所有队伍知道的一切；关闭时所有人如前共用一套配方和图鉴");
+            "每个玩家有自己的配方、制作记录和图鉴：队友共享一套，没有队伍的玩家有自己的一套。存档保留所有人知道的一切。官方公共服务器上始终开启；关闭时所有人如前共用一套配方和图鉴");
 
         Server.TeamBills = config.Bind(
             "Server",

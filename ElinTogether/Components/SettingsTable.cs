@@ -65,7 +65,7 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
                 desc = $"{desc} {"emp_ui_sv_import_official".lang()}";
             }
 
-            if (Id == "team_own_story" && OfficialServer.Hosting) {
+            if (Id is "team_own_story" or "team_knowledge" && OfficialServer.Hosting) {
                 desc = $"{desc} {"emp_ui_sv_own_story_official".lang()}";
             }
 
@@ -308,7 +308,7 @@ internal static class SettingsTable
         yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);

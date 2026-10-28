@@ -404,7 +404,7 @@ public class NetSessionRules
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
-        TeamKnowledge = EmpConfig.Server.TeamKnowledge.Value,
+        TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,
