@@ -91,7 +91,7 @@ internal partial class ElinNetHost
         Dictionary<int, Chara> charas, bool farSlot)
     {
         var view = _crowdViews.GetValueOrDefault(peerId);
-        var kept = ImmutableArray.CreateBuilder<CharaStateSnapshot>();
+        var changed = new List<(CharaStateSnapshot Entry, int Key, int Distance)>();
         foreach (var entry in all.CharaSnapshots) {
             var uid = entry.Owner.Uid;
             if (!farSlot && view?.Near(uid, entry.Pos.X, entry.Pos.Z) == false) {
@@ -104,11 +104,91 @@ internal partial class ElinNetHost
                 continue;
             }
 
-            sent[uid] = key;
+            var distance = view?.Self is not { } me || view.Always.Contains(uid) ? 0 : me.pos.Distance(entry.Pos.X, entry.Pos.Z);
+            changed.Add((entry, key, distance));
+        }
+
+        // the budget per player and tick (item 3): the nearest first, the others stay unsent and differ next tick
+        if (changed.Count > CrowdEntryBudget) {
+            changed.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+            changed.RemoveRange(CrowdEntryBudget, changed.Count - CrowdEntryBudget);
+        }
+
+        var kept = ImmutableArray.CreateBuilder<CharaStateSnapshot>(changed.Count);
+        foreach (var (entry, key, _) in changed) {
+            sent[entry.Owner.Uid] = key;
             kept.Add(entry);
         }
 
-        return kept.ToImmutable();
+        return kept.MoveToImmutable();
+    }
+
+    // entries of a partial snapshot per player and tick at most: a crowd that all moves at once costs a player that
+    // many entries a tick (about 1.5 KB), the farthest wait for the next one
+    private const int CrowdEntryBudget = 48;
+
+    // player -> what of the player list it was last sent, and when (item 3)
+    private readonly Dictionary<int, (int Key, float At)> _playersSent = [];
+
+    // the player list again even unchanged after that long: the pings it shows, and NetDesync compares on each list
+    // (3 in a row: a gap is told within 18 s instead of 6)
+    private const float PlayersResendSeconds = 6f;
+
+    /// <summary>
+    ///     The player list (every 2 s) to those on the host map whose last one differs, or is older than
+    ///     <see cref="PlayersResendSeconds" />: with 100 players it was a third of all that was sent while idle
+    /// </summary>
+    private void SendPlayersOnChange(SessionPlayersSnapshot players)
+    {
+        var key = PlayersKey(players);
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        byte[]? bytes = null;
+        foreach (var peer in Socket.Peers) {
+            if (IsOffHostMap(peer)) {
+                _playersSent.Remove(peer.Id);
+                continue;
+            }
+
+            if (_playersSent.TryGetValue(peer.Id, out var last) && last.Key == key && now - last.At < PlayersResendSeconds) {
+                continue;
+            }
+
+            _playersSent[peer.Id] = (key, now);
+            peer.Send(bytes ??= Socket.Serializer.Serialize(players));
+        }
+    }
+
+    // all but the pings and the tick of the last report, which change every time
+    private static int PlayersKey(SessionPlayersSnapshot players)
+    {
+        var hash = new System.HashCode();
+        foreach (var s in players.Current) {
+            hash.Add(s.Index);
+            hash.Add(s.CharaUid);
+            hash.Add(s.Speed);
+            hash.Add(s.LastAct);
+            hash.Add(s.Turbo);
+            hash.Add(s.Talking);
+            hash.Add(s.Idle);
+        }
+
+        if (players.Sums is { } sums) {
+            hash.Add(sums.ZoneUid);
+            hash.Add(sums.Charas);
+            hash.Add(sums.CharaMix);
+            hash.Add(sums.Things);
+            hash.Add(sums.ThingMix);
+            hash.Add(sums.Locals);
+            hash.Add(sums.LocalMix);
+            var bags = 0;
+            foreach (var (uid, mix) in sums.Bags ?? []) {
+                bags ^= System.HashCode.Combine(uid, mix);
+            }
+
+            hash.Add(bags);
+        }
+
+        return hash.ToHashCode();
     }
 
     /// <summary>

@@ -393,7 +393,11 @@ internal partial class ElinNetHost
 
         SeePlayers();
 
-        SendByMap(SessionPlayersSnapshot.Create(), () => null);
+        if (Crowds) {
+            SendPlayersOnChange(SessionPlayersSnapshot.Create());
+        } else {
+            SendByMap(SessionPlayersSnapshot.Create(), () => null);
+        }
     }
 
 #region Scheduler Jobs
