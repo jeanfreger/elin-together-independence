@@ -81,23 +81,27 @@ internal static class AIPlayMusicPatch
         [HarmonyTargetMethod]
         internal static MethodBase TargetMethod() => RunBody;
 
-        [HarmonyTranspiler]
-        internal static IEnumerable<CodeInstruction> OnRun(IEnumerable<CodeInstruction> instructions)
+        // a postfix, not a transpiler: idSong is not kept on the state machine (it is a plain local of MoveNext), the
+        // song is (it lives across the yields), and the playing song names its id right after it is made
+        private static readonly ConditionalWeakTable<KnownSong, object> Seeded = new();
+        private static readonly FieldInfo? This = AccessTools.Field(RunBody.DeclaringType, "<>4__this");
+        private static readonly FieldInfo? Song = RunBody.DeclaringType!
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(f => f.Name.StartsWith("<song>"));
+
+        [HarmonyPostfix]
+        internal static void OnRun(object __instance)
         {
-            var state = RunBody.DeclaringType!;
-            var thiz = AccessTools.Field(state, "<>4__this");
-            var idSong = state.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .First(f => f.Name.StartsWith("<idSong>"));
-            return new CodeMatcher(instructions)
-                .MatchStartForward(new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(KnownSong))))
-                .RemoveInstruction()
-                .Insert(
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Ldfld, thiz),
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Ldfld, idSong),
-                    CodeInstruction.Call(typeof(AIPlayMusicPatch), nameof(NewSong)))
-                .InstructionEnumeration();
+            if (This?.GetValue(__instance) is not AI_PlayMusic { playing.id: { } id } task ||
+                Song?.GetValue(__instance) is not KnownSong song ||
+                Seeded.TryGetValue(song, out _)) {
+                return;
+            }
+
+            Seeded.Add(song, true);
+            if (song.lv == 0 && _songLv.TryGetValue(task, out var songs) && songs.TryGetValue(id, out var lv)) {
+                song.lv = lv;
+            }
         }
     }
 }
