@@ -714,6 +714,14 @@ internal partial class EmpConfig
             "The save keeps the host's own story (as it was when the box was ticked): unticked, or the save opened without the mod, the world goes on with it. Otherwise all players share one story progression, as before\n" +
             "实验性。每个玩家按自己的节奏经历剧情（阿什的任务、尼梅尔的探索、所有对话选择、关键物品、欠洛伊特的债务和额外税金），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。官方公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
 
+        Server.TeamOwnGuilds = config.Bind(
+            "Server",
+            "TeamOwnGuilds",
+            false,
+            "With 'Each player or team lives its own story': each player or team also has its own place in the Fighters', Mages', Thieves' and Merchants' guilds (membership, rank, contribution, guild quests). Everyone starts with the guilds the world has when the box is ticked. Off even on the official public server\n" +
+            "Unticked, or the save opened without the mod: the guilds of the host's own story. Otherwise one membership for the group, as before\n" +
+            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也默认关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭时整个团体共用一个成员身份，如前");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -932,6 +940,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnStory { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

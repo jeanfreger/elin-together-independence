@@ -103,6 +103,20 @@ internal static class TeamOwnStory
     }
 
     /// <summary>
+    ///     Host option "Guilds per player or team" (off by default, the official server too: a guild is a place in a
+    ///     town everyone walks into), with the story box: each owner's own membership, rank and contribution in the
+    ///     four guilds, and its own guild quests (Guild.CurrentQuest). Off: the guilds are the world's, one membership
+    ///     for the group as before
+    /// </summary>
+    internal static bool Guilds => On && (KeepsBook ? EmpConfig.Server.TeamOwnGuilds.Value : NetSession.Instance.Rules is { TeamOwnGuilds: true });
+
+    // a quest of the story's quest log: with the guilds, the guild quests too
+    private static bool InLog(Quest? quest, bool guilds)
+    {
+        return IsStory(quest) || (guilds && quest is QuestGuild);
+    }
+
+    /// <summary>
     ///     Every frame, in the game that keeps the book: the box ticked gives every owner the world's story (once), the
     ///     box unticked gives the world the world owner's story
     /// </summary>
@@ -148,6 +162,7 @@ internal static class TeamOwnStory
             LookAtLothria();
             CatchUp();
             DebtCatchUp();
+            GuildsFlip();
         }
     }
 
@@ -209,7 +224,7 @@ internal static class TeamOwnStory
         }
 
         Put(bundle);
-        Rebaseline();
+        Rebaseline(bundle.Guilds is not null);
         if (line) {
             Msg.SayRaw("emp_team_story_moved".lang());
         }
@@ -219,18 +234,19 @@ internal static class TeamOwnStory
     }
 
     // what the quest log and the dialogs hold now is what this game was given: nothing to tell
-    private static void Rebaseline()
+    private static void Rebaseline(bool guilds = false)
     {
-        foreach (var quest in EClass.game.quests.list.Where(IsStory)) {
+        guilds |= Guilds;
+        foreach (var quest in EClass.game.quests.list.Where(q => InLog(q, guilds))) {
             SharedQuests.Remember(quest);
             quest.UpdateJournal();
         }
 
-        DialogFlagSync.Relearn(IsStoryFlag);
+        DialogFlagSync.Relearn(id => IsStoryFlag(id) || (guilds && id.StartsWith("g:")));
     }
 
     /// <summary>
-    ///     The box was unticked: every player is told the world owner's story
+    ///     The box was unticked: every player is told the world owner's story (its guilds too: the world's)
     /// </summary>
     private static void TellEveryone()
     {
@@ -238,7 +254,7 @@ internal static class TeamOwnStory
             return;
         }
 
-        var world = Take();
+        var world = Take(true);
         foreach (var peer in host.ActiveRemoteCharas.Keys) {
             host.SendDeltaTo(peer, new StoryBundleDelta { Bundle = world });
         }
@@ -294,7 +310,7 @@ internal static class TeamOwnStory
             Store(owner, world);
         }
 
-        ElinNetHost.TeamStoryBundleState = [Schema, 1, host, 0];
+        ElinNetHost.TeamStoryBundleState = [Schema, 1, host, 0, Guilds ? 1 : 0];
         _owner = host;
         EmpLog.Information("Each player or team lives its own story: all start at main {Main}, exploration {Exploration}; the world owner is {Owner}",
             world.Main, world.Exploration, host);
@@ -323,7 +339,7 @@ internal static class TeamOwnStory
 
         _owner = null;
         ElinNetHost.TeamStoryBundles.Clear();
-        ElinNetHost.TeamStoryBundleState = [Schema, 0, 0, 0];
+        ElinNetHost.TeamStoryBundleState = [Schema, 0, 0, 0, 0];
         EmpLog.Information("One story for the world again: the world owner's");
     }
 
@@ -414,7 +430,8 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool IsStoryFlag(string id)
     {
-        return StoryFlags.Contains(id) || id.StartsWith("d:") || id.StartsWith("k:") || id is "p:debt" or "p:extraTax";
+        return StoryFlags.Contains(id) || id.StartsWith("d:") || id.StartsWith("k:") || id is "p:debt" or "p:extraTax" ||
+               (id.StartsWith("g:") && Guilds);
     }
 
     /// <summary>
@@ -437,12 +454,13 @@ internal static class TeamOwnStory
 
     private static bool IsStoryQuest(int uid, string? id)
     {
+        var guilds = Guilds;
         if (id is not null) {
-            return StoryIds.Contains(id);
+            return StoryIds.Contains(id) || (guilds && id.StartsWith("guild_"));
         }
 
         var quests = EClass.game?.quests;
-        return IsStory(quests?.list.Find(q => q.uid == uid) ?? quests?.globalList.Find(q => q.uid == uid));
+        return InLog(quests?.list.Find(q => q.uid == uid) ?? quests?.globalList.Find(q => q.uid == uid), guilds);
     }
 
     /// <summary>
@@ -801,6 +819,64 @@ internal static class TeamOwnStory
         return bundle.Completed.Contains("debt") || Read(bundle.Quests).Concat(Read(bundle.Offers)).Any(q => q is QuestDebt);
     }
 
+    // ---- the guilds, each owner's
+
+    /// <summary>
+    ///     The guilds box changed while the stories are apart. Ticked: the guilds were everyone's until now, every
+    ///     story starts with the world's. Unticked: the world's guilds are the world owner's again (the save and box
+    ///     off rule), every player is told them
+    /// </summary>
+    private static void GuildsFlip()
+    {
+        var want = Guilds ? 1 : 0;
+        if (State[4] == want || NetSession.Instance.Transport is ElinNetHost { IsZoneSession: true }) {
+            return;
+        }
+
+        State[4] = want;
+        if (want == 1) {
+            var world = Take(true);
+            foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.ToArray()) {
+                if (owner != LocalOwner && Stored(owner) is { } bundle) {
+                    Store(owner, WithGuilds(bundle, world));
+                }
+            }
+
+            EmpLog.Information("Guilds per player or team: every story starts with the world's guilds");
+            return;
+        }
+
+        var kept = WorldOwner == LocalOwner ? Take(true) : Stored(WorldOwner) is { Guilds: not null } stored ? stored : Take(true);
+        foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.ToArray()) {
+            if (Stored(owner) is { Guilds: not null } bundle) {
+                bundle.Guilds = null;
+                bundle.Quests = LZ4Bytes.Create(Read(bundle.Quests).Where(IsStory).ToList()).Bytes;
+                Store(owner, bundle);
+            }
+        }
+
+        if (WorldOwner != LocalOwner) {
+            Put(WithGuilds(Take(false), kept));
+            Rebaseline(true);
+        }
+
+        if (NetSession.Instance.Transport is ElinNetHost host) {
+            foreach (var (peer, uid) in host.PeerCharas()) {
+                host.SendDeltaTo(peer, new StoryBundleDelta { Bundle = WithGuilds(Of(OwnerOf(uid)), kept) });
+            }
+        }
+
+        EmpLog.Information("The guilds are the world's again: the world owner's ({Owner})", Name(WorldOwner));
+    }
+
+    // that story with the guilds of another (its places and its guild quests)
+    private static StoryBundle WithGuilds(StoryBundle story, StoryBundle guilds)
+    {
+        story.Guilds = guilds.Guilds is null ? null : new(guilds.Guilds);
+        story.Quests = LZ4Bytes.Create(Read(story.Quests).Where(IsStory).Concat(Read(guilds.Quests).OfType<QuestGuild>()).ToList()).Bytes;
+        return story;
+    }
+
     // ---- what the story gives, once per player
 
     // the step of the story being played now ("quest id:phase"), none outside one
@@ -933,22 +1009,23 @@ internal static class TeamOwnStory
     // ---- the quest log
 
     /// <summary>
-    ///     A copy of the story the local quest log holds
+    ///     A copy of the story the local quest log holds (its guilds: while they are each owner's, or when asked)
     /// </summary>
-    internal static StoryBundle Take()
+    internal static StoryBundle Take(bool? guilds = null)
     {
         var quests = EClass.game.quests;
+        var withGuilds = guilds ?? Guilds;
         return TakeValues(new() {
-            Quests = LZ4Bytes.Create(quests.list.Where(IsStory).ToList()).Bytes,
+            Quests = LZ4Bytes.Create(quests.list.Where(q => InLog(q, withGuilds)).ToList()).Bytes,
             Offers = LZ4Bytes.Create(quests.globalList.Where(IsStory).ToList()).Bytes,
             Main = quests.GetPhase<QuestMain>(),
             Exploration = quests.GetPhase<QuestExploration>(),
-        });
+        }, withGuilds);
     }
 
     // the plain values of the story the local game holds, besides its quests: the story quests it finished, the dialog
-    // choices, the key items, the debt and the extra tax, the story's flags
-    private static StoryBundle TakeValues(StoryBundle bundle)
+    // choices, the key items, the debt and the extra tax, the story's flags, the guilds when asked
+    private static StoryBundle TakeValues(StoryBundle bundle, bool guilds = false)
     {
         var quests = EClass.game.quests;
         var player = EClass.player;
@@ -963,6 +1040,9 @@ internal static class TeamOwnStory
             int number => number,
             _ => 0,
         });
+        bundle.Guilds = guilds
+            ? GuildFactions().ToDictionary(g => g.id, g => new[] { (int)g.relation.type, g.relation.rank, g.relation.exp })
+            : null;
         return bundle;
     }
 
@@ -1009,6 +1089,22 @@ internal static class TeamOwnStory
                 flag.SetValue(player.flags, flag.PropertyType == typeof(bool) ? value != 0 : value);
             }
         }
+
+        foreach (var guild in GuildFactions()) {
+            if (bundle.Guilds?.TryGetValue(guild.id, out var place) == true && place.Length == 3) {
+                guild.relation.type = (FactionRelation.RelationType)place[0];
+                guild.relation.rank = place[1];
+                guild.relation.exp = place[2];
+            }
+        }
+    }
+
+    // the four guilds of the world (DialogFlagSync's)
+    private static IEnumerable<Faction> GuildFactions()
+    {
+        var factions = EClass.game.factions;
+        return new Faction?[] { factions.Fighter, factions.Mage, factions.Thief, factions.Merchant }.OfType<Faction>()
+            .Where(g => g.relation is not null);
     }
 
     /// <summary>
@@ -1017,22 +1113,24 @@ internal static class TeamOwnStory
     internal static void Put(StoryBundle bundle)
     {
         var quests = EClass.game.quests;
-        quests.list.RemoveAll(IsStory);
+        var guilds = bundle.Guilds is not null;
+        quests.list.RemoveAll(q => InLog(q, guilds));
         quests.globalList.RemoveAll(IsStory);
 
         // (the game's own fix after a load, for one log: a story quest once)
-        foreach (var quest in Read(bundle.Quests).GroupBy(q => q.GetType()).Select(g => g.First()).Reverse()) {
+        foreach (var quest in Read(bundle.Quests).Where(q => InLog(q, guilds)).GroupBy(q => q.GetType()).Select(g => g.First()).Reverse()) {
             quest.task?.SetOwner(quest);
             quests.list.Insert(0, quest);
         }
 
-        foreach (var offer in Read(bundle.Offers).GroupBy(q => q.GetType()).Select(g => g.First())) {
+        foreach (var offer in Read(bundle.Offers).Where(IsStory).GroupBy(q => q.GetType()).Select(g => g.First())) {
             quests.globalList.Add(offer);
         }
 
         PutValues(bundle);
     }
 
+    // (the story quests and the guild quests a bundle holds)
     private static List<Quest> Read(byte[] data)
     {
         if (data.Length == 0) {
@@ -1040,7 +1138,7 @@ internal static class TeamOwnStory
         }
 
         try {
-            return new LZ4Bytes { Bytes = data }.Decompress<List<Quest>>()?.Where(IsStory).ToList() ?? [];
+            return new LZ4Bytes { Bytes = data }.Decompress<List<Quest>>()?.Where(q => InLog(q, true)).ToList() ?? [];
         } catch (System.Exception ex) {
             EmpLog.Warning(ex, "Story quests of a team could not be read");
             return [];
@@ -1107,17 +1205,19 @@ internal static class TeamOwnStory
     internal static Snapshot Snap()
     {
         var quests = EClass.game.quests;
+        var guilds = Guilds;
         return new() {
-            List = quests.list.Select((q, i) => (i, q)).Where(x => IsStory(x.q)).ToList(),
+            List = quests.list.Select((q, i) => (i, q)).Where(x => InLog(x.q, guilds)).ToList(),
             Offers = quests.globalList.Select((q, i) => (i, q)).Where(x => IsStory(x.q)).ToList(),
-            Values = TakeValues(new()),
+            Values = TakeValues(new(), guilds),
         };
     }
 
     internal static void Restore(Snapshot snap)
     {
         var quests = EClass.game.quests;
-        quests.list.RemoveAll(IsStory);
+        var guilds = snap.Values.Guilds is not null;
+        quests.list.RemoveAll(q => InLog(q, guilds));
         quests.globalList.RemoveAll(IsStory);
         foreach (var (index, quest) in snap.List) {
             quests.list.Insert(System.Math.Min(index, quests.list.Count), quest);

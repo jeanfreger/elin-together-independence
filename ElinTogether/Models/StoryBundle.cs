@@ -79,4 +79,12 @@ public class StoryBundle
     /// </summary>
     [Key(10)]
     public bool AllDialog { get; set; }
+
+    /// <summary>
+    ///     Host option "Guilds per player or team" (TeamOwnStory.Guilds): that owner's place in the Fighters', Mages',
+    ///     Thieves' and Merchants' guilds, guild id -> [relation type, rank, exp]; its guild quests (QuestGuild) are
+    ///     in <see cref="Quests" /> then. None while the guilds are the world's
+    /// </summary>
+    [Key(11)]
+    public Dictionary<string, int[]>? Guilds { get; set; }
 }

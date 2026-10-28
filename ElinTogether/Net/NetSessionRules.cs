@@ -393,6 +393,13 @@ public class NetSessionRules
     [Key(131)]
     public int LivingWorldMinutes { get; set; }
 
+    /// <summary>
+    ///     With TeamOwnStory: each player, or each team, has its own place in the four guilds (membership, rank, exp,
+    ///     guild quests), see TeamOwnStory.Guilds. An older host sends none: the guilds are the world's, as they were
+    /// </summary>
+    [Key(132)]
+    public bool TeamOwnGuilds { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -415,6 +422,7 @@ public class NetSessionRules
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,
+        TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

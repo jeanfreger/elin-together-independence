@@ -621,5 +621,7 @@
     "LangGeneral.emp_ui_sv_opt_living_world_60.text": "一天 = 1 小时",
     "LangGeneral.emp_ui_sv_opt_living_world_120.text": "一天 = 2 小时",
     "LangGeneral.emp_travel_stranger_map.text": "另一名玩家正在这张地图上游戏。在公开服务器上，只有同队的队友才能共享地图。",
-    "LangGeneral.emp_team_story_caught_up_debt.text": "洛伊特已经住在别人的据点。你的剧情也欠他一笔自己的债，向他偿还。"
+    "LangGeneral.emp_team_story_caught_up_debt.text": "洛伊特已经住在别人的据点。你的剧情也欠他一笔自己的债，向他偿还。",
+    "LangGeneral.emp_ui_sv_cfg_team_own_guilds.text": "公会也按玩家和队伍分开",
+    "LangGeneral.emp_ui_sv_desc_team_own_guilds.text": "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭：整个团体共用一个成员身份，如前。"
 }
