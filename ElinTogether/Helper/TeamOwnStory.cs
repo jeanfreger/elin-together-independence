@@ -556,7 +556,8 @@ internal static class TeamOwnStory
         return false;
     }
 
-    // another story is below 700 (the seed entry is no story anyone plays)
+    // another story is below 700: the stories of the players connected now (a visitor gone for good, or the dedicated
+    // server's own never-moving story, wait for nobody). The seed entry is no story anyone plays
     private static bool AnyBehind()
     {
         if (!Seeded) {
@@ -564,7 +565,12 @@ internal static class TeamOwnStory
         }
 
         var current = CurrentOwner;
-        return ElinNetHost.TeamStoryBundles.Keys.Where(owner => owner != SeedOwner && owner != current)
+        var owners = (NetSession.Instance.Transport as ElinNetHost)?.PeerCharas().Select(p => OwnerOf(p.CharaUid)).ToList() ?? [];
+        if (!EmpServer.Requested) {
+            owners.Add(OwnerOf(EClass.pc.uid));
+        }
+
+        return owners.Distinct().Where(owner => owner != SeedOwner && owner != current)
             .Select(Stored).Any(bundle => bundle is { Main: < QuestMain.AfterAshLeaveHome });
     }
 
@@ -575,7 +581,8 @@ internal static class TeamOwnStory
         }
 
         _nextLothria = UnityEngine.Time.unscaledTime + 5f;
-        if (EClass.game.quests.GetPhase<QuestMain>() < QuestMain.AfterAshLeaveHome || AnyBehind()) {
+        // (the dedicated server's own story never moves: only the players' count)
+        if ((!EmpServer.Requested && EClass.game.quests.GetPhase<QuestMain>() < QuestMain.AfterAshLeaveHome) || AnyBehind()) {
             return;
         }
 
