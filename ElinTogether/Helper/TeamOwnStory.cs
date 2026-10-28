@@ -11,14 +11,16 @@ namespace ElinTogether.Helper;
 /// <summary>
 ///     Council 2026-10-28, host option "Each player or team lives its own story" (experimental, off by default: one
 ///     story for all as before; always on for the official public server; dev/COUNCIL_2026-10-28_team_story.md). The story is the main quest (QuestMain, 0-700) and the exploration of
-///     Nymelle (QuestExploration, 0-6), with the dialog choices told to Ash and Fiama. The user, 2026-10-28: "each player
+///     Nymelle (QuestExploration, 0-6), with the dialog choices told to Ash and Fiama, and the key items (the user's
+///     "etc.", 2026-10-28: what the story-owner's progress holds). The user, 2026-10-28: "each player
 ///     does the story at its own pace, and does it as a team". So the story has an OWNER: the player's team when it is
 ///     in a team (teammates share one story), otherwise the player alone (owner -chara uid: players without a team
 ///     never share one). The host keeps every owner's story in its save (<see cref="ElinNetHost.TeamStoryBundles" />);
 ///     every game, the host's own included, holds its owner's in its quest log while it plays. The save holds the WORLD
 ///     OWNER's (the host's own owner when the box was ticked, changed only by the host): a world opened without the mod,
-///     or with the box off, goes on with that story. Side stories, key items and the rest of the quest log stay the
-///     world's (their union is the world's anyway). Random and personal quests are never part of it. Copied from
+///     or with the box off, goes on with that story (the key items: what any story got, council risk 8). Side stories
+///     and the rest of the quest log stay the world's (their union is the world's anyway). Random and personal quests
+///     are never part of it. Copied from
 ///     <see cref="TeamKnowledge" />
 /// </summary>
 [HarmonyPatch]
@@ -120,6 +122,11 @@ internal static class TeamOwnStory
             TellEveryone();
         }
 
+        // (the save's values, before the host takes its own story: what an older ledger lacks)
+        if (On && Seeded && _owner is null) {
+            Upgrade();
+        }
+
         // the host plays its own story like any player, its team's when it is in one
         if (On && Seeded && OwnerOf(EClass.pc.uid) is var owner && owner != _owner) {
             Hold(owner);
@@ -207,11 +214,7 @@ internal static class TeamOwnStory
             quest.UpdateJournal();
         }
 
-        foreach (var id in DialogIds) {
-            if (EClass.player.dialogFlags.TryGetValue(id, out var value)) {
-                DialogFlagSync.Learn("d:" + id, value);
-            }
-        }
+        DialogFlagSync.Relearn(IsStoryFlag);
     }
 
     /// <summary>
@@ -291,8 +294,14 @@ internal static class TeamOwnStory
     /// </summary>
     private static void MergeBack()
     {
+        var keys = KeyItemsOfAll();
         if (LocalOwner is { } local && local != WorldOwner && Stored(WorldOwner) is { } world) {
             Put(world);
+        }
+
+        // (the key items: everything any story got, the most of each; council risk 8)
+        foreach (var (item, count) in keys) {
+            EClass.player.keyItems[item] = count;
         }
 
         // (Ash and Fiama waited for the other stories: the world's alone counts now)
@@ -304,6 +313,19 @@ internal static class TeamOwnStory
         ElinNetHost.TeamStoryBundles.Clear();
         ElinNetHost.TeamStoryBundleState = [Schema, 0, 0, 0];
         EmpLog.Information("One story for the world again: the world owner's");
+    }
+
+    // every story's key items, the most of each (the seed entry is no story anyone plays)
+    private static Dictionary<int, int> KeyItemsOfAll()
+    {
+        var all = new Dictionary<int, int>(EClass.player.keyItems);
+        foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.Where(o => o != SeedOwner && o != LocalOwner)) {
+            foreach (var (item, count) in Stored(owner)?.KeyItems ?? []) {
+                all[item] = System.Math.Max(count, all.GetValueOrDefault(item));
+            }
+        }
+
+        return all;
     }
 
     // ---- another owner's story, for a moment
@@ -375,11 +397,11 @@ internal static class TeamOwnStory
     private static readonly HashSet<string> StoryFlags = [..DialogIds.Select(id => "d:" + id)];
 
     /// <summary>
-    ///     A dialog flag of the story (DialogFlagSync's id)
+    ///     A value the story remembers (DialogFlagSync's id): a dialog flag of the story, a key item
     /// </summary>
     internal static bool IsStoryFlag(string id)
     {
-        return StoryFlags.Contains(id);
+        return StoryFlags.Contains(id) || id.StartsWith("k:");
     }
 
     /// <summary>
@@ -824,14 +846,51 @@ internal static class TeamOwnStory
     internal static StoryBundle Take()
     {
         var quests = EClass.game.quests;
-        return new() {
+        return TakeValues(new() {
             Quests = LZ4Bytes.Create(quests.list.Where(IsStory).ToList()).Bytes,
             Offers = LZ4Bytes.Create(quests.globalList.Where(IsStory).ToList()).Bytes,
-            Completed = [..quests.completedIDs.Where(StoryIds.Contains), ..quests.completedTypes.Where(StoryTypes.Contains)],
-            Dialog = DialogIds.Where(EClass.player.dialogFlags.ContainsKey).ToDictionary(id => id, id => EClass.player.dialogFlags[id]),
             Main = quests.GetPhase<QuestMain>(),
             Exploration = quests.GetPhase<QuestExploration>(),
-        };
+        });
+    }
+
+    // the plain values of the story the local game holds, besides its quests: the story quests it finished, the dialog
+    // choices, the key items
+    private static StoryBundle TakeValues(StoryBundle bundle)
+    {
+        var quests = EClass.game.quests;
+        var player = EClass.player;
+        bundle.Completed = [..quests.completedIDs.Where(StoryIds.Contains), ..quests.completedTypes.Where(StoryTypes.Contains)];
+        bundle.Dialog = DialogIds.Where(player.dialogFlags.ContainsKey).ToDictionary(id => id, id => player.dialogFlags[id]);
+        bundle.KeyItems = new(player.keyItems);
+        return bundle;
+    }
+
+    // (a value a bundle does not carry, written by an older version: what the game holds stays, see Upgrade)
+    private static void PutValues(StoryBundle bundle)
+    {
+        var quests = EClass.game.quests;
+        var player = EClass.player;
+        quests.completedIDs.ExceptWith(StoryIds);
+        quests.completedTypes.ExceptWith(StoryTypes);
+        foreach (var done in bundle.Completed) {
+            (StoryTypes.Contains(done) ? quests.completedTypes : quests.completedIDs).Add(done);
+        }
+
+        foreach (var id in DialogIds) {
+            if (bundle.Dialog.TryGetValue(id, out var value)) {
+                player.dialogFlags[id] = value;
+            } else {
+                player.dialogFlags.Remove(id);
+            }
+        }
+
+        if (bundle.KeyItems is { } items) {
+            player.keyItems.Clear();
+            foreach (var (item, count) in items) {
+                player.keyItems[item] = count;
+            }
+        }
     }
 
     /// <summary>
@@ -842,8 +901,6 @@ internal static class TeamOwnStory
         var quests = EClass.game.quests;
         quests.list.RemoveAll(IsStory);
         quests.globalList.RemoveAll(IsStory);
-        quests.completedIDs.ExceptWith(StoryIds);
-        quests.completedTypes.ExceptWith(StoryTypes);
 
         // (the game's own fix after a load, for one log: a story quest once)
         foreach (var quest in Read(bundle.Quests).GroupBy(q => q.GetType()).Select(g => g.First()).Reverse()) {
@@ -855,17 +912,7 @@ internal static class TeamOwnStory
             quests.globalList.Add(offer);
         }
 
-        foreach (var done in bundle.Completed) {
-            (StoryTypes.Contains(done) ? quests.completedTypes : quests.completedIDs).Add(done);
-        }
-
-        foreach (var id in DialogIds) {
-            if (bundle.Dialog.TryGetValue(id, out var value)) {
-                EClass.player.dialogFlags[id] = value;
-            } else {
-                EClass.player.dialogFlags.Remove(id);
-            }
-        }
+        PutValues(bundle);
     }
 
     private static List<Quest> Read(byte[] data)
@@ -883,14 +930,32 @@ internal static class TeamOwnStory
     }
 
     /// <summary>
-    ///     The story objects of the local quest log, the exact ones, to put back as they were
+    ///     A ledger written before a value was part of the story (a save of an older version): each story gets what the
+    ///     world holds now, read before the host takes its own (the save's values)
+    /// </summary>
+    private static void Upgrade()
+    {
+        StoryBundle? world = null;
+        foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.ToArray()) {
+            if (Stored(owner) is not { } bundle || bundle.KeyItems is not null) {
+                continue;
+            }
+
+            world ??= TakeValues(new());
+            bundle.KeyItems = world.KeyItems;
+            Store(owner, bundle);
+            EmpLog.Information("The story of {Owner} was written by an older version: it gets the world's key items", Name(owner));
+        }
+    }
+
+    /// <summary>
+    ///     The story objects of the local quest log, the exact ones, to put back as they were, and its plain values
     /// </summary>
     internal sealed class Snapshot
     {
         internal required List<(int Index, Quest Quest)> List { get; init; }
         internal required List<(int Index, Quest Quest)> Offers { get; init; }
-        internal required string[] Completed { get; init; }
-        internal required Dictionary<string, int> Dialog { get; init; }
+        internal required StoryBundle Values { get; init; }
     }
 
     internal static Snapshot Snap()
@@ -899,8 +964,7 @@ internal static class TeamOwnStory
         return new() {
             List = quests.list.Select((q, i) => (i, q)).Where(x => IsStory(x.q)).ToList(),
             Offers = quests.globalList.Select((q, i) => (i, q)).Where(x => IsStory(x.q)).ToList(),
-            Completed = [..quests.completedIDs.Where(StoryIds.Contains), ..quests.completedTypes.Where(StoryTypes.Contains)],
-            Dialog = DialogIds.Where(EClass.player.dialogFlags.ContainsKey).ToDictionary(id => id, id => EClass.player.dialogFlags[id]),
+            Values = TakeValues(new()),
         };
     }
 
@@ -909,8 +973,6 @@ internal static class TeamOwnStory
         var quests = EClass.game.quests;
         quests.list.RemoveAll(IsStory);
         quests.globalList.RemoveAll(IsStory);
-        quests.completedIDs.ExceptWith(StoryIds);
-        quests.completedTypes.ExceptWith(StoryTypes);
         foreach (var (index, quest) in snap.List) {
             quests.list.Insert(System.Math.Min(index, quests.list.Count), quest);
         }
@@ -919,17 +981,7 @@ internal static class TeamOwnStory
             quests.globalList.Insert(System.Math.Min(index, quests.globalList.Count), quest);
         }
 
-        foreach (var done in snap.Completed) {
-            (StoryTypes.Contains(done) ? quests.completedTypes : quests.completedIDs).Add(done);
-        }
-
-        foreach (var id in DialogIds) {
-            if (snap.Dialog.TryGetValue(id, out var value)) {
-                EClass.player.dialogFlags[id] = value;
-            } else {
-                EClass.player.dialogFlags.Remove(id);
-            }
-        }
+        PutValues(snap.Values);
     }
 
     // ---- the ledger

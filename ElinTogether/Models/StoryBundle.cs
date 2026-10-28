@@ -46,4 +46,11 @@ public class StoryBundle
     /// </summary>
     [Key(5)]
     public int Exploration { get; set; } = -1;
+
+    /// <summary>
+    ///     The key items (Player.keyItems: the licenses, the lucky coins, the well's wishes, the story's potions), id
+    ///     -> count. None in a story written before they were part of it
+    /// </summary>
+    [Key(6)]
+    public Dictionary<int, int>? KeyItems { get; set; }
 }

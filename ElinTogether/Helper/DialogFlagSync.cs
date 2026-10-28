@@ -164,6 +164,23 @@ internal static class DialogFlagSync
         return EClass.player is { } player && Read(player).TryGetValue(id, out var value) ? value : null;
     }
 
+    /// <summary>
+    ///     What this game holds now under the ids that pass <paramref name="which" /> is what it was given: nothing to
+    ///     tell (a story put in whole, see TeamOwnStory)
+    /// </summary>
+    internal static void Relearn(System.Func<string, bool> which)
+    {
+        if (EClass.player is not { } player || !ReferenceEquals(player, _source)) {
+            return;
+        }
+
+        foreach (var (id, value) in Read(player)) {
+            if (which(id)) {
+                _shared[id] = value;
+            }
+        }
+    }
+
     internal static void Learn(string id, int value)
     {
         if (EClass.player is not { } player) {
