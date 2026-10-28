@@ -566,20 +566,79 @@ internal static class TeamBoxes
         }
 
         container = own;
+        _pending = [];
         _opening = true;
         try {
             // (the team's bank and what the world's box still holds: windows of their own beside it)
             if (team is not null) {
-                LayerInventory.CreateContainer(team, team);
+                _pending.Add((LayerInventory.CreateContainer(team, team),
+                    "emp_box_team_bank".lang(Teams.NameOf(TeamOf(EClass.pc.uid)))));
             }
 
             if (world.things.Count > 0) {
-                LayerInventory.CreateContainer(world, world);
+                _pending.Add((LayerInventory.CreateContainer(world, world),
+                    (slot == Bank ? "emp_box_world_bank" : "emp_box_world_delivery").lang()));
             }
         } finally {
             _opening = false;
         }
+
+        _pendingOwn = (slot == Bank ? "emp_box_own_bank" : "emp_box_own_delivery").lang();
     }
+
+    // the player's own window is made by the game's call itself: it joins the extra ones, titled, then they are set side by side
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(LayerInventory), nameof(LayerInventory.CreateContainer), typeof(Card), typeof(Card))]
+    private static void OnCreatedContainer(LayerInventory __result)
+    {
+        if (_opening || _pending is not { } extras) {
+            return;
+        }
+
+        var ownTitle = _pendingOwn;
+        _pending = null;
+        _pendingOwn = null;
+        if (__result == null || extras.Count == 0) {
+            return;
+        }
+
+        var all = new List<(LayerInventory Layer, string Title)> { (__result, ownTitle ?? "") };
+        all.AddRange(extras);
+        var windows = new List<Window>();
+        foreach (var (layer, title) in all) {
+            if (layer == null || layer.windows.Count == 0) {
+                continue;
+            }
+
+            var window = layer.windows[0];
+            if (!title.IsEmpty()) {
+                window.SetCaption(title);
+                if (window.setting.tabs.Count > 0 && window.setting.tabs[0].button is { } tab && tab.mainText != null) {
+                    tab.mainText.SetText(title);
+                }
+            }
+
+            windows.Add(window);
+        }
+
+        // windows that open on the same spot (a box never moved) are spread side by side around it, within the screen
+        var rects = windows.Select(w => w.Rect()).ToList();
+        var width = rects[0].rect.width < 50 ? 400f : rects[0].rect.width;
+        var stacked = rects.Skip(1).Any(r => Mathf.Abs(r.anchoredPosition.x - rects[0].anchoredPosition.x) < width * 0.5f &&
+                                              Mathf.Abs(r.anchoredPosition.y - rects[0].anchoredPosition.y) < 40f);
+        if (!stacked) {
+            return;
+        }
+
+        for (var i = 0; i < windows.Count; i++) {
+            rects[i].anchoredPosition += new Vector2((i - (windows.Count - 1) / 2f) * (width + 8f), 0f);
+            windows[i].ClampToScreen();
+            windows[i].UpdateSaveData();
+        }
+    }
+
+    private static List<(LayerInventory Layer, string Title)>? _pending;
+    private static string? _pendingOwn;
 
     // this game's own player: its boxes of that kind (the host's real ones, a guest's copies), the team's bank second
     private static (Thing? Own, Thing? Team) MyWindows(int slot)

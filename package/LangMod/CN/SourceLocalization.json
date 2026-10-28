@@ -776,5 +776,10 @@
     "LangGeneral.emp_hidden_why_timeout.text": "2 分钟内未能启动",
     "LangGeneral.emp_hidden_why_cancel.text": "已取消启动",
     "LangGeneral.emp_travel_hidden_owner.text": "在隐藏服务器上游玩时无法独自持有地图：请与他人一同行动。",
-    "LangGeneral.emp_dc_owner_seat.text": "此席位仅限隐藏服务器的所有者使用。"
+    "LangGeneral.emp_dc_owner_seat.text": "此席位仅限隐藏服务器的所有者使用。",
+    "LangGeneral.emp_box_own_bank.text": "个人银行",
+    "LangGeneral.emp_box_team_bank.text": "团队银行：{0}",
+    "LangGeneral.emp_box_world_bank.text": "共享银行（旧世界）",
+    "LangGeneral.emp_box_own_delivery.text": "个人配送箱",
+    "LangGeneral.emp_box_world_delivery.text": "共享配送箱（旧世界）"
 }
