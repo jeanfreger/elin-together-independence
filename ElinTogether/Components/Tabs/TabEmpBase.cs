@@ -136,6 +136,11 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
 
         var group = holder.AddComponent<UISelectableGroup>();
         group.autoInitialize = false;
+        // the character sheet's tab colours: with the default (General) colours the selected pill looked like the others
+        // (World rules, Players, 2026-10-28); the group takes them in Awake, which runs when the holder is activated below
+        group.colorType = UISelectableGroup.ColorType.Tab;
+        group.colorWhenSelected = true;
+        group.useTransition = true;
 
         // all on one line when they fit (World rules has nine); else two balanced lines, never one pill alone
         // (the view is not laid out yet when the page is built: the window's own width)
