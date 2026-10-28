@@ -9,7 +9,7 @@ public partial class SteamNetManager
     /// <summary>
     ///     Connect by steam ID using valve SDR
     /// </summary>
-    public void Connect(UserData steamID)
+    public void Connect(UserData steamID, int vport = 0)
     {
         EmpLog.Debug("Connecting by steam id {RemoteIdentity}",
             steamID);
@@ -18,7 +18,7 @@ public partial class SteamNetManager
         identity.SetSteamID(steamID);
 
         var options = SteamNetConfig.Default.Create();
-        var connection = SteamNetworkingSockets.ConnectP2P(ref identity, 0, options.Length, options);
+        var connection = SteamNetworkingSockets.ConnectP2P(ref identity, vport, options.Length, options);
         if (connection != HSteamNetConnection.Invalid) {
             AddConnection(connection);
         }

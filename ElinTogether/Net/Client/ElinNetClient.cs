@@ -162,11 +162,11 @@ internal partial class ElinNetClient : ElinNetBase
         Socket.Connect(address);
     }
 
-    public void ConnectSteamUser(UserData steamId)
+    public void ConnectSteamUser(UserData steamId, int vport = 0)
     {
         Stop();
         IsLocalConnection = false;
-        Socket.Connect(steamId);
+        Socket.Connect(steamId, vport);
     }
 
     protected override void RegisterPackets()
