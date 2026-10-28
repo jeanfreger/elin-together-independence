@@ -24,7 +24,7 @@ public class DialogFlagDelta : ElinDelta
     private const int HourlyInfluence = 50;
     private const int HourlyGuildExp = 10000;
     private const int HourlyKeyItems = 30;
-    private const int MaxExtraTax = 1_000_000;
+    internal const int MaxExtraTax = 1_000_000;
     private static readonly Dictionary<(int Peer, string What), (float Since, int Used)> Budgets = [];
 
     /// <summary>

@@ -60,6 +60,34 @@ internal static class WorldTravelClock
         return moves;
     }
 
+    // time on a map of its own, not a trip: a night's sleep or a rest jumps hours, nothing there makes days pass in
+    // seconds (security audit 2026-10-27, item 10: the express travel's rate was believed from any player anywhere)
+    private const float StayMinutesPerSecond = 360f;
+    private static readonly Dictionary<int, (float Budget, float At)> StayBudgets = [];
+
+    /// <summary>
+    ///     Whether that many minutes may pass at once on the map a player keeps alone (a day, then six hours a
+    ///     second); taken from its budget when they may
+    /// </summary>
+    internal static bool StayFits(int who, int minutes)
+    {
+        if (minutes <= 0) {
+            return true;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        var budget = StayBudgets.TryGetValue(who, out var known)
+            ? Math.Min(BurstMinutes, known.Budget + (now - known.At) * StayMinutesPerSecond)
+            : BurstMinutes;
+        if (minutes > budget) {
+            StayBudgets[who] = (budget, now);
+            return false;
+        }
+
+        StayBudgets[who] = (budget - minutes, now);
+        return true;
+    }
+
     /// <summary>
     ///     How much of the minutes a player reports passing the host believes: a day at once, then what travel
     ///     can make pass in the time since. More is cut and written in the log

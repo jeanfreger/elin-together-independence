@@ -53,7 +53,10 @@ public class CodexDelta : ElinDelta
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
-        return TeamKnowledge.CheckLearner(Learner, sender);
+        // a creature of the game (security audit 2026-10-27, item 10: any id went into every team's codex)
+        return string.IsNullOrEmpty(Id) || !EClass.sources.charas.map.ContainsKey(Id)
+            ? $"codex entry {Id} is no creature of the game"
+            : TeamKnowledge.CheckLearner(Learner, sender);
     }
 
     protected override void OnApply(ElinNetBase net)

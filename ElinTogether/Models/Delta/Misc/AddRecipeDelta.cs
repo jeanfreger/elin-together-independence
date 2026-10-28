@@ -36,7 +36,9 @@ public class AddRecipeDelta : ElinDelta
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
-        return TeamKnowledge.CheckLearner(Learner, sender);
+        // a recipe of the game (security audit 2026-10-27, item 10: any id went into every team's book)
+        RecipeManager.BuildList();
+        return RecipeManager.Get(RecipeId) is null ? $"recipe {RecipeId} is no recipe of the game" : TeamKnowledge.CheckLearner(Learner, sender);
     }
 
     protected override void OnApply(ElinNetBase net)

@@ -124,6 +124,14 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     The maps this player's game simulates on its own (its leases): none while it plays on the host's
+    /// </summary>
+    internal IEnumerable<Zone?> LeasedZones(int peerId)
+    {
+        return _leases.TryGetValue(peerId, out var zones) ? zones.Keys.Select(uid => game.spatials.Find(uid) as Zone) : [];
+    }
+
+    /// <summary>
     ///     To every player that is not away (on a map), except one
     /// </summary>
     internal void SendDeltaToMapPeers(int exceptPeer, ElinDelta delta)

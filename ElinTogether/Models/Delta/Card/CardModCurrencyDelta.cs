@@ -27,8 +27,8 @@ public class CardModCurrencyDelta : ElinDelta
             return;
         }
 
-        if (CurrencyId == "money" && Amount < 0) {
-            Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount));
+        if (Amount < 0) {
+            Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount, CurrencyId));
             Spent.RemoveAll(s => UnityEngine.Time.realtimeSinceStartup - s.At > SpentWindow);
         }
 
@@ -47,26 +47,28 @@ public class CardModCurrencyDelta : ElinDelta
 
     private static readonly System.Collections.Generic.Dictionary<(int Peer, string Id), (float Since, long Gained)> Gains = [];
 
-    // the gold each player paid lately: what it says it paid elsewhere (its debt) must have left its purse
+    // what each player paid lately: what it says it paid elsewhere (its debt in gold, land in gold bars) must have
+    // left its purse
     private const float SpentWindow = 120f;
-    private static readonly System.Collections.Generic.List<(int Peer, float At, long Amount)> Spent = [];
+    private static readonly System.Collections.Generic.List<(int Peer, float At, long Amount, string Id)> Spent = [];
 
     /// <summary>
     ///     Gold this player paid in the last two minutes, and forgets it (one payment pays one thing)
     /// </summary>
     /// <param name="since">only what it paid from then on (a duel's stake: after the yes)</param>
-    internal static long TakeSpent(int peer, long wanted, float since = 0f)
+    /// <param name="currency">gold unless said (gold bars for land)</param>
+    internal static long TakeSpent(int peer, long wanted, float since = 0f, string currency = "money")
     {
         var now = UnityEngine.Time.realtimeSinceStartup;
         long found = 0;
         for (var i = 0; i < Spent.Count && found < wanted; i++) {
-            if (Spent[i].Peer != peer || now - Spent[i].At > SpentWindow || Spent[i].At < since) {
+            if (Spent[i].Peer != peer || Spent[i].Id != currency || now - Spent[i].At > SpentWindow || Spent[i].At < since) {
                 continue;
             }
 
             var take = System.Math.Min(Spent[i].Amount, wanted - found);
             found += take;
-            Spent[i] = (Spent[i].Peer, Spent[i].At, Spent[i].Amount - take);
+            Spent[i] = (Spent[i].Peer, Spent[i].At, Spent[i].Amount - take, Spent[i].Id);
         }
 
         Spent.RemoveAll(s => s.Amount <= 0);

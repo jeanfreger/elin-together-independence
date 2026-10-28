@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Net;
 using MessagePack;
 using UnityEngine;
@@ -38,6 +39,33 @@ public class PlaylistDelta : ElinDelta
                 Shuffle = ShufflePL?.GetValue(map.config) is true,
             });
         }
+    }
+
+    // more tracks than the game has
+    private const int MaxTracks = 200;
+
+    /// <summary>
+    ///     The music of the map the sender is on, of the game's own tracks (security audit 2026-10-27, item 10: any
+    ///     map's, unknown ids, lists of any length)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (sender?.currentZone?.uid != ZoneUid) {
+            return $"the music of zone {ZoneUid}, not where the sender is";
+        }
+
+        if (Day.Count > MaxTracks || Night.Count > MaxTracks) {
+            return $"a playlist of {Day.Count} + {Night.Count} tracks";
+        }
+
+        var known = EClass.core.refs.dictBGM;
+        foreach (var id in Day.Concat(Night)) {
+            if (!known.ContainsKey(id)) {
+                return $"music {id} is no track of the game";
+            }
+        }
+
+        return null;
     }
 
     protected override void OnApply(ElinNetBase net)
