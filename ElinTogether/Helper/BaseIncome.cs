@@ -85,9 +85,13 @@ internal static class BaseIncome
         var zone = __instance.owner;
         var team = Teams.TeamOfZone(zone);
         var owners = (team != Teams.Wanderers ? Teams.MembersOfTeam(team) : [zone.GetInt(ClaimerKey)]).Where(uid => uid != 0).ToArray();
-        if (owners.Length == 0 || owners.All(uid => uid == EClass.pc.uid)) {
+        if (owners.Length == 0 && ElinNetHost.SavedRemoteCharas.Count == 0 || owners.Length > 0 && owners.All(uid => uid == EClass.pc.uid)) {
             return true;
         }
+
+        // a land of nobody known (claimed before the claimer was written down) in a world others play in: the
+        // shared bank, never the host's purse
+        var bank = owners.Length == 0;
 
         Pay(ref __instance.incomeShop, ref __instance.statistics.shop, "getIncomeShop", false);
         Pay(ref __instance.incomeInn, ref __instance.statistics.inn, "getIncomeInn", true);
@@ -107,6 +111,10 @@ internal static class BaseIncome
 
             Msg.Say(lang, Lang._currency(n, "money"), zone.Name);
             stat += n;
+            if (bank) {
+                EClass.game.cards.container_deposit.AddThing(ThingGen.Create("money").SetNum(n));
+            }
+
             for (var i = 0; i < owners.Length; i++) {
                 Give(host, owners[i], n / owners.Length + (i == 0 ? n % owners.Length : 0));
             }
