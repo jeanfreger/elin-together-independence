@@ -29,7 +29,10 @@ namespace ElinTogether.Helper;
 ///     session; 7. Elin closes and starts again. <br />
 ///     The restarted game has read the list of the session when this mod starts in it: Boot puts the player's
 ///     list back at once, so the list of the session is on the disk only between two runs. Nothing is ever
-///     subscribed to, unsubscribed from or deleted in the Workshop; a link is removed, never what it points to
+///     subscribed to, unsubscribed from or deleted in the Workshop; a link is removed, never what it points to <br />
+///     Security (the host names what is fetched): only Workshop numbers are read from its list; the Workshop is
+///     asked about each item first (an Elin mod, not banned, size capped, one log line each); a mod with code
+///     (a DLL) is loaded only with the client setting FetchCodeMods, off by default
 /// </summary>
 internal static class ModFetch
 {
@@ -43,6 +46,13 @@ internal static class ModFetch
     private const float TotalSeconds = 900f;
     private const int MaxMods = 200;
     private const double TicketMinutes = 30;
+
+    // security (the host chooses what is fetched): an item and all of them together are never bigger than
+    // this, a list that long is not read, and the Workshop is asked about each item before any download
+    private const long MaxItemBytes = 1L * 1024 * 1024 * 1024;
+    private const long MaxTotalBytes = 4L * 1024 * 1024 * 1024;
+    private const int MaxReferenceChars = 256 * 1024;
+    private const float QuerySeconds = 30f;
 
     private static readonly string _ticket = Path.Combine(Application.persistentDataPath, "ElinMP", "modsession.txt");
 
@@ -186,7 +196,7 @@ internal static class ModFetch
     {
         if (!EmpConfig.Client.FetchMods.Value || _done || _busy || returnTo.Length == 0 || BaseCore.IsOffline ||
             ModManager.disableMod || EmpServer.Requested || diff.Missing.Count > MaxMods ||
-            diff.Missing.Any(m => !ulong.TryParse(m.Workshop, out var id) || id == 0)) {
+            reference.Length > MaxReferenceChars || diff.Missing.Any(m => !IsWorkshopId(m.Workshop))) {
             return false;
         }
 
@@ -203,6 +213,8 @@ internal static class ModFetch
         yield return null;
 
         var failure = "error";
+        // what the player is told when nothing is fetched
+        var told = "emp_ui_mods_fetch_failed".lang();
         var line = "";
         Action kill = () => { };
         var folders = new Dictionary<string, string>();
@@ -225,6 +237,60 @@ internal static class ModFetch
                 .Where(m => !packages.Any(p => ModList.WorkshopOf(p) == m.Workshop && p.installed && p.dirInfo is not null &&
                                                !IsLink(p) && Directory.Exists(p.dirInfo.FullName)))
                 .ToList();
+
+            // security: the Workshop says what each item is before anything is downloaded (an item of Elin, a
+            // mod, not banned, not too big). One that does not pass and nothing at all is fetched
+            var details = new Dictionary<ulong, SteamUGCDetails_t>();
+            for (var at = 0; at < queue.Count; at += 50) {
+                // (50: the most one query of the Workshop answers)
+                var batch = queue.Skip(at).Take(50).Select(m => new PublishedFileId_t(ulong.Parse(m.Workshop))).ToArray();
+                var handle = SteamUGC.CreateQueryUGCDetailsRequest(batch, (uint)batch.Length);
+                var answered = false;
+                var ok = false;
+                var call = CallResult<SteamUGCQueryCompleted_t>.Create((r, io) => {
+                    answered = true;
+                    ok = !io && r.m_eResult == EResult.k_EResultOK;
+                });
+                call.Set(SteamUGC.SendQueryUGCRequest(handle));
+                var asked = Time.realtimeSinceStartup;
+                while (!answered && Time.realtimeSinceStartup - asked < QuerySeconds) {
+                    yield return null;
+                }
+
+                for (uint i = 0; ok && i < batch.Length; i++) {
+                    if (SteamUGC.GetQueryUGCResult(handle, i, out var found)) {
+                        details[found.m_nPublishedFileId.m_PublishedFileId] = found;
+                    }
+                }
+
+                call.Dispose();
+                SteamUGC.ReleaseQueryUGCRequest(handle);
+            }
+
+            long sum = 0;
+            foreach (var mod in queue) {
+                if (!details.TryGetValue(ulong.Parse(mod.Workshop), out var item)) {
+                    failure = $"the Workshop did not say what {mod.Workshop} is";
+                    yield break;
+                }
+
+                var refused = Refused(item);
+                // one line an item: what it is and who put it on the Workshop
+                EmpLog.Information("Workshop item {Workshop} \"{Title}\" by {Author} ({Owner}), {Size} bytes: {Verdict}",
+                    mod.Workshop, ModListFile.Clean(item.m_rgchTitle ?? ""), Author(item.m_ulSteamIDOwner),
+                    item.m_ulSteamIDOwner, item.m_nFileSize, refused ?? "may be fetched");
+                if (refused is not null) {
+                    failure = $"{mod.Workshop} is {refused}";
+                    yield break;
+                }
+
+                sum += item.m_nFileSize;
+            }
+
+            if (sum > MaxTotalBytes) {
+                failure = $"the mods of the game weigh {sum} bytes, more than {MaxTotalBytes}";
+                yield break;
+            }
 
             // before anything arrives: the player's own list hides it, a crash from here on leaves its game as it was
             Hide(queue.Select(m => Path.Combine(root, m.Workshop)).Concat(links ? queue.Select(m => LinkPath(m.Workshop)) : []));
@@ -262,12 +328,31 @@ internal static class ModFetch
                             yield break;
                         }
 
+                        // security: a mod with code (a DLL) runs it on this PC when Elin starts. Only with the
+                        // client setting FetchCodeMods (off); else it stays switched off and nothing is restarted
+                        var code = HasCode(folder);
+                        var item = details[number];
+                        var title = ModListFile.Clean(item.m_rgchTitle ?? "");
+                        EmpLog.Information("Fetched the Workshop item {Workshop} \"{Title}\" by {Author} ({Owner}) into {Folder}, code (DLL): {Code}",
+                            mod.Workshop, title, Author(item.m_ulSteamIDOwner), item.m_ulSteamIDOwner, folder, code);
+                        if (code && !EmpConfig.Client.FetchCodeMods.Value) {
+                            failure = $"{mod.Workshop} has code (a DLL) and the setting FetchCodeMods is off";
+                            told = "emp_ui_mods_code_refused".Loc(title.Length > 0 ? title : mod.Workshop);
+                            yield break;
+                        }
+
                         folders[mod.Workshop] = folder;
                         break;
                     }
 
                     if (coming && SteamUGC.GetItemDownloadInfo(id, out var have, out var total)) {
                         percent = total > 0 ? have * 100 / total : 0;
+                        // security: never more than the cap, whatever the Workshop said
+                        if (total > MaxItemBytes || have > MaxItemBytes) {
+                            failure = $"the download of {mod.Workshop} is bigger than {MaxItemBytes} bytes";
+                            yield break;
+                        }
+
                         if (have != got) {
                             got = have;
                             moved = now;
@@ -315,7 +400,7 @@ internal static class ModFetch
         } finally {
             SteamCallback<DownloadItemResult_t>.Remove(onResult);
             if (failure.Length > 0) {
-                GiveUp(failure, returnTo);
+                GiveUp(failure, returnTo, told);
             }
 
             kill();
@@ -350,12 +435,12 @@ internal static class ModFetch
     ///     Nothing was changed but Steam's own folder (hidden in the player's list): said, and the game is joined
     ///     as without this, where the message that names the mods is shown if it is refused
     /// </summary>
-    private static void GiveUp(string why, string returnTo)
+    private static void GiveUp(string why, string returnTo, string told)
     {
         _busy = false;
         _done = true;
         EmpLog.Warning("The mods of the game were not fetched: {Why}", why);
-        EmpPop.Block("emp_ui_mods_fetch_failed".lang());
+        EmpPop.Block(told);
         EClass.core.actionsNextFrame.Add(() => {
             if (!EClass.core.IsGameStarted) {
                 Return(returnTo);
@@ -554,6 +639,11 @@ internal static class ModFetch
 
     private static string LinkPath(string workshop)
     {
+        // security: the name of the link is only ever "EmpSession_" and digits, so it stays in Package/
+        if (!IsWorkshopId(workshop)) {
+            throw new IOException("not a Workshop number: " + workshop);
+        }
+
         return Path.GetFullPath(Path.Combine(BaseModManager.rootMod, ModList.SessionFolder + workshop));
     }
 
@@ -568,9 +658,61 @@ internal static class ModFetch
             return true;
         }
 
+        // (the folder is Steam's own: a quote in it would end the argument of the command)
+        if (link.Contains('"') || target.Contains('"')) {
+            return false;
+        }
+
         Unlink(link);
         Run("cmd.exe", $"/c mklink /J \"{link}\" \"{target}\"")?.WaitForExit(10000);
         return File.Exists(there);
+    }
+
+    /// <summary>
+    ///     A Workshop number as the host may name one: digits only, not zero (a folder name and a command
+    ///     argument are made from it)
+    /// </summary>
+    internal static bool IsWorkshopId(string? workshop)
+    {
+        return workshop is { Length: > 0 and <= 20 } && workshop.All(c => c is >= '0' and <= '9') &&
+               ulong.TryParse(workshop, out var id) && id != 0;
+    }
+
+    /// <summary>
+    ///     Why the Workshop item may not be fetched, null when it may: an item of Elin (its consumer app), a
+    ///     mod (not a collection, a guide, a screenshot...), not banned, not over the size cap
+    /// </summary>
+    private static string? Refused(SteamUGCDetails_t item)
+    {
+        return item.m_eResult != EResult.k_EResultOK ? $"not on the Workshop ({item.m_eResult})" :
+            item.m_nConsumerAppID.m_AppId.ToString() != App ? $"an item of another game ({item.m_nConsumerAppID.m_AppId})" :
+            item.m_bBanned ? "banned on the Workshop" :
+            item.m_eFileType != EWorkshopFileType.k_EWorkshopFileTypeCommunity ? $"not a mod ({item.m_eFileType})" :
+            item.m_nFileSize < 0 || item.m_nFileSize > MaxItemBytes ? $"too big ({item.m_nFileSize} bytes)" :
+            null;
+    }
+
+    // the name the author goes by on Steam, when Steam knows it already (else its Steam id says who)
+    private static string Author(ulong owner)
+    {
+        try {
+            return ModListFile.Clean(SteamFriends.GetFriendPersonaName(new(owner)) ?? "");
+        } catch (Exception) {
+            return "";
+        }
+    }
+
+    /// <summary>
+    ///     The mod has code the game would run: a DLL anywhere in its folder. In doubt (unreadable), it has
+    /// </summary>
+    private static bool HasCode(string folder)
+    {
+        try {
+            return Directory.EnumerateFiles(folder, "*.dll", SearchOption.AllDirectories).Any();
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not read the files of {Folder}", folder);
+            return true;
+        }
     }
 
     private static bool IsLink(BaseModPackage package)
