@@ -35,7 +35,16 @@ public class WhisperDelta : ElinDelta
             return "private chat is off";
         }
 
-        return sender?.uid != FromUid ? "a line written as another player" : Text.Length > 500 ? "a line over the chat limit" : null;
+        if (sender?.uid != FromUid) {
+            return "a line written as another player";
+        }
+
+        // the name shown to a player who does not know the writer: its own (security audit 2026-10-27, item 9: any)
+        if (Name is not null && Name != sender.Name && !(host.States.TryGetValue(OriginPeer, out var state) && Name == state.User.Name)) {
+            return $"a line signed {Name}";
+        }
+
+        return Text.Length > 500 ? "a line over the chat limit" : null;
     }
 
     protected override void OnApply(ElinNetBase net)
