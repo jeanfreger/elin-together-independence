@@ -13,38 +13,33 @@ internal class TabHelp : TabEmpBase
 {
     private const string Repo = "https://github.com/jeanfreger/elin-together-independence";
 
-    private static readonly (string Id, string Icon)[] Topics = [
-        ("hosting", "icon_LayerTravel"),
-        ("joining", "icon_goto"),
-        ("teams", "icon_factions"),
-        ("lands", "icon_LayerHome"),
-        ("trading", "icon_money"),
-        ("duels", "icon_hp"),
-    ];
+    private static readonly string[] Topics = ["hosting", "joining", "teams", "lands", "trading", "duels"];
 
     public override void OnLayout()
     {
-        foreach (var (id, icon) in Topics) {
-            var card = this.Card($"emp_help_{id}_t".lang(), EmpUi.Icon(icon));
-            card.Text($"emp_help_{id}".lang());
-        }
-
-        BuildAbout();
-        BuildReport();
+        SubTabs("help", [
+            ("emp_ui_sub_how".lang(), page => {
+                foreach (var id in Topics) {
+                    page.Card($"emp_help_{id}_t".lang()).Text($"emp_help_{id}".lang());
+                }
+            }),
+            ("emp_help_about".lang(), BuildAbout),
+            ("emp_help_report".lang(), BuildReport),
+        ]);
     }
 
-    private void BuildAbout()
+    private static void BuildAbout(YKVertical page)
     {
-        var card = this.Card("emp_help_about".lang(), EmpUi.Icon("icon_hint"));
+        var card = page.Card("emp_help_about".lang());
         card.Text("emp_help_version".Loc(ModInfo.BuildVersion));
         card.TextSmall("emp_help_about_desc".lang(), FontColor.Gray);
         card.ButtonRow().RowButton("emp_help_github".lang(), () => Application.OpenURL(Repo));
     }
 
     // something went wrong: one zip to send with the game's own log in it, or a GitHub issue with the player's words
-    private void BuildReport()
+    private static void BuildReport(YKVertical page)
     {
-        var card = this.Card("emp_help_report".lang(), EmpUi.Icon("icon_Inspect"));
+        var card = page.Card("emp_help_report".lang());
         card.Text("emp_ui_report_what".lang());
         card.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
 

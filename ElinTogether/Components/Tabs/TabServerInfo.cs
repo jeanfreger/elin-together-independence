@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
@@ -20,9 +21,16 @@ internal class TabServerInfo : TabEmpBase
 
     public override void OnLayout()
     {
-        BuildNote("motd.txt", "emp_info_motd", ServerInfo.Motd, "icon_book");
-        BuildNote("rules.txt", "emp_info_rules", ServerInfo.RulesText, "icon_page");
-        BuildAnnounce();
+        var pages = new List<(string, System.Action<YKVertical>)> {
+            ("emp_info_motd".lang(), page => BuildNote(page, "motd.txt", "emp_info_motd", ServerInfo.Motd)),
+            ("emp_ui_sub_rules".lang(), page => BuildNote(page, "rules.txt", "emp_info_rules", ServerInfo.RulesText)),
+        };
+        // (the host and the admins only)
+        if (IsAdmin) {
+            pages.Add(("emp_info_announce".lang(), BuildAnnounce));
+        }
+
+        SubTabs("info", pages);
     }
 
     private static bool IsHost => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
@@ -34,9 +42,9 @@ internal class TabServerInfo : TabEmpBase
     ///     One parchment note: the text, or for the host an empty-state with "Write one"; the host's pencil opens the
     ///     game's input field in the note itself
     /// </summary>
-    private void BuildNote(string file, string titleId, string text, string iconId)
+    private static void BuildNote(YKVertical page, string file, string titleId, string text)
     {
-        var card = this.Card(titleId.lang(), EmpUi.Icon(iconId));
+        var card = page.Card(titleId.lang());
         if (IsHost && _writing == file) {
             Write(card, file);
             return;
@@ -100,13 +108,9 @@ internal class TabServerInfo : TabEmpBase
         LayerElinTogether.Instance?.Reopen();
     }
 
-    private void BuildAnnounce()
+    private static void BuildAnnounce(YKVertical page)
     {
-        if (!IsAdmin) {
-            return;
-        }
-
-        var card = this.Card("emp_info_announce".lang());
+        var card = page.Card("emp_info_announce".lang());
         var row = card.ButtonRow();
         row.RowButton("emp_info_say".lang(), () => Dialog.InputName("emp_info_say", "", (cancel, text) => {
             if (!cancel && text.Length > 0) {

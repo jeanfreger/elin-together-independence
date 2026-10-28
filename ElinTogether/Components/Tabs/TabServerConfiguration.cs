@@ -27,8 +27,6 @@ internal class TabServerConfiguration : TabEmpBase
 
     // the view of this page, kept over redraws (a change redraws the layer), never stored
     private static string _search = "";
-    private static readonly HashSet<string> Collapsed = [];
-    private static readonly HashSet<string> Expanded = [];
     private static bool _allDiffs;
     private static TabServerConfiguration? _instance;
     private static float _savedY;
@@ -45,11 +43,10 @@ internal class TabServerConfiguration : TabEmpBase
     private sealed class Group(string id)
     {
         internal string Id => id;
-        internal GameObject Card = null!, Body = null!, More = null!, Dot = null!;
-        internal UIButton Header = null!, MoreButton = null!;
+        // (the group's page)
+        internal GameObject Card = null!;
         internal string Title = "";
         internal readonly List<Line> Lines = [];
-        internal int AdvancedCount => Lines.Count(l => l.Row.Advanced);
     }
 
     private readonly List<Group> _groups = [];
@@ -94,8 +91,11 @@ internal class TabServerConfiguration : TabEmpBase
         ["look_mods_own"] = ["publish_mods"],
     };
 
-    // (on the official server these are fixed: see SettingRow.Description)
-    private static readonly string[] OfficialFixed = ["import_chara", "export_chara", "team_knowledge", "team_boxes", "team_own_story"];
+    private static bool IsOfficialFixed(SettingRow row)
+    {
+        var fixedEntries = SettingsTable.OfficialFixedEntries();
+        return row.Entry is { } e && fixedEntries.Contains(e) || row.Choice is { } c && c.Entries.All(fixedEntries.Contains);
+    }
 
     public override void OnLayout()
     {
@@ -105,24 +105,44 @@ internal class TabServerConfiguration : TabEmpBase
 
         var rows = SettingsTable.Rows().Where(r => !_guest || Told(r)).ToList();
         var preset = Preset(rows);
-        _target = preset == 1 ? SettingsTable.Classic : RuleSource.Defaults;
+        // (a custom world is compared with the recommended rules)
+        _target = SettingsTable.PresetSource(preset == Custom ? 0 : preset);
 
-        BuildBanner();
-        BuildPresetCards(preset);
-        if (preset == 2) {
-            BuildDifferences(rows);
-        }
+        // sub-tabs (user, 2026-10-28): the presets, then one page per group of rules
+        var pages = new List<(string, System.Action<YKVertical>)> {
+            ("emp_ui_sub_presets".lang(), page => {
+                BuildBanner(page);
+                BuildPresetCards(page, preset);
+                if (preset == Custom) {
+                    BuildDifferences(page, rows);
+                }
 
-        BuildSearch();
+                BuildSearch(page);
+                _noMatch = Vertical(page).TextSmall("emp_ui_sv_nomatch".lang(), FontColor.Gray);
+            }),
+        };
         foreach (var id in SettingsTable.Cards) {
             var inCard = rows.Where(r => r.Card == id).ToList();
             if (inCard.Count > 0) {
-                BuildGroup(id, inCard);
+                pages.Add(($"emp_ui_sub_{id}".lang(), page => BuildGroup(page, id, inCard)));
             }
         }
 
-        _noMatch = Vertical(this).TextSmall("emp_ui_sv_nomatch".lang(), FontColor.Gray);
+        SubTabs("server", pages);
         ApplyFilter();
+    }
+
+    // the index of Custom in SettingsTable.Presets: it writes nothing, it is what a world is when it matches no preset
+    private static readonly int Custom = System.Array.IndexOf(SettingsTable.Presets, "custom");
+
+    // the page of a group of rules: the presets page comes first
+    private int PageOf(Group group) => _groups.IndexOf(group) + 1;
+
+    protected override void OnSubTabShown(int index)
+    {
+        if (_search.Trim().Length > 0) {
+            ApplyFilter();
+        }
     }
 
     // (a vertical group sizes its height to its content only with this fitter)
@@ -154,18 +174,25 @@ internal class TabServerConfiguration : TabEmpBase
         return row.Entry is { } e && src.Get(e) is { } v && v != target.Get(e);
     }
 
+    /// <summary>
+    ///     The preset the rules match (SettingsTable.Presets, Custom when none)
+    /// </summary>
     private int Preset(List<SettingRow> rows)
     {
         var top = rows.Where(r => r.Under is null).ToList();
-        return !top.Any(r => IsChanged(r, _src, RuleSource.Defaults)) ? 0
-            : !top.Any(r => IsChanged(r, _src, SettingsTable.Classic)) ? 1 : 2;
+        for (var i = 0; i < SettingsTable.Presets.Length; i++) {
+            if (i != Custom && !top.Any(r => IsChanged(r, _src, SettingsTable.PresetSource(i)))) {
+                return i;
+            }
+        }
+
+        return Custom;
     }
 
-    private void BuildBanner()
+    private void BuildBanner(YKLayout page)
     {
-        var card = Vertical(this, true);
         var host = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.Index == 0)?.User.Name ?? "";
-        card.HeaderSmall(_guest ? "emp_ui_sv_banner_guest".Loc(host) : "emp_ui_sv_banner_host".lang());
+        var card = page.Card(_guest ? "emp_ui_sv_banner_guest".Loc(host) : "emp_ui_sv_banner_host".lang());
         card.TextSmall(_guest ? "emp_ui_rules_note".lang()
             : (NetSession.Instance.HasActiveConnection ? "emp_ui_sv_note_live" : "emp_ui_sv_note_title").lang(), FontColor.Gray);
         if (_guest && SettingsTable.LastNotice is { } notice) {
@@ -177,9 +204,9 @@ internal class TabServerConfiguration : TabEmpBase
     ///     Recommended, Classic and Custom as three cards side by side; the current one is tinted and says so. A
     ///     friend sees them as a read-only answer
     /// </summary>
-    private void BuildPresetCards(int preset)
+    private void BuildPresetCards(YKLayout page, int preset)
     {
-        var row = Vertical(this).Horizontal();
+        var row = Vertical(page).Horizontal();
         row.Layout.childForceExpandWidth = true;
         row.Layout.spacing = UIHelper.RowSpacing * 1.5f;
         row.Layout.childAlignment = TextAnchor.UpperLeft;
@@ -193,10 +220,15 @@ internal class TabServerConfiguration : TabEmpBase
                 bg.color = new(1f, 0.9f, 0.62f);
             }
 
-            // the whole card is the choice (title, chip, paragraph): a selectable card, no button inside
+            // the whole card is the choice (title, chip, paragraph): a selectable card, no button inside. The chip
+            // has a line of its own under the title (beside it, it ran over a title that wraps)
             card.Text($"emp_ui_sv_opt_preset_{SettingsTable.Presets[i]}".lang()).SetSize(UIHelper.LabelSize);
             if (selected) {
-                card.Chip("emp_ui_sv_preset_current".lang(), FontColor.Good);
+                var chipLine = card.Horizontal();
+                chipLine.Layout.childForceExpandWidth = false;
+                chipLine.Layout.childAlignment = TextAnchor.MiddleLeft;
+                chipLine.LayoutElement().minHeight = 26f;
+                chipLine.Chip("emp_ui_sv_preset_current".lang(), FontColor.Good);
             }
 
             card.TextSmall($"emp_ui_sv_desc_preset_{SettingsTable.Presets[i]}".lang(), FontColor.Gray);
@@ -207,12 +239,9 @@ internal class TabServerConfiguration : TabEmpBase
             var pick = card.Layout.gameObject.AddComponent<UnityEngine.UI.Button>();
             pick.targetGraphic = face;
             pick.onClick.AddListener(() => {
-                if (index == 2) {
-                    // Custom writes nothing: it opens every group's folded rows to edit by hand
-                    foreach (var g in _groups) {
-                        Expanded.Add(g.Id);
-                    }
-                    ApplyFilter();
+                if (index == Custom) {
+                    // Custom writes nothing: it opens the first group of rules, to edit by hand
+                    ShowSubTab(1);
                     return;
                 }
 
@@ -222,7 +251,7 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         if (!_guest && SettingsTable.CanUndo) {
-            Vertical(this).ButtonRow().RowButton("emp_ui_sv_undo".lang(), () => {
+            Vertical(page).ButtonRow().RowButton("emp_ui_sv_undo".lang(), () => {
                 Capture();
                 SettingsTable.Undo();
             });
@@ -233,11 +262,10 @@ internal class TabServerConfiguration : TabEmpBase
     ///     What makes the world Custom, as a short list of the rows that differ from the recommended rules; a click
     ///     jumps to the row
     /// </summary>
-    private void BuildDifferences(List<SettingRow> rows)
+    private void BuildDifferences(YKLayout page, List<SettingRow> rows)
     {
         var diff = rows.Where(r => r.Under is null && IsChanged(r, _src, RuleSource.Defaults)).ToList();
-        var card = Vertical(this, true);
-        card.HeaderSmall("emp_ui_sv_diff_title".Loc(diff.Count));
+        var card = page.Card("emp_ui_sv_diff_title".Loc(diff.Count));
         const int shown = 5;
         foreach (var row in diff.Take(_allDiffs ? diff.Count : shown)) {
             var id = row.Id;
@@ -255,10 +283,10 @@ internal class TabServerConfiguration : TabEmpBase
         }
     }
 
-    private void BuildSearch()
+    private void BuildSearch(YKLayout page)
     {
         // the game's own input field (YKLayout.InputText: UIInputText over an InputField)
-        var input = Vertical(this).InputText(_search);
+        var input = Vertical(page).InputText(_search);
         input.LayoutElement().flexibleWidth = 1f;
         if (input.field.placeholder is Text placeholder) {
             placeholder.text = "emp_ui_sv_search".lang();
@@ -270,46 +298,21 @@ internal class TabServerConfiguration : TabEmpBase
         _searchInput = input;
     }
 
-    private void BuildGroup(string id, List<SettingRow> rows)
+    /// <summary>
+    ///     A group of rules on its own sub-tab: every row of it, the advanced ones included (a page has the room)
+    /// </summary>
+    private void BuildGroup(YKVertical page, string id, List<SettingRow> rows)
     {
         var group = new Group(id) { Title = $"emp_ui_sv_sec_{id}".lang() };
-        var card = Vertical(this, true);
-        group.Card = card.gameObject;
-
-        var head = card.Horizontal();
-        head.Layout.childForceExpandWidth = false;
-        head.Layout.childAlignment = TextAnchor.MiddleLeft;
-        head.Layout.spacing = 10f;
-        group.Header = head.Button(group.Title, () => {
-            if (!Collapsed.Add(id)) {
-                Collapsed.Remove(id);
-            }
-            ApplyFilter();
-        });
-        group.Header.LayoutElement().flexibleWidth = 1f;
-        group.Dot = MakeDot(head);
-
-        var body = Vertical(card);
+        var body = page.Card(group.Title);
         body.Layout.spacing = UIHelper.RowSpacing * 2;
-        group.Body = body.gameObject;
-
+        group.Card = page.gameObject;
         foreach (var row in rows) {
             if (BuildRow(body, row) is { } line) {
                 group.Lines.Add(line);
             }
         }
 
-        group.Dot.SetActive(group.Lines.Any(l => l.Changed));
-
-        var more = body.Horizontal();
-        more.Layout.childAlignment = TextAnchor.MiddleLeft;
-        group.More = more.gameObject;
-        group.MoreButton = more.Button("", () => {
-            if (!Expanded.Add(id)) {
-                Expanded.Remove(id);
-            }
-            ApplyFilter();
-        }).FixedWidth();
         _groups.Add(group);
     }
 
@@ -431,8 +434,9 @@ internal class TabServerConfiguration : TabEmpBase
             return null;
         }
 
-        if (!_guest && OfficialServer.Hosting && OfficialFixed.Contains(row.Id)) {
-            return "emp_ui_sv_needs_notofficial".lang();
+        // (the rows the official server fixes: SettingsTable.Rows greys them while this game hosts it)
+        if (!_guest && Helper.StoryOwner.OfficialHosting && IsOfficialFixed(row)) {
+            return "emp_ui_sv_needs_official".lang();
         }
 
         if (!Needs.TryGetValue(row.Id, out var ids)) {
@@ -464,32 +468,31 @@ internal class TabServerConfiguration : TabEmpBase
     /// <summary>
     ///     Searching, folding and the folded rows: shows and hides what is built, then lays the page out again
     /// </summary>
+    /// <summary>
+    ///     A search shows the matching rows of every group under the search box (all the pages at once); an empty
+    ///     search gives back the one page of the sub-tab
+    /// </summary>
     private void ApplyFilter()
     {
         var query = _search.Trim();
+        var searching = query.Length > 0;
+        ShowAllSubTabs(searching);
         var any = false;
         foreach (var g in _groups) {
             var hits = 0;
             foreach (var line in g.Lines) {
-                var show = query.Length > 0
-                    ? $"{g.Title} {line.Hay}".Contains(query, System.StringComparison.OrdinalIgnoreCase)
-                    : !line.Row.Advanced || Expanded.Contains(g.Id);
+                var show = !searching || $"{g.Title} {line.Hay}".Contains(query, System.StringComparison.OrdinalIgnoreCase);
                 line.Go.SetActive(show);
                 hits += show ? 1 : 0;
             }
 
-            var open = query.Length > 0 ? hits > 0 : !Collapsed.Contains(g.Id);
-            g.Card.SetActive(query.Length == 0 || hits > 0);
-            g.Body.SetActive(open);
-            any |= g.Card.activeSelf;
-
-            var advanced = g.AdvancedCount;
-            g.More.SetActive(query.Length == 0 && advanced > 0);
-            g.MoreButton.mainText.text = Expanded.Contains(g.Id) ? "emp_ui_sv_fewer".lang() : "emp_ui_sv_more".Loc(advanced);
-            g.Header.mainText.text = (query.Length == 0 && Collapsed.Contains(g.Id) ? "> " : "v ") + g.Title;
+            if (searching) {
+                g.Card.SetActive(hits > 0);
+                any |= hits > 0;
+            }
         }
 
-        _noMatch?.gameObject.SetActive(!any);
+        _noMatch?.gameObject.SetActive(searching && !any);
         Relayout();
     }
 
@@ -510,11 +513,8 @@ internal class TabServerConfiguration : TabEmpBase
         if (_searchInput != null) {
             _searchInput.Text = "";
         }
-        Collapsed.Remove(group.Id);
-        if (line.Row.Advanced) {
-            Expanded.Add(group.Id);
-        }
 
+        ShowSubTab(PageOf(group));
         ApplyFilter();
         if (GetComponentInParent<ScrollRect>() is not { content: { } content } scroll) {
             return;
@@ -574,7 +574,7 @@ internal class TabServerConfiguration : TabEmpBase
     /// </summary>
     internal static string PresetText(int preset)
     {
-        if (preset != 2) {
+        if (preset != Custom) {
             return $"emp_ui_sv_desc_preset_{SettingsTable.Presets[preset]}".lang();
         }
 

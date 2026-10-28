@@ -21,20 +21,24 @@ internal class TabPlayers : TabEmpBase
 {
     public const string TabName = "emp_tab_players";
 
-    // the folded sections the player opened stay open when the page is rebuilt
-    private static readonly HashSet<string> Opened = [];
+    private static bool HostLists => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
 
     public override void OnLayout()
     {
-        BuildPlayerList();
-        BuildSavedCharacters();
-        BuildBannedList();
+        // sub-tabs: who is here, then for the host the characters of this world and the bans
+        var pages = new List<(string, Action<YKVertical>)> { ("emp_ui_sub_online".lang(), BuildPlayerList) };
+        if (HostLists) {
+            pages.Add(("emp_ui_sub_characters".lang(), BuildSavedCharacters));
+            pages.Add(("emp_ui_sub_banned".lang(), BuildBannedList));
+        }
+
+        SubTabs("players", pages);
     }
 
-    private void BuildPlayerList()
+    private static void BuildPlayerList(YKVertical page)
     {
         var players = NetSession.Instance.CurrentPlayers.ToList();
-        var card = this.Card("emp_ui_players_title".Loc(players.Count), EmpUi.Icon("icon_LayerPeople"));
+        var card = page.Card("emp_ui_players_title".Loc(players.Count));
         for (var i = 0; i < players.Count; i++) {
             if (i > 0) {
                 card.Divider();
@@ -56,46 +60,18 @@ internal class TabPlayers : TabEmpBase
     }
 
     /// <summary>
-    ///     A folded card: its title on a button, its body shown when opened
-    /// </summary>
-    private YKVertical Fold(string id, string title, out YKVertical body)
-    {
-        var card = this.MakeCard();
-        UIButton? head = null;
-        var inner = card.Vertical();
-        inner.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        inner.Layout.spacing = UIHelper.RowSpacing * 2f;
-        string Label() => (Opened.Contains(id) ? "v " : "> ") + title;
-        head = card.Button(Label(), () => {
-            if (!Opened.Add(id)) {
-                Opened.Remove(id);
-            }
-
-            head!.mainText.text = Label();
-            inner.gameObject.SetActive(Opened.Contains(id));
-            Relayout();
-        });
-        // (the button was added after the body: it goes first)
-        head.transform.SetAsFirstSibling();
-        head.LayoutElement().flexibleWidth = 1f;
-        inner.gameObject.SetActive(Opened.Contains(id));
-        body = inner;
-        return card;
-    }
-
-    /// <summary>
     ///     The host: the characters players made in this world, each with Delete when nobody plays it (upstream
     ///     1f932a8: a character left by someone who will not come back stayed in the world for good)
     /// </summary>
-    private void BuildSavedCharacters()
+    private static void BuildSavedCharacters(YKVertical page)
     {
-        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host ||
-            host.SavedCharacters() is not { Count: > 0 } saved) {
+        var body = page.Card("emp_ui_saved_chars_title".lang());
+        body.TextSmall("emp_ui_saved_chars_desc".lang(), FontColor.Gray);
+        if (NetSession.Instance.Transport is not ElinNetHost host || host.SavedCharacters() is not { Count: > 0 } saved) {
+            body.EmptyText("emp_ui_saved_chars_none".lang());
             return;
         }
 
-        Fold("saved", "emp_ui_saved_chars_title".lang(), out var body);
-        body.TextSmall("emp_ui_saved_chars_desc".lang(), FontColor.Gray);
         foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
             var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
             var row = body.Row();
@@ -118,13 +94,14 @@ internal class TabPlayers : TabEmpBase
     /// <summary>
     ///     The host: who is banned from this world, each with Unban (admin tools, council 2026-10-27)
     /// </summary>
-    private void BuildBannedList()
+    private static void BuildBannedList(YKVertical page)
     {
-        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } || ElinNetHost.Bans.Count == 0) {
+        var body = page.Card("emp_ui_banned_title".lang());
+        if (ElinNetHost.Bans.Count == 0) {
+            body.EmptyText("emp_ui_banned_none".lang());
             return;
         }
 
-        Fold("banned", "emp_ui_banned_title".lang(), out var body);
         foreach (var (user, why) in ElinNetHost.Bans.ToList()) {
             var row = body.Row();
             row.Text(why.Length > 0 ? $"{user}  ({why})" : user.ToString()).LayoutElement().flexibleWidth = 1f;

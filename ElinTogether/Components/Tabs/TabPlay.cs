@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Helper;
@@ -22,33 +23,39 @@ internal class TabPlay : TabEmpBase
 
     public override void OnLayout()
     {
-        if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
-            BuildConnected();
-        } else {
-            // the project's own public game first: its card is the most visible thing of the page
-            var official = BuildOfficialCard();
-            BuildHost();
-            BuildJoin();
-            BuildPublicServers(official);
-        }
-
+        var pages = new List<(string, System.Action<YKVertical>)> { ("emp_ui_tab_play".lang(), BuildPlay) };
 #if DEBUG
-        if (EClass.core.IsGameStarted) {
-            BuildBotButtons(this.Card("Debug"));
+        // the bot tools of the debug build, out of the player's way (coordinator, 2026-10-28)
+        if (EClass.core.IsGameStarted && NetSession.Instance.Transport is not ElinNetClient) {
+            pages.Add(("Debug", page => BuildBotButtons(page.Card("Debug"))));
         }
 #endif
+        SubTabs("play", pages);
+    }
+
+    private void BuildPlay(YKVertical page)
+    {
+        if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
+            BuildConnected(page);
+        } else {
+            // the project's own public game first: its card is the most visible thing of the page
+            var official = BuildOfficialCard(page);
+            BuildHost(page);
+            BuildJoin(page);
+            BuildPublicServers(page, official);
+        }
     }
 
     // ---------------------------------------------------------------- connected
 
-    private void BuildConnected()
+    private static void BuildConnected(YKVertical page)
     {
         var net = NetSession.Instance;
         var players = net.CurrentPlayers.ToList();
         var host = players.FirstOrDefault(p => p.Index == 0)?.User.Name;
         var isHost = net.Transport is ElinNetHost;
         var title = isHost || string.IsNullOrEmpty(host) ? "emp_ui_play_connected".lang() : "emp_ui_play_world".Loc(host!);
-        var card = this.Card(title, EmpUi.Icon("icon_LayerTravel"));
+        var card = page.Card(title);
 
         var status = card.Row();
         StatusDot(status, net.IsAway ? new(0.85f, 0.62f, 0.2f) : new(0.45f, 0.68f, 0.32f));
@@ -66,19 +73,19 @@ internal class TabPlay : TabEmpBase
         buttons.RowButton("emp_ui_sv_invite".lang(), net.Lobby.InviteSteamOverlay);
         buttons.RowButton("emp_ui_sv_dc".lang(), DisconnectFromPanel);
 
-        BuildRulesNote();
+        BuildRulesNote(page);
     }
 
     /// <summary>
     ///     A friend sees the rules of the host's world, read only, as the host last sent them (council 2026-10-23)
     /// </summary>
-    private void BuildRulesNote()
+    private static void BuildRulesNote(YKVertical page)
     {
         if (NetSession.Instance.Transport is not ElinNetClient) {
             return;
         }
 
-        var card = this.Card("emp_ui_rules_title".lang());
+        var card = page.Card("emp_ui_rules_title".lang());
         card.TextSmall("emp_ui_rules_note".lang(), FontColor.Gray);
         foreach (var (label, value) in SettingsTable.RuleLines(SettingsTable.FromRules(NetSession.Instance.Rules))) {
             card.TextSmall("emp_ui_rules_line".Loc(label, value));
@@ -126,9 +133,9 @@ internal class TabPlay : TabEmpBase
 
     // ---------------------------------------------------------------- not connected
 
-    private void BuildHost()
+    private static void BuildHost(YKVertical page)
     {
-        var card = this.Card("emp_ui_play_host_title".lang(), EmpUi.Icon("icon_LayerTravel"));
+        var card = page.Card("emp_ui_play_host_title".lang());
         if (!EClass.core.IsGameStarted) {
             // the world kept in the depot: whoever comes first takes it and hosts it
             if (SaveDepot.Enabled) {
@@ -160,9 +167,9 @@ internal class TabPlay : TabEmpBase
         }
     }
 
-    private void BuildJoin()
+    private static void BuildJoin(YKVertical page)
     {
-        var card = this.Card("emp_ui_play_join_title".lang(), EmpUi.Icon("icon_goto"));
+        var card = page.Card("emp_ui_play_join_title".lang());
         if (EClass.core.IsGameStarted) {
             // (joining leaves this game: from the title screen only, as before)
             card.TextSmall("emp_ui_play_join_ingame".lang(), FontColor.Gray);
@@ -231,9 +238,9 @@ internal class TabPlay : TabEmpBase
     ///     The official server: its own card at the top, always there (also closed), with its state and Join. Filled
     ///     when the lobby list answers (BuildPublicServers)
     /// </summary>
-    private YKVertical BuildOfficialCard()
+    private static YKVertical BuildOfficialCard(YKVertical page)
     {
-        var card = this.Card("emp_ui_official_title".lang(), EmpUi.Icon("icon_medal"));
+        var card = page.Card("emp_ui_official_title".lang());
         card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
         return card;
     }
@@ -263,9 +270,9 @@ internal class TabPlay : TabEmpBase
         }
     }
 
-    private void BuildPublicServers(YKVertical officialCard)
+    private void BuildPublicServers(YKVertical page, YKVertical officialCard)
     {
-        var card = this.Card("emp_ui_play_public_title".lang(), EmpUi.Icon("icon_zones"));
+        var card = page.Card("emp_ui_play_public_title".lang());
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
