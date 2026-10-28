@@ -71,6 +71,19 @@ public class ZoneGuestReady
     /// </summary>
     [Key(3)]
     public int Port { get; init; }
+
+    /// <summary>
+    ///     Steam virtual port of the zone session: 1 when the holder is the owner seat of a hidden server (the
+    ///     server listens on 0 on the same account), else 0
+    /// </summary>
+    [Key(4)]
+    public int VirtualPort { get; init; }
+
+    /// <summary>
+    ///     The zone session listens on the local port only (a bench or local session): Steam does not reach it
+    /// </summary>
+    [Key(5)]
+    public bool Local { get; init; }
 }
 
 /// <summary>
@@ -84,6 +97,18 @@ public class ZoneGuestAddress
 
     [Key(1)]
     public required int Port { get; init; }
+
+    /// <summary>
+    ///     Steam virtual port to connect to, see <see cref="ZoneGuestReady.VirtualPort" />
+    /// </summary>
+    [Key(2)]
+    public int VirtualPort { get; init; }
+
+    /// <summary>
+    ///     The holder is reachable by the local port only: the joiner dials it, whatever its own link to the host is
+    /// </summary>
+    [Key(3)]
+    public bool Local { get; init; }
 }
 
 /// <summary>

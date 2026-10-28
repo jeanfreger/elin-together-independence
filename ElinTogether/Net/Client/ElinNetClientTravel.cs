@@ -355,11 +355,13 @@ internal partial class ElinNetClient
         EmpLog.Information("Joining the zone session of {RemoteIdentity} in {ZoneFullName}",
             address.HostUser, zone.ZoneFullName);
 
+        // the holder says how it is reached, not our own link to the host: a game joined to the host over loopback
+        // (the owner of a hidden server) still dials a friend's zone through Steam
         var session = Session.InitializeZoneSession<ElinNetClient>();
-        if (IsLocalConnection) {
+        if (address.Local) {
             session.ConnectLocalPort((ushort)address.Port);
         } else {
-            session.ConnectSteamUser(address.HostUser);
+            session.ConnectSteamUser(address.HostUser, address.VirtualPort);
         }
     }
 
@@ -694,8 +696,7 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnZoneGuestRequest(ZoneGuestRequest request)
     {
-        // (a game that plays on a hidden server opens no listening socket, its account is the server's)
-        var accepted = !Helper.HiddenServer.Playing && Session.IsZoneAuthority && Session.AwayZone?.uid == request.ZoneUid &&
+        var accepted = Session.IsZoneAuthority && Session.AwayZone?.uid == request.ZoneUid &&
                        _zone == Session.AwayZone && _pendingTravel is null && !_rejoining;
 
         if (accepted) {
@@ -711,13 +712,16 @@ internal partial class ElinNetClient
             GuestUser = request.GuestUser,
             Accepted = accepted,
             Port = ElinNetHost.ZoneSessionPort,
+            // (on a hidden server's account the zone session listens on virtual port 1, the server keeps 0)
+            VirtualPort = Helper.HiddenServer.Playing ? ElinNetHost.ZoneSessionVirtualPort : 0,
+            Local = IsLocalConnection && !Helper.HiddenServer.Playing,
         });
     }
 
     private ElinNetHost StartZoneSession()
     {
         var zoneHost = Session.InitializeZoneSession<ElinNetHost>();
-        zoneHost.StartZoneServer(IsLocalConnection);
+        zoneHost.StartZoneServer(IsLocalConnection, Helper.HiddenServer.Playing);
         return zoneHost;
     }
 

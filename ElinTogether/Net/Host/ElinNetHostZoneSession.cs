@@ -30,13 +30,21 @@ internal partial class ElinNetHost
         ZoneSessionPortBase;
 #endif
 
-    internal void StartZoneServer(bool localUdp)
+    /// <summary>
+    ///     Steam virtual port of a zone session on the account of a hidden server: the server listens on 0
+    /// </summary>
+    internal const int ZoneSessionVirtualPort = 1;
+
+    internal void StartZoneServer(bool localUdp, bool hiddenOwner = false)
     {
         Stop();
         StopWorldStateUpdate();
 
         // no Steam lobby: guests are announced by the host, see RegisterGuest
-        if (localUdp) {
+        if (hiddenOwner) {
+            // our link to the server is the loopback one, the friends come through Steam on a virtual port of ours
+            Socket.StartServerUdp(ZoneSessionPort, alsoSteam: true, vport: ZoneSessionVirtualPort);
+        } else if (localUdp) {
             Socket.StartServerUdp(ZoneSessionPort);
         } else {
             Socket.StartServerSdr();

@@ -56,8 +56,9 @@ internal static class HiddenServer
                                    !EmpServer.Requested;
 
     /// <summary>
-    ///     This game plays on a hidden server it started (it joined it and the server runs): it opens no listening
-    ///     socket of its own, is granted no zone to hold, and invites through the lobby of the server
+    ///     This game plays on a hidden server it started (it joined it and the server runs): it invites through the
+    ///     lobby of the server. It is granted zones like any guest; its zone session listens on Steam virtual port 1,
+    ///     the server keeping 0 on the same account
     /// </summary>
     internal static bool Playing => _joined && _process is { HasExited: false };
 

@@ -38,12 +38,16 @@ public partial class SteamNetManager
     /// <summary>
     ///     Start server on valve SDR
     /// </summary>
-    public void StartServerSdr()
+    /// <param name="vport">
+    ///     the virtual port the listen socket takes: two processes on one Steam account (a hidden server and the game
+    ///     that started it) each listen on a port of their own, the server keeps 0
+    /// </param>
+    public void StartServerSdr(int vport = 0)
     {
         EmpLog.Debug("Starting relay server via SDR");
 
         var options = SteamNetConfig.Default.Create();
-        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, options.Length, options);
+        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(vport, options.Length, options);
         if (_listenSocket == HSteamListenSocket.Invalid) {
             throw new InvalidOperationException("Failed to create listen socket via SDR");
         }
@@ -59,7 +63,8 @@ public partial class SteamNetManager
     ///     (two-PC test 2026-10-27: they entered the lobby and never connected). Only there: a game that hosts by
     ///     the local port otherwise is a test bench, where it broke reloads
     /// </param>
-    public void StartServerUdp(ushort port = 0, bool alsoSteam = false)
+    /// <param name="vport">the Steam virtual port of that socket, see <see cref="StartServerSdr" /></param>
+    public void StartServerUdp(ushort port = 0, bool alsoSteam = false, int vport = 0)
     {
         port = port == 0 ? (ushort)EmpConstants.LocalPort : port;
         EmpLog.Debug("Starting local udp server at port {Port}",
@@ -94,7 +99,7 @@ public partial class SteamNetManager
 #endif
 
         if (alsoSteam) {
-            _steamListenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, options.Length, options);
+            _steamListenSocket = SteamNetworkingSockets.CreateListenSocketP2P(vport, options.Length, options);
             if (_steamListenSocket == HSteamListenSocket.Invalid) {
                 EmpLog.Warning("Server: no Steam listen socket, only the local port {Port} takes players", port);
             }
