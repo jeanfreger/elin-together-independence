@@ -1,6 +1,6 @@
 # Elin Together — "independence" fork
 
-**Current version: 0.26.1082** (zip `ElinTogether-independence.zip`).
+**Current version: 1.0** (Steam Workshop, or the zip `ElinTogether-independence.zip`).
 
 English | [Français](README_fr.md) | [中文](README_zh.md) | [日本語](README_ja.md)
 
@@ -17,11 +17,10 @@ The original mod keeps the whole party on the host's map and treats the other pl
 Its authors consider separate maps out of scope; this fork is where that is tried. All credit for the mod itself
 goes to them (see [Credits](#credits)).
 
-> **Status: experimental, not ready for a real release.** Every version is a pre-release, built for Elin's Nightly
-> branch. Most of it is checked by automated in-game tests on one PC (two to five game windows). It has been played
-> for real by one small group only, and each evening found defects the tests had missed. Several recent fixes were
-> published **without having been played at all**. What is missing before a real release is listed in
-> [What is left before a real release](#what-is-left-before-a-real-release). Back up your saves first:
+> **Status: 1.0, with limits.** Built for Elin's Nightly branch. Almost everything is checked by automated in-game
+> tests on one PC (two to five game windows, and up to 50 simulated players for the load), and the core was played for
+> real by one small group. Several parts of 1.0 have **never been played between two real PCs**: the release notes
+> mark them, and so does [What is left](#what-is-left-before-a-real-release). Back up your saves first:
 > `%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`.
 
 **Contents**
@@ -56,8 +55,13 @@ goes to them (see [Credits](#credits)).
   players sleep at the same time (the host chooses: everyone, half, or one). A player away from the keyboard no
   longer holds the night. When another player travels or sleeps, the date moves on, but you are no hungrier, your
   food does not rot and your quest deadlines do not move.
-- **Big worlds.** Time can stop when nobody plays, and a long absence is caught up in steps (at most 7 days).
-  Every player of the world is listed in the adventurers' ranking.
+- **Big worlds.** Time can stop when nobody plays (a map a player holds alone stops too while that player is away),
+  and a long absence is caught up in steps of 1, 3 or 7 days, the host's choice. Quests wait for absent players: a
+  player who comes back finds the days the world lived in the meantime added to its deadlines. Every player of the
+  world is listed in the adventurers' ranking.
+- **A living world** (host choice, off by default). The world's date follows real time at a pace the host picks: a
+  day every 20, 40, 60 or 120 real minutes, whether players act or stand still. It stops when nobody plays, and a
+  night of the world runs to the morning. Each player's own actions still count in that player's own turns.
 
 ### To each player their own
 
@@ -68,7 +72,12 @@ goes to them (see [Credits](#credits)).
 - **Money.** The money of a shipping sale goes to whoever put the item in the chest; a guest pays a bill with its
   own gold.
 - **Your character.** When joining, you get the character you played, with no question asked; a new player makes
-  one on the game's creation screen. The host can also let players bring a character from one of their solo saves.
+  one on the game's creation screen. The host can also let players bring a character from one of their solo saves,
+  and let them **take a character out to a solo save**: it plays there, comes back once (its bag, gold and fame with
+  it) and is marked away in the world meanwhile. Each player has a limit of characters (3 by default, the host's
+  choice) and the host sees a list of everybody's characters, with Delete.
+- **Your own journal.** Each player keeps its own message history and its own records (digs, deaths, nights slept)
+  across world copies and trips, instead of reading the host's (host box, on by default).
 - **Your settings.** Windows, auto combat, bag sorting and companion orders stay yours at every map change and
   reconnection.
 - **Auto combat protects your own.** The game's auto combat saves the player who runs it and its companions from a
@@ -91,6 +100,11 @@ goes to them (see [Credits](#credits)).
 - **Map music.** The music chosen for a map in its playlist window is the same for every player on that map.
 - **Between players.** A trade window (both put items and gold, both confirm; a worn item comes off when traded),
   duels where nobody dies and nothing is lost (with a *Give up* in your own menu), and no killing outside a duel.
+  Two options (host boxes, off by default) go further: a duel with the host is fought in an **arena**, a zone made for
+  the occasion, and each side can put a **gold bet** that the winner takes (stakes are given back when the duel
+  has no winner; giving up loses the stake).
+- **Duels with adventurers** work for every player like for the host: the adventurer leaves town for the fight, the
+  week before the next bout is the same for all, a win is recorded and the reward comes from the adventurer.
 - **Permadeath with friends** (host option, on by default, permadeath worlds only): a player who dies waits in the
   world instead of the game ending, and any other player revives them at a bartender for the game's price. Nothing
   is deleted, not even when the host dies.
@@ -100,7 +114,27 @@ goes to them (see [Credits](#credits)).
 Off by default (host box *Teams*). When the host turns them on, players form teams: each team has its own land,
 chests, buildings and doors, a land deed for its founder, and, if the host allows it, PvP between teams. Another
 team's chests cannot be used, not even for crafting (the host refuses it too). A new player appears at the spawn
-zone: the start meadow, the host's map, or a zone given by name or number. Without the box, nothing changes.
+zone: the start meadow, the host's map, or a zone given by name or number. Without the box, nothing changes. Three
+more host boxes, each off by default:
+
+- **Each team pays its own land.** One monthly bill per team, for its own land only, on the highest fame of its
+  members (land of nobody: the wanderers' bill). Unpaid bills are counted per team, so only that team's players lose
+  karma.
+- **Each team keeps its own story journal**: the furthest main-quest chapter the team took part in, shown on the
+  team card. The story itself stays the world's.
+- **Each player or team learns on its own** (also works without teams): recipes, crafts and the codex belong to the
+  team (a team shares one book, a player without a team has its own). A scroll another player reads is learnt in its
+  own game, kills count for the killer's team, recipes the story gives reach every team, and what a player knew
+  follows it from team to team.
+
+### Each player or team lives its own story (experimental)
+
+Off by default (host box *Each player or team lives its own story*), and **always on on the official server**. Each
+player goes through the main story at its own pace (Ash's quests, the exploration of Nymelle and its dialogs); a
+team shares one story, a player without a team has its own. When the box is ticked everyone starts from the world's
+current progress. Farris only joins the first base; a player or team arriving on a Nymelle floor another one has
+already cleared carries on from there; story rewards are paid once per player. The save keeps the host's own story:
+untick the box, or open the save without the mod, and the world goes on with it. Off: one shared story, as before.
 
 ### Time and settings made simpler
 
@@ -133,8 +167,13 @@ spellbooks, the healer, blessings, investing, runes, auto-dump, tools held in ha
 companion back at the barman's, windows that used to open on the host's screen, hitching posts, a guest's
 companion using the guest's scavenger feat on traps, a story resident who stands by the guest who finished the
 quest, "the day ends" read by guests, a guest's "always sort" inventory that froze its game, a guest who quits
-while away no longer taken for a lost link… Each guest also keeps
-its own story scenes, backers list and Churyu count across world copies. The full list is kept in the developer's notes, not published.
+while away no longer taken for a lost link… Newer ones: a defense quest's war horns sound in the host's game for a guest, a relocation deed moves the base in
+the host's world for everyone, a guest's world-map journey is paid when it walks into the host's town, the
+militant feat and the void boss floor read the player's own side, Nasu's fairy dungeon and Nasu's stairs look for
+the Nasu of a player who is there, a meal quest asks for a dish of the taker's cooking, saved party setups and the
+character sheet's total feat stay the player's own across a world copy, the base's mail is each player's, a
+wedding seats the base's people, an achievement goes to the player it is about, and encounters are rolled by the
+visitor's own game. Each guest also keeps its own story scenes, backers list and Churyu count across world copies. The full list is kept in the developer's notes, not published.
 
 ### The world does not depend on the host's PC
 
@@ -163,11 +202,24 @@ its own story scenes, backers list and Churyu count across world copies. The ful
   (kept in the world), admins named by the host who get Kick, Mute and Ban buttons in the *Players* tab, and a
   *Members only* mode. Every action is written to `ElinMP/Logs/admin.log`; a dedicated server takes the same orders
   from its app or from `ElinMP/server.cmd`.
+- **The official server.** The title screen lists the Elin Together account's public game first, marked as official,
+  with its player count (a quiet line when it is not open); it takes up to 100 players. Its entry is signed, so a
+  game that only calls itself "Elin Together" is not shown as official. The official server refuses imported
+  characters and always runs each player's own story.
 - **Safety against modified games.** The host refuses what a guest has no right to do (other players' items and
   characters, made-up gold or items, chat under another name), always in a public game and on a dedicated server
-  (box *Refuse acts on what others own* otherwise). A crafted packet or map can no longer crash the host or run code.
+  (box *Refuse acts on what others own* otherwise). A crafted packet or map can no longer crash the host or run code. Dialog outcomes, shared quests, story gifts,
+  personal quest rewards, base resources, town investments, world time and knowledge messages, bubbles, pings and
+  private lines are all checked on the host's side, a failed check refuses, and a player is hosted on another's map
+  only by a teammate or a vouched player.
 - **Many players.** Each player only receives what concerns its own map, players arriving together share one copy of
-  the world, and the load was measured with up to 50 simulated players.
+  the world, snapshots carry only the characters that changed, and the load was measured with up to 50 simulated
+  players.
+- **Report a bug from the game.** *Client Settings → Help → Report a bug to the developers*: a real text box (Enter
+  for a new line, Ctrl+Enter to send), and the report goes with the last 30 seconds of your screen as a video and
+  your logs. The public issue on GitHub holds your words, your Steam name, the versions and the video; the logs
+  (they hold Steam ids) are kept privately for the developers. If it cannot be sent, GitHub's page opens, already
+  filled.
 
 ### The same mods for everyone
 
@@ -182,26 +234,35 @@ Almost all of this is a **checkbox or choice on the host's side**: off, the mod 
 ## Install
 
 You need Elin on Steam, on the **Nightly** branch (Steam → right-click Elin → Properties → Betas), and the
-[YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753) mod. Subscribing to
-[Elin Together](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) on the Workshop brings it along.
-Launch Elin once after subscribing, then close it.
+[YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753) mod (the Workshop install below
+brings it along). There are two ways to get the mod; both give the same version 1.0. Use one of them, not both.
 
-1. Download `ElinTogether-independence.zip` from the
-   [Releases page](https://github.com/jeanfreger/elin-together-independence/releases).
+**A. Steam Workshop (simplest, updates by themselves)**
+
+1. Subscribe to [Elin Together](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) on the Workshop.
+2. Launch Elin through Steam, check that *Elin Together* is ticked in the game's mod list, and restart if the game
+   asks.
+
+**B. The zip (also on the [Releases page](https://github.com/jeanfreger/elin-together-independence/releases))**
+
+Launch Elin once with YK Framework installed, then close it.
+
+1. Download `ElinTogether-independence.zip`.
 2. Unzip the whole folder and run `Install.bat`. It finds Elin, copies the mod into `Elin\Package\Mod_ElinTogether`
    and switches from the Workshop version to this one in the game's mod list.
 3. Launch Elin through Steam.
 
 `Uninstall.bat` switches back to the Workshop version; nothing is deleted, the former state is kept in
-`Elin\_ElinTogether_sauvegarde`. The installer and its notes (`README.txt`) are in English (the notes also in Chinese); the steps are also on
-each release page.
+`Elin\_ElinTogether_sauvegarde`. The installer and its notes (`README.txt`) are in English (the notes also in
+Chinese); the steps are also on each release page. If you used the zip and now prefer the Workshop, run
+`Uninstall.bat` first.
 
-
-**Every player must install the same release.** This fork does not talk to the Workshop version, nor to another
+**Every player must have the same version.** This mod does not talk to the original Elin Together, nor to another
 version of itself: a player on another version is refused with a message that names both versions. Each release is
 built for one Elin build, named in its title.
 
-**Updating**: download the new zip and run `Install.bat` again. Your settings are kept.
+**Updating**: on the Workshop, Steam does it; with the zip, download the new one and run `Install.bat` again. Your
+settings are kept.
 
 ## Your first game together
 
@@ -319,7 +380,9 @@ everyone as soon as they change.
 |---|---|---|
 | Independent travel | on | Everyone goes where they want, alone or together. Off: everyone follows the host. |
 | Players choose their character when joining | off | A joining player picks one of its characters in this world, or makes a new one. Off: the one it played last. |
-| Players can bring a character from their own saves | off | The character, its equipment, bag, gold, fame and karma. Not its companions, base, quests or bank. The save is only read. |
+| Players can bring a character from their own saves | off | The character, its equipment, bag, gold, fame and karma. Not its companions, base, quests or bank. The save is only read. Never on the official server. |
+| Friends can take a character out to a solo save | off | In the character list, a character can be taken to a solo save (backed up first); it is away from this world until brought back or recalled as it was. Needs the box above. |
+| Characters per player | 3 | How many characters one player may have in this world (1, 3, 5, 10 or no limit). The host also has a list of everybody's characters, with Delete. |
 | Revive at the bartender (permadeath) | on | Permadeath worlds only: a dead player waits in the world and any player revives them at a bartender. Off: the game's own permadeath (the host's death deletes the world). |
 | Public game | off | Anybody who finds the game can join, not only friends; the safety checks are always on. |
 | Kicked players wait | 5 min | A kicked player cannot come back for that long (Off, 5, 15, 60 min). |
@@ -331,6 +394,9 @@ everyone as soon as they change.
 | Other players can use build mode | on | The other players build in the base; they pay the gold and the materials. Off: only the host builds. |
 | Only the host manages the base | off | What the other players ask of the base (research, policies, residents, build mode…) is refused. |
 | Duels between players | on | "Challenge to a duel" on another player's character. Nobody dies, both are healed, nothing is lost. |
+| Every player can bout adventurers | on | A guest fights an adventurer like the host: the adventurer leaves town, the win is recorded, the reward is the adventurer's. Off: the guest only fights in its own game and nothing is left in the world. |
+| Duel with the host in an arena | off | An accepted duel with the host is fought in a zone made for it; both go back where they were afterwards. Needs duels. |
+| Duel bets | off | The challenger names a gold stake (none, 100, 1,000 or the smaller purse); the winner takes both stakes, a duel without winner gives them back, giving up loses yours. Needs duels. |
 | Each player's auto combat protects its own | on | Auto combat saves from a deadly hit the player who runs it and its companions, with that player's tactics and stamina. Off: the host's auto combat protects everyone, a guest's no one. |
 | Players can kill each other | off | Off: a strike that would kill another player's character leaves it at 0 hit points. |
 | Combat on each player's time | on | A monster acts when the player it fights acts: nobody waits. Takes over turn-based combat. |
@@ -341,7 +407,10 @@ everyone as soon as they change.
 | Everyone sleeps for themselves | on | A player who goes to bed sleeps at once. The night passes for the world when enough players sleep at the same time. |
 | Night passes when | Everyone | Dropdown: *Everyone*, *Half* or *One* of the active players asleep. |
 | Away after | 5 min | A player without input for that long no longer holds the night, the world map or the date (Off, 5, 15, 30 min). |
-| Time stops when nobody plays | off | The world's date waits while no player is connected. |
+| Time stops when nobody plays | off | The world's date waits while no player is connected; a map a player holds alone stops while that player is away. |
+| Living world | off | Dropdown: the date follows real time, a day every 20, 40, 60 or 120 minutes, players acting or not. Off: the date follows the players' turns. |
+| Quests wait for absent players | on | Needs personal quests. A player who comes back finds the days the world lived meanwhile added to its deadlines. |
+| Catch-up days | 7 | A game far behind the world's date lives at most the last 1, 3 or 7 days (one per frame) and skips the rest. |
 | World map time | Shared clock | Dropdown: *Shared clock*, *Travel together* or *Personal pace* (see above). |
 | The base counts every player | on | Raids, lucky month and days with the player count every player on the base map. |
 | Barrels and milk follow the player | on | Aging shelves, drying bricks and mother's milk use the player they are about. |
@@ -362,6 +431,7 @@ everyone as soon as they change.
 | Require the same Elin version | off | Players on another version of Elin are refused. Off: let in with a warning. |
 | Turn-Based Combat | on | The original's rule. No effect while "Combat on each player's time" is on. |
 | Shared Average Speed | off | The original's rule: one speed for all players, the average. |
+| Each player has their own journal | on | Message history and records (digs, deaths, nights slept) are the player's own across trips and world copies. |
 | Players can be in teams | off | Players form teams; the host keeps who is in which team in its save. Off: no teams, everything as before. |
 | A base belongs to its team | off | A base belongs to the team that claimed it: other teams cannot open its chests, pick up, build or manage there. |
 | Joining a team needs its leader's approval | on | A player asking to join a team waits for its leader to accept. Off: joins at once. |
@@ -369,6 +439,10 @@ everyone as soon as they change.
 | Personal ownership inside a team | off | A chest, door or bed one installs is that player's; "Share with team" gives it back. |
 | Where a new player appears | start | Where a new player appears: *start* (the start meadow), *host* (the host's map) or a zone name or number. |
 | PvP between teams | off | Players of different teams are enemies outside towns and the spawn zone. Death still needs "Players can kill each other". |
+| Each player or team learns on its own | off | Recipes, crafts and the codex per team (a player without a team has its own). Off: one book for all. |
+| Each team pays its own land | off | One monthly bill per team. Needs teams. |
+| Each team keeps its own story journal | off | The furthest main-quest chapter each team took part in. Needs teams. |
+| Each player or team lives its own story (experimental) | off | Own pace through the main story, per team or player. Forced on on the official server. |
 
 ### Player: the *Client Settings* tab
 
@@ -447,11 +521,19 @@ why the screen reloads.
 - **Players against players**: a strike that would kill another player's character leaves it at 0 hit points,
   unless both are in a duel, where the fight ends at that floor and both are healed.
 
+### Own story and own knowledge
+
+The main story and the book of recipes and codex have owners: a team, or a player alone. The host holds its own and
+sends each guest its own with the world; a guest's story steps are checked and applied in its own story, and relayed
+to its teammates only. The save also keeps the world's original story and book, so that unticking the boxes gives
+the world back as it was.
+
 ### Time
 
 There is one date for the world: the furthest ahead. What time does to the world (weather, taxes, salaries,
 expired quests) is done once, by one game. What time does to a player (hunger, food that rots, quest deadlines)
-is counted per player, so another player's trip or night costs you nothing. A player who goes to bed sleeps its own
+is counted per player, so another player's trip or night costs you nothing. With the *Living world* box the date
+instead follows real time at the pace the host picked. A player who goes to bed sleeps its own
 night in a few seconds; the world's night only passes when everyone sleeps at the same time.
 
 ### Joining, and staying in agreement
@@ -500,68 +582,64 @@ for its player.
   stays off until it has been played between two real PCs. Without it someone takes the world from the depot.
 - Meeting the host again no longer reloads the whole world (ticked by default since 0.26.691); at the slightest doubt
   the mod reloads as before.
-- A player refused by the holder of a map still receives the whole world.
+- A player refused by the holder of a map stays where it is.
 - On the host's screen, walking guests can move in jumps of three tiles.
 - **Many players**: five game windows were tested on one PC and up to 50 simulated players (a load tool that speaks
   the protocol), never more than three real players at once. With many players, everyone arriving at the same time
   makes the host pause about half a second to a second per group.
 - Dungeon quests for two, when the guest took the quest: subdue, harvest and music quests. Defense quests are
   settled alone. An adventurer duel started by a guest leaves the adventurer in two places during the duel.
-- Duels between players have no arena or betting.
+- Arena and bets only exist in duels with the host; a duel between two guests is fought where they stand, without bets.
+- Each player or team living its own story is experimental: the endings of the main story and every dialog were not
+  all walked through with several real players.
 - Mods: Elin restarts once at the first join (see [Games with mods](#games-with-mods)). A mod removed from the game
   later stays subscribed for a player who chose to keep the mods. Not tried on Steam Deck, Linux or a Mac.
 - Catching up worlds played before "a share for everyone": recipes, the tickets of the debt, the wedding gifts and
   dialog gifts are not given again.
+- A character taken out to a solo save is away from the world until it comes back; a solo save that is never loaded
+  keeps it away (the host can recall it as it was).
 
 The full list is kept in the developer's notes, not published.
 
 ## What is left before a real release
 
-This fork is published as pre-releases for a group of friends. Here is what stands between that and a version one
-could recommend to anyone (as of 27 October 2026).
+Version 1.0 is meant to be usable by a group of friends and by a public server. Here is what is still not proven
+(as of 28 October 2026).
 
-**1. Proof on real PCs**
+**1. Not tested between two real PCs (marked so in the release notes)**
 
 - Almost everything is proven on one PC, over the local network. Steam lobbies, invitations, real latency, three or
-  four players and a long game are only covered by a few real evenings, and each of them found defects the tests
-  had not seen. It needs a small group playing every release. In particular: two real PCs with two Steam accounts.
+  four players and a long game are only covered by a few real evenings. In particular, never played between two real
+  PCs with two Steam accounts: the official server's entry in the list of games (Debug lobbies are private, so the
+  list itself was not seen), the Steam link replacing an older one of the same account, arenas and bets, the whole
+  of "each player or team lives its own story", teams paying their own land, the living world over a long play,
+  taking a character out to a solo save, the bug report's video on another PC, and the new checks of public servers
+  with real strangers.
 - A guest taking the world over ("Takeover"): played with three windows, never between two PCs.
-- A public server: the admin tools, the dedicated server joined through Steam and the bartender revive are tested on
-  one PC only.
+- Many players: 50 were simulated, never more than three real players at once.
 
 **2. Safe releases**
 
-- One release shipped with a defect (0.26.691: an animal brushed by a guest went to the host) because not every
-  test series had been replayed. The whole chain must be green before each release, and a few series are still
-  unstable (night, guest).
-- A world hosted for the first time with a new version is first copied to the game's own backups (since the
-  release after 0.26.708). Read in a save: nothing of the mod is written there that the game cannot ignore; but
-  loading such a world in an Elin without the mod, or with the original mod, has never been played.
+- The whole chain of tests must be green before each release; a few series are still unstable (night, guest).
+- A world hosted for the first time with a new version is first copied to the game's own backups. Loading such a
+  world in an Elin without the mod, or with the original mod, has never been played.
 
 **3. Installing**
 
 - The mod needs Elin's **Nightly** channel, and each release is built for one build of the game.
-- A zip and an `Install.bat`, in English, which replaces the Workshop version of the original mod. The maintainer is
-  preparing a Workshop page; no date is promised.
-- Every player must have exactly the same version.
+- Both the Workshop and the zip are provided. Every player must have exactly the same version.
 
 **4. Missing pieces**
 
 - Mods: the host's list applied without a restart; a game whose mod list changes.
-- Duels: arena, betting. Defense quests for two.
-- A real-time "living world" clock (the world's date moving even when nobody sleeps or travels): decided, not built.
-- Teams: each team's own recipes, codex, land taxes and story journal, then the main quest per team: decided, not
-  built.
-- The online depot of the world: automatic take-over from the depot.
+- Defense quests for two. The online depot of the world: automatic take-over from the depot.
 
-**5. Before recommending it**
+**5. Before recommending it to anyone**
 
 - The Chinese and Japanese READMEs are shorter than this one and were not proofread by a native speaker; the mod's
-  settings are in English.
-- Decide what happens with the original project: this fork changes the heart of the mod and is not meant to be
-  merged as it is.
-- To report a defect: the "Prepare a bug report" button of the *Client Settings* tab writes a zip on the desktop
-  with the logs of the game and of the mod (no save, no settings file).
+  settings are in English in the tables above and in game for most languages.
+- To report a defect: the *Report a bug to the developers* button of *Client Settings → Help* (see
+  [If something goes wrong](#if-something-goes-wrong)).
 
 ## How it is tested
 
@@ -589,9 +667,10 @@ played.
 - The host unticks the checkbox involved: for that point the mod behaves like the original again.
 - A player whose game no longer matches the others' types `emp.reconnect_self` in the console.
 - Elin closed by itself at the first join: it is the restart for the mods, see [Games with mods](#games-with-mods).
-- Report it [here](https://github.com/jeanfreger/elin-together-independence/issues), with every player's `Player.log` and
-  `ElinMP/Logs/Session_<date>.log` from `%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`. Please do not report
-  fork problems to the original project.
+- Report it from the game: *Client Settings → Help → Report a bug to the developers* (your words, the last 30 seconds
+  of your screen as a video, and the logs). Or [here](https://github.com/jeanfreger/elin-together-independence/issues),
+  with every player's `Player.log` and `ElinMP/Logs/Session_<date>.log` from
+  `%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`. Please do not report fork problems to the original project.
 
 ## Build
 

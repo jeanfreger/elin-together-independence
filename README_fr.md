@@ -1,6 +1,6 @@
 # Elin Together — version « indépendance »
 
-**Version actuelle : 0.26.1082** (zip `ElinTogether-independence.zip`).
+**Version actuelle : 1.0** (Steam Workshop, ou le zip `ElinTogether-independence.zip`).
 
 [English](README.md) | Français | [中文](README_zh.md) | [日本語](README_ja.md)
 
@@ -18,12 +18,12 @@ Le mod d'origine garde tout le groupe sur la carte de l'host et traite les autre
 Ses auteurs ne prévoient pas les cartes séparées ; cette version est l'endroit où on l'essaie. Tout le mérite du
 mod lui-même leur revient (voir [Crédits](#crédits)).
 
-> **État : expérimental, pas prêt pour une vraie sortie.** Chaque version est une préversion, compilée pour le canal
-> Nightly d'Elin. L'essentiel est vérifié par des tests automatiques en jeu, sur un seul PC (deux à cinq fenêtres
-> du jeu). Un seul petit groupe y a joué pour de vrai, et chaque soirée a trouvé des défauts que les tests n'avaient
-> pas vus. Plusieurs corrections récentes ont été publiées **sans avoir été jouées du tout**. Ce qui manque avant une
-> vraie sortie est listé dans [Ce qu'il reste avant une vraie sortie](#ce-quil-reste-avant-une-vraie-sortie).
-> Faites d'abord une copie de vos sauvegardes : `%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`.
+> **État : 1.0, avec des limites.** Compilée pour le canal Nightly d'Elin. L'essentiel est vérifié par des tests
+> automatiques en jeu, sur un seul PC (deux à cinq fenêtres du jeu, et jusqu'à 50 joueurs simulés pour la charge),
+> et le cœur a été joué pour de vrai par un petit groupe. Plusieurs parties de la 1.0 n'ont **jamais été jouées entre
+> deux vrais PC** : les notes de version les signalent, et
+> [Ce qu'il reste avant une vraie sortie](#ce-quil-reste-avant-une-vraie-sortie) aussi. Faites d'abord une copie de
+> vos sauvegardes : `%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`.
 
 **Sommaire**
 
@@ -57,8 +57,14 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   joueurs dorment en même temps (l'host choisit : tous, la moitié, ou un seul). Un joueur loin du clavier ne retient
   plus la nuit. Quand un autre joueur voyage ou dort, la date avance, mais vous n'avez pas plus faim, votre
   nourriture ne pourrit pas et vos délais de quête ne bougent pas.
-- **Les grands mondes.** Le temps peut s'arrêter quand personne ne joue, et une longue absence est rattrapée par
-  étapes (7 jours au plus). Chaque joueur du monde figure dans le classement des aventuriers.
+- **Les grands mondes.** Le temps peut s'arrêter quand personne ne joue (une carte qu'un joueur tient seul s'arrête
+  aussi quand il est absent), et une longue absence est rattrapée par étapes de 1, 3 ou 7 jours, au choix de l'host.
+  Les quêtes attendent les absents : un joueur qui revient retrouve dans ses délais les jours que le monde a vécus
+  entre-temps. Chaque joueur du monde figure dans le classement des aventuriers.
+- **Un monde vivant** (choix de l'host, décoché au départ). La date du monde suit le temps réel, au rythme choisi par
+  l'host : un jour toutes les 20, 40, 60 ou 120 minutes réelles, que les joueurs agissent ou non. Elle s'arrête quand
+  personne ne joue, et une nuit du monde va jusqu'au matin. Les actions de chaque joueur restent comptées dans ses
+  propres tours.
 
 ### À chaque joueur le sien
 
@@ -70,7 +76,12 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   une facture avec son propre or.
 - **Votre personnage.** En rejoignant, vous retrouvez le personnage que vous jouiez, sans aucune question ; un
   nouveau joueur crée le sien sur l'écran de création du jeu. L'host peut aussi permettre d'amener un personnage
-  d'une sauvegarde solo.
+  d'une sauvegarde solo, et de **sortir un personnage vers une sauvegarde solo** : il y joue, revient une fois (avec
+  son sac, son or et sa renommée) et est marqué absent du monde entre-temps. Chaque joueur a une limite de
+  personnages (3 au départ, au choix de l'host) et l'host voit la liste des personnages de tous, avec Supprimer.
+- **Votre propre journal.** Chaque joueur garde son historique de messages et ses records (fouilles, morts, nuits
+  dormies) d'une copie du monde et d'un voyage à l'autre, au lieu de lire ceux de l'host (case de l'host, cochée au
+  départ).
 - **Vos réglages.** Fenêtres, combat automatique, tri du sac et consignes des compagnons restent les vôtres à
   chaque changement de carte et à chaque reconnexion.
 - **Le combat automatique protège les siens.** Le combat automatique du jeu sauve d'un coup mortel le joueur qui le
@@ -97,7 +108,12 @@ mod lui-même leur revient (voir [Crédits](#crédits)).
   tous les joueurs présents sur cette carte.
 - **Entre joueurs.** Une fenêtre d'échange (chacun met des objets et de l'or, les deux confirment ; un objet porté
   est retiré quand on l'échange), des duels où personne ne meurt et où rien n'est perdu (avec un *Give up* dans
-  votre propre menu), et pas de meurtre hors duel.
+  votre propre menu), et pas de meurtre hors duel. Deux options (cases de l'host, décochées au départ) vont plus
+  loin : un duel avec l'host se bat dans une **arène**, une zone créée pour l'occasion, et chacun peut miser de l'or
+  que le gagnant ramasse (les mises sont rendues quand le duel n'a pas de gagnant ; abandonner fait perdre la mise).
+- **Les duels d'aventuriers** marchent pour chaque joueur comme pour l'host : l'aventurier quitte la ville pour le
+  combat, la semaine avant le prochain duel est la même pour tous, une victoire est enregistrée et la récompense
+  vient de l'aventurier.
 - **Permadeath entre amis** (option de l'host, cochée au départ, mondes en permadeath seulement) : un joueur qui
   meurt attend dans le monde au lieu que la partie s'arrête, et n'importe quel autre joueur le ressuscite chez un
   barman au prix du jeu. Rien n'est effacé, même quand c'est l'host qui meurt.
@@ -108,7 +124,28 @@ Décoché au départ (case de l'host *Teams*). Quand l'host les active, les joue
 terre, ses coffres, ses bâtiments et ses portes, un titre de propriété pour son fondateur et, si l'host le permet,
 du PvP entre équipes. Les coffres d'une autre équipe ne servent pas, même pour fabriquer (l'host le refuse aussi).
 Un nouveau joueur apparaît dans la zone d'arrivée : la prairie du début, la carte de l'host, ou une zone donnée par
-son nom ou son numéro. Sans la case, rien ne change.
+son nom ou son numéro. Sans la case, rien ne change. Trois autres cases de l'host, chacune décochée au départ :
+
+- **Chaque équipe paie sa terre.** Une facture par mois et par équipe, pour sa seule terre, sur la plus haute
+  renommée de ses membres (terre de personne : la facture des errants). Les factures impayées sont comptées par
+  équipe : seuls les joueurs de cette équipe perdent du karma.
+- **Chaque équipe garde son journal d'histoire** : le chapitre de quête principale le plus avancé auquel l'équipe a
+  pris part, montré sur sa carte. L'histoire elle-même reste celle du monde.
+- **Chaque joueur ou équipe apprend de son côté** (marche aussi sans équipes) : recettes, fabrications et codex
+  sont à l'équipe (une équipe partage un seul livre, un joueur sans équipe a le sien). Un parchemin lu par un autre
+  joueur est appris dans son seul jeu, les kills comptent pour l'équipe du tueur, les recettes données par
+  l'histoire arrivent à toutes les équipes, et ce qu'un joueur savait le suit d'une équipe à l'autre.
+
+### Chaque joueur ou équipe vit sa propre histoire (expérimental)
+
+Décoché au départ (case de l'host *Chaque joueur ou équipe vit sa propre histoire*), et **toujours actif sur le
+serveur officiel**. Chaque joueur traverse l'histoire principale à son rythme (les quêtes d'Ash, l'exploration de
+Nymelle et ses dialogues) ; une équipe partage une histoire, un joueur sans équipe a la sienne. Une fois la case
+cochée, tout le monde part de l'avancement actuel du monde. Farris ne rejoint que la première base ; un joueur ou
+une équipe qui arrive sur un étage de Nymelle déjà vidé par un autre continue à partir de là ; les récompenses de
+l'histoire ne sont payées qu'une fois par joueur. La sauvegarde garde l'histoire propre à l'host : décochez la case,
+ou ouvrez la sauvegarde sans le mod, et le monde continue avec elle. Décochée : une seule histoire pour tous, comme
+avant.
 
 ### Temps et réglages simplifiés
 
@@ -144,7 +181,14 @@ du dieu, autels, pièges, grimoires, guérisseur, bénédictions, investir, rune
 en main, copie chez Kettle, résurrection d'un compagnon chez le barman, fenêtres qui s'ouvraient chez l'host, poteaux d'attache, compagnon d'un
 invité qui utilise l'exploit de récupération de l'invité sur les pièges, habitant de l'histoire qui se tient près de
 l'invité qui a fini la quête, « le jour se termine » lu par les invités, inventaire à « toujours trier » qui figeait
-le jeu d'un invité, invité qui quitte en étant ailleurs et n'est plus pris pour un lien perdu… Chaque invité garde
+le jeu d'un invité, invité qui quitte en étant ailleurs et n'est plus pris pour un lien perdu… Plus
+récemment : les cors d'une quête de défense sonnent chez l'host pour un invité, un titre de déménagement déplace la
+base dans le monde de l'host pour tous, le voyage d'un invité sur la carte du monde est payé quand il entre dans la
+ville de l'host, l'exploit de militant et l'étage du boss du vide lisent le côté du joueur, le donjon féerique de
+Nasu et l'escalier de Nasu cherchent le Nasu d'un joueur présent, une quête de repas demande un plat cuisiné par
+celui qui la prend, les compositions de groupe enregistrées et l'exploit total de la fiche restent au joueur d'une
+copie du monde à l'autre, le courrier de la base est à chaque joueur, un mariage installe les gens de la base, un
+succès va au joueur concerné, et les rencontres sont tirées par le jeu du visiteur. Chaque invité garde
 aussi ses propres scènes d'histoire, sa liste de mécènes et son compte de Churyu d'une copie du monde à l'autre. La
 liste complète est gardée dans les notes du développeur, elle n'est pas publiée.
 
@@ -177,12 +221,26 @@ liste complète est gardée dans les notes du développeur, elle n'est pas publi
   muet par compte Steam (gardé dans le monde), des admins nommés par l'host qui ont les boutons Kick, Mute et Ban
   dans l'onglet *Players*, et un mode *Members only*. Chaque action est écrite dans `ElinMP/Logs/admin.log` ; un
   serveur dédié reçoit les mêmes ordres de son application ou de `ElinMP/server.cmd`.
+- **Le serveur officiel.** L'écran titre montre en premier la partie publique du compte Elin Together, marquée
+  comme officielle, avec son nombre de joueurs (une ligne discrète quand elle n'est pas ouverte) ; elle accepte
+  jusqu'à 100 joueurs. Son entrée est signée : une partie qui se contente de s'appeler « Elin Together » n'est pas
+  montrée comme officielle. Le serveur officiel refuse les personnages importés et fait toujours vivre à chaque
+  joueur sa propre histoire.
 - **Sécurité contre les jeux modifiés.** L'host refuse ce qu'un invité n'a pas le droit de faire (objets et
   personnages des autres joueurs, or ou objets inventés, chat sous un autre nom), toujours dans une partie publique
   et sur un serveur dédié (case *Refuse acts on what others own* sinon). Un paquet ou une carte fabriqués ne peuvent
-  plus faire planter l'host ni exécuter du code.
+  plus faire planter l'host ni exécuter du code. Les issues de dialogue, les quêtes partagées, les cadeaux d'histoire, les récompenses de quête
+  personnelle, les ressources de la base, les investissements de la ville, les messages de temps du monde et de
+  savoir, les bulles, les pings et les lignes privées sont tous vérifiés côté host ; une vérification qui échoue
+  refuse ; et un joueur n'est accueilli sur la carte d'un autre que par un coéquipier ou un joueur garanti.
 - **Beaucoup de joueurs.** Chaque joueur ne reçoit que ce qui concerne sa propre carte, les joueurs qui arrivent
-  ensemble partagent une seule copie du monde, et la charge a été mesurée avec jusqu'à 50 joueurs simulés.
+  ensemble partagent une seule copie du monde, les instantanés ne portent que les personnages qui ont changé, et la charge a été mesurée avec jusqu'à 50 joueurs
+  simulés.
+- **Signaler un défaut depuis le jeu.** *Client Settings → Help → Report a bug to the developers* : une vraie zone de
+  texte (Entrée pour une nouvelle ligne, Ctrl+Entrée pour envoyer), et le rapport part avec les 30 dernières
+  secondes de votre écran en vidéo et vos journaux. Le ticket public sur GitHub contient vos mots, votre nom Steam,
+  les versions et la vidéo ; les journaux (ils contiennent des identifiants Steam) restent privés, pour les
+  développeurs. Si l'envoi échoue, la page GitHub s'ouvre, déjà remplie.
 
 ### Les mêmes mods pour tous
 
@@ -197,25 +255,35 @@ Presque tout cela est une **case à cocher côté host** : décochée, le mod se
 ## Installer
 
 Il faut Elin sur Steam, sur le canal **Nightly** (Steam → clic droit sur Elin → Propriétés → Bêtas), et le mod
-[YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753). S'abonner à
-[Elin Together](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) sur le Workshop l'amène avec
-lui. Lancez Elin une fois après l'abonnement, puis fermez-le.
+[YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753) (l'installation par le Workshop
+ci-dessous l'amène avec elle). Il y a deux façons d'obtenir le mod ; les deux donnent la même version 1.0.
+Utilisez-en une seule, pas les deux.
 
-1. Téléchargez `ElinTogether-independence.zip` sur la
-   [page des versions](https://github.com/jeanfreger/elin-together-independence/releases).
+**A. Steam Workshop (le plus simple, mises à jour automatiques)**
+
+1. Abonnez-vous à [Elin Together](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) sur le Workshop.
+2. Lancez Elin par Steam, vérifiez que *Elin Together* est coché dans la liste de mods du jeu, et relancez si le jeu
+   le demande.
+
+**B. Le zip (aussi sur la [page des versions](https://github.com/jeanfreger/elin-together-independence/releases))**
+
+Lancez Elin une fois avec YK Framework installé, puis fermez-le.
+
+1. Téléchargez `ElinTogether-independence.zip`.
 2. Décompressez tout le dossier et lancez `Install.bat`. Il trouve Elin, copie le mod dans
    `Elin\Package\Mod_ElinTogether` et remplace la version Workshop par celle-ci dans la liste de mods du jeu.
 3. Lancez Elin par Steam.
 
 `Uninstall.bat` remet la version Workshop ; rien n'est supprimé, l'ancien état est gardé dans
-`Elin\_ElinTogether_sauvegarde`. La notice `README.txt` du zip explique tout.
+`Elin\_ElinTogether_sauvegarde`. La notice `README.txt` du zip explique tout. Si vous avez utilisé le zip et
+préférez maintenant le Workshop, lancez d'abord `Uninstall.bat`.
 
-
-**Tous les joueurs doivent installer la même version.** Ce fork ne se connecte pas à la version du Workshop, ni à
-une autre version de lui-même : un joueur sur une autre version est refusé, avec un message qui nomme les deux
+**Tous les joueurs doivent avoir la même version.** Ce mod ne se connecte pas à l'Elin Together d'origine, ni à une
+autre version de lui-même : un joueur sur une autre version est refusé, avec un message qui nomme les deux
 versions. Chaque version est compilée pour une version d'Elin, écrite dans son titre.
 
-**Mettre à jour** : téléchargez le nouveau zip et relancez `Install.bat`. Vos réglages sont gardés.
+**Mettre à jour** : sur le Workshop, Steam s'en charge ; avec le zip, téléchargez le nouveau et relancez
+`Install.bat`. Vos réglages sont gardés.
 
 ## Votre première partie ensemble
 
@@ -338,7 +406,9 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 |---|---|---|
 | Independent travel | cochée | Chacun va où il veut, seul ou ensemble. Décochée : tout le monde suit l'host. |
 | Players choose their character when joining | décochée | En rejoignant, le joueur choisit un de ses personnages de ce monde, ou en crée un. Décochée : le dernier joué. |
-| Players can bring a character from their own saves | décochée | Le personnage, son équipement, son sac, son or, sa renommée et son karma. Pas ses compagnons, sa base, ses quêtes ni sa banque. La sauvegarde est seulement lue. |
+| Players can bring a character from their own saves | décochée | Le personnage, son équipement, son sac, son or, sa renommée et son karma. Ni ses compagnons, ni la base, ni les quêtes, ni la banque. La sauvegarde n'est que lue. Jamais sur le serveur officiel. |
+| Friends can take a character out to a solo save | décochée | Dans la liste des personnages, un personnage peut partir dans une sauvegarde solo (copiée d'abord) ; il est absent de ce monde jusqu'à son retour ou jusqu'à ce qu'on le rappelle tel quel. Demande la case précédente. |
+| Characters per player | 3 | Combien de personnages un joueur peut avoir dans ce monde (1, 3, 5, 10 ou sans limite). L'host a aussi une liste des personnages de tous, avec Supprimer. |
 | Revive at the bartender (permadeath) | cochée | Mondes en permadeath seulement : un joueur mort attend dans le monde et n'importe quel joueur le ressuscite chez un barman. Décochée : le permadeath du jeu (la mort de l'host efface le monde). |
 | Public game | décochée | N'importe qui qui trouve la partie peut la rejoindre, pas seulement les amis ; les contrôles de sécurité sont toujours actifs. |
 | Kicked players wait | 5 min | Un joueur expulsé ne peut pas revenir pendant ce temps (Off, 5, 15, 60 min). |
@@ -350,6 +420,9 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Other players can use build mode | cochée | Les autres joueurs construisent dans la base ; ils paient l'or et les matériaux. Décochée : seul l'host construit. |
 | Only the host manages the base | décochée | Ce que les autres demandent à la base (recherche, politiques, résidents, mode construction…) est refusé. |
 | Duels between players | cochée | « Challenge to a duel » sur le personnage d'un autre joueur. Personne ne meurt, les deux sont soignés, rien n'est perdu. |
+| Chaque joueur peut défier un aventurier | cochée | Un invité combat un aventurier comme l'host : l'aventurier quitte la ville, la victoire est enregistrée, la récompense est la sienne. Décochée : l'invité ne combat que dans son jeu et rien ne reste dans le monde. |
+| Duel with the host in an arena | décochée | Un duel accepté avec l'host se bat dans une zone créée pour lui ; les deux reviennent ensuite où ils étaient. Demande les duels. |
+| Duel bets | décochée | Le provocateur annonce une mise d'or (aucune, 100, 1 000 ou la plus petite bourse) ; le gagnant prend les deux mises, un duel sans gagnant les rend, abandonner fait perdre la sienne. Demande les duels. |
 | Each player's auto combat protects its own | cochée | Le combat automatique sauve d'un coup mortel le joueur qui le lance et ses compagnons, avec la tactique et l'endurance de ce joueur. Décochée : celui de l'host protège tout le monde, celui d'un invité personne. |
 | Players can kill each other | décochée | Décochée : un coup qui tuerait le personnage d'un autre joueur le laisse à 0 point de vie. |
 | Combat on each player's time | cochée | Un monstre agit quand le joueur qu'il combat agit : personne n'attend. Passe avant le combat au tour par tour. |
@@ -360,7 +433,10 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Everyone sleeps for themselves | cochée | Celui qui se couche dort tout de suite. La nuit passe pour le monde quand assez de joueurs dorment en même temps. |
 | Night passes when | Everyone | Liste : *Everyone*, *Half* ou *One* des joueurs actifs endormis. |
 | Away after | 5 min | Un joueur sans action depuis ce temps ne retient plus la nuit, la carte du monde ni la date (Off, 5, 15, 30 min). |
-| Time stops when nobody plays | décochée | La date du monde attend tant qu'aucun joueur n'est connecté. |
+| Time stops when nobody plays | décochée | La date du monde attend tant qu'aucun joueur n'est connecté ; une carte tenue seule par un joueur s'arrête quand il est absent. |
+| Monde vivant | Off | Liste : la date suit le temps réel, un jour toutes les 20, 40, 60 ou 120 minutes, que les joueurs agissent ou non. Off : la date suit les tours des joueurs. |
+| Les quêtes attendent les absents | cochée | Demande les quêtes personnelles. Un joueur qui revient retrouve dans ses délais les jours vécus entre-temps. |
+| Jours de rattrapage | 7 | Un jeu très en retard sur la date du monde ne vit que les 1, 3 ou 7 derniers jours (un par image) et saute le reste. |
 | Temps sur la carte du monde | Horloge commune | Liste : *Horloge commune*, *Voyager ensemble* ou *Rythme personnel* (voir plus haut). |
 | La base compte chaque joueur | cochée | Raids, mois de chance et jours avec le joueur comptent chaque joueur de la carte de la base. |
 | Tonneaux et lait suivent le joueur | cochée | Étagères d'affinage, briques à sécher et lait maternel utilisent le joueur concerné. |
@@ -381,6 +457,7 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Require the same Elin version | décochée | Un joueur sur une autre version d'Elin est refusé. Décochée : il entre avec un avertissement. |
 | Turn-Based Combat | cochée | Règle du mod d'origine. Sans effet tant que « Combat on each player's time » est cochée. |
 | Shared Average Speed | décochée | Règle du mod d'origine : une seule vitesse pour tous les joueurs, la moyenne. |
+| Each player has their own journal | cochée | L'historique de messages et les records (fouilles, morts, nuits dormies) sont à chaque joueur, d'un voyage et d'une copie du monde à l'autre. |
 | Players can be in teams | décochée | Les joueurs forment des équipes ; l'host garde dans sa sauvegarde qui est dans quelle équipe. Décochée : pas d'équipes, tout comme avant. |
 | A base belongs to its team | décochée | Une base appartient à l'équipe qui l'a revendiquée : les autres équipes n'y ouvrent pas les coffres, ne ramassent pas, ne construisent pas, ne gèrent pas. |
 | Joining a team needs its leader's approval | cochée | Un joueur qui demande à rejoindre une équipe attend l'accord de son chef. Décochée : il entre aussitôt. |
@@ -388,6 +465,10 @@ s'appliquent à tous dès qu'elles changent. Les noms des cases sont en anglais 
 | Personal ownership inside a team | décochée | Un coffre, une porte ou un lit posé est à celui qui l'installe ; « Share with team » le rend à l'équipe. |
 | Where a new player appears | start | Où apparaît un nouveau joueur : *start* (la prairie du début), *host* (la carte de l'host) ou un nom ou numéro de zone. |
 | PvP between teams | décochée | Les joueurs d'équipes différentes sont ennemis hors des villes et de la zone d'arrivée. Pour mourir il faut encore « Players can kill each other ». |
+| Each player or team learns on its own | décochée | Recettes, fabrications et codex par équipe (un joueur sans équipe a les siens). Décochée : un seul livre pour tous. |
+| Each team pays its own land | décochée | Une facture par mois et par équipe. Demande les équipes. |
+| Each team keeps its own story journal | décochée | Le chapitre de quête principale le plus avancé de chaque équipe. Demande les équipes. |
+| Each player or team lives its own story (experimental) | décochée | Son propre rythme dans l'histoire principale, par équipe ou par joueur. Forcée sur le serveur officiel. |
 
 ### Joueur : l'onglet *Client Settings*
 
@@ -468,11 +549,19 @@ entier : c'est pour cela que l'écran recharge.
 - **Joueur contre joueur** : un coup qui tuerait le personnage d'un autre joueur le laisse à 0 point de vie, sauf
   en duel, où le combat s'arrête à ce plancher et où les deux sont soignés.
 
+### Histoire et savoir propres
+
+L'histoire principale, le livre de recettes et le codex ont des propriétaires : une équipe, ou un joueur seul. L'host
+tient les siens et envoie à chaque invité les siens avec le monde ; les pas d'histoire d'un invité sont vérifiés et
+appliqués dans sa propre histoire, et relayés à ses seuls coéquipiers. La sauvegarde garde aussi l'histoire et le
+livre d'origine du monde, si bien que décocher les cases rend le monde tel qu'il était.
+
 ### Le temps
 
 Il y a une seule date pour le monde : la plus avancée. Ce que le temps fait au monde (météo, impôts, salaires,
 quêtes expirées) est fait une seule fois, par un seul jeu. Ce que le temps fait à un joueur (faim, nourriture qui
-pourrit, délais de quête) est compté par joueur : le voyage ou la nuit d'un autre ne vous coûte rien. Celui qui se
+pourrit, délais de quête) est compté par joueur : le voyage ou la nuit d'un autre ne vous coûte rien. Avec la case *Monde vivant*, la date suit au contraire le temps
+réel au rythme choisi par l'host. Celui qui se
 couche dort sa propre nuit en quelques secondes ; la nuit du monde ne passe que si tous dorment en même temps.
 
 ### Rejoindre, et rester d'accord
@@ -521,7 +610,7 @@ l'ancien attend son joueur.
   est décochée tant que ce n'est pas joué entre deux vrais PC. Sans elle, quelqu'un prend le monde dans le dépôt.
 - Retrouver l'host ne recharge plus tout le monde (case cochée d'office depuis la 0.26.691) ; au moindre doute le mod
   recharge comme avant.
-- Un joueur refusé par celui qui tient une carte reçoit encore le monde entier.
+- Un joueur refusé par celui qui tient une carte reste où il est.
 - Sur l'écran de l'host, les invités qui marchent peuvent avancer par à-coups de trois cases.
 - **Beaucoup de joueurs** : cinq fenêtres du jeu ont été testées sur un seul PC et jusqu'à 50 joueurs simulés (un
   outil de charge qui parle le protocole), jamais plus de trois vrais joueurs à la fois. Avec beaucoup de joueurs,
@@ -531,63 +620,60 @@ l'ancien attend son joueur.
   « remarquent » que lui (rumeurs, cadeaux).
 - Quêtes à donjon à deux, quand c'est l'invité qui a la quête : « subjuguer », récolte et musique. La défense se
   fait seul. Un duel d'aventurier lancé par un invité laisse l'aventurier en double pendant le duel.
-- Les duels entre joueurs n'ont ni arène ni pari.
+- L'arène et les paris n'existent que dans les duels avec l'host ; un duel entre deux invités se bat sur place, sans pari.
+- Que chaque joueur ou équipe vive sa propre histoire est expérimental : toutes les fins de l'histoire principale et
+  tous les dialogues n'ont pas été parcourus avec plusieurs vrais joueurs.
 - Mods : Elin se relance une fois à la première connexion (voir [Les parties avec mods](#les-parties-avec-mods)).
   Un mod retiré de la partie plus tard reste abonné chez un joueur qui a choisi de garder les mods. Pas essayé sur
   Steam Deck, Linux ni Mac.
 - Rattrapage des mondes joués avant « une part pour chacun » : les recettes, les billets de la dette, les cadeaux du
   mariage et les cadeaux de dialogue ne sont pas redonnés.
+- Un personnage sorti vers une sauvegarde solo est absent du monde jusqu'à son retour ; une sauvegarde solo qui n'est
+  jamais chargée le garde absent (l'host peut le rappeler tel quel).
 
 La liste complète est gardée dans les notes du développeur, elle n'est pas publiée.
 
 ## Ce qu'il reste avant une vraie sortie
 
-Ce fork est publié en préversions pour un groupe d'amis. Voici ce qui sépare cela d'une version qu'on pourrait
-recommander à n'importe qui (état au 27 octobre 2026).
+La version 1.0 est faite pour être utilisable par un groupe d'amis et par un serveur public. Voici ce qui n'est pas
+encore prouvé (état au 28 octobre 2026).
 
-**1. La preuve sur de vrais PC**
+**1. Pas testé entre deux vrais PC (signalé ainsi dans les notes de version)**
 
 - Presque tout est prouvé sur un seul PC, par le réseau local. Les salons Steam, les invitations, la latence réelle,
-  trois ou quatre joueurs et une longue partie ne sont couverts que par quelques vraies soirées, et chacune a trouvé
-  des défauts que les tests n'avaient pas vus. Il faut un petit groupe qui joue chaque version. En particulier :
-  deux vrais PC avec deux comptes Steam.
+  trois ou quatre joueurs et une longue partie ne sont couverts que par quelques vraies soirées. Jamais joués entre
+  deux vrais PC avec deux comptes Steam, en particulier : l'entrée du serveur officiel dans la liste des parties (les
+  salons Debug sont privés, la liste elle-même n'a donc pas été vue), le nouveau lien Steam d'un compte qui remplace
+  l'ancien, les arènes et les paris, l'ensemble de « chaque joueur ou équipe vit sa propre histoire », les équipes
+  qui paient leur terre, le monde vivant sur une longue partie, la sortie d'un personnage vers une sauvegarde solo,
+  la vidéo du rapport de défaut sur un autre PC, et les nouveaux contrôles des serveurs publics face à de vrais
+  inconnus.
 - La reprise du monde par un invité (« Takeover ») : jouée à trois fenêtres, jamais entre deux PC.
-- Un serveur public : les outils d'administration, le serveur dédié rejoint par Steam et la résurrection chez le
-  barman ne sont testés que sur un seul PC.
+- Beaucoup de joueurs : 50 ont été simulés, jamais plus de trois vrais joueurs à la fois.
 
 **2. Des versions sûres**
 
-- Une version a été publiée avec un défaut (0.26.691 : l'animal brossé par un invité allait à l'host) parce que
-  toutes les séries de tests n'avaient pas été rejouées. La chaîne complète doit être verte avant chaque version, et
-  quelques séries sont encore instables (nuit, invité).
+- La chaîne complète de tests doit être verte avant chaque version ; quelques séries sont encore instables (nuit,
+  invité).
 - Un monde hébergé pour la première fois avec une nouvelle version est d'abord copié dans les sauvegardes de secours
-  du jeu (depuis la version qui suit la 0.26.708). Lu dans une sauvegarde : rien du mod n'y est écrit que le jeu ne
-  sache ignorer ; mais recharger ce monde dans un Elin sans le mod, ou avec le mod d'origine, n'a jamais été joué.
+  du jeu. Recharger ce monde dans un Elin sans le mod, ou avec le mod d'origine, n'a jamais été joué.
 
 **3. L'installation**
 
 - Le mod demande le canal **Nightly** d'Elin, et chaque version est compilée pour une version précise du jeu.
-- Un zip (`Install.bat`, `Uninstall.bat`, `Server.bat`, `README.txt`), en anglais, qui remplace la version Workshop du mod d'origine. Le mainteneur prépare une page Workshop ; aucune date n'est promise.
-- Tous les joueurs doivent avoir exactement la même version.
+- Le Workshop et le zip sont tous deux fournis. Tous les joueurs doivent avoir exactement la même version.
 
 **4. Ce qui manque**
 
 - Mods : la liste de l'host appliquée sans relance ; une partie dont la liste change.
-- Duels : arène, pari. Quêtes de défense à deux.
-- Une horloge « monde vivant » en temps réel (la date du monde qui avance même quand personne ne dort ni ne
-  voyage) : décidée, pas construite.
-- Équipes : recettes, codex, impôts fonciers et journal d'histoire propres à chaque équipe, puis la quête
-  principale par équipe : décidés, pas construits.
-- Le dépôt en ligne du monde : la reprise automatique depuis le dépôt.
+- Quêtes de défense à deux. Le dépôt en ligne du monde : la reprise automatique depuis le dépôt.
 
-**5. Avant de le recommander**
+**5. Avant de le recommander à n'importe qui**
 
 - Les README chinois et japonais sont plus courts que celui-ci et n'ont pas été relus par quelqu'un dont c'est la
-  langue ; les réglages du mod sont en anglais.
-- Décider ce qu'on fait avec le projet d'origine : ce fork change le cœur du mod et n'est pas fait pour y être
-  fusionné tel quel.
-- Pour signaler un défaut : le bouton « Prepare a bug report » de l'onglet *Client Settings* écrit sur le bureau un
-  zip avec les journaux du jeu et du mod (ni sauvegarde, ni fichier de réglages).
+  langue ; les réglages du mod sont en anglais dans les tableaux ci-dessus.
+- Pour signaler un défaut : le bouton *Report a bug to the developers* de *Client Settings → Help* (voir
+  [En cas de problème](#en-cas-de-problème)).
 
 ## Comment c'est testé
 
@@ -617,7 +703,8 @@ et dire ce qui n'a pas été joué.
 - Un joueur dont le jeu ne correspond plus à celui des autres tape `emp.reconnect_self` dans la console.
 - Elin s'est fermé tout seul à la première connexion : c'est la relance pour les mods, voir
   [Les parties avec mods](#les-parties-avec-mods).
-- Signalez-le dans [les tickets de ce dépôt](https://github.com/jeanfreger/elin-together-independence/issues), avec les
+- Signalez-le depuis le jeu : *Client Settings → Help → Report a bug to the developers* (vos mots, les 30 dernières
+  secondes de votre écran en vidéo, et les journaux). Ou dans [les tickets de ce dépôt](https://github.com/jeanfreger/elin-together-independence/issues), avec les
   fichiers `Player.log` et `ElinMP/Logs/Session_<date>.log` de chaque joueur
   (`%USERPROFILE%\AppData\LocalLow\Lafrontier\Elin`). Merci de ne pas signaler au projet d'origine les problèmes
   de ce fork.
