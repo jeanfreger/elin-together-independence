@@ -31,6 +31,14 @@ internal static class SiblingLands
     }
 
     /// <summary>
+    ///     A land a player made its own: a claimed field or the start site (the first base of most worlds), not a town
+    /// </summary>
+    private static bool IsPlayerLand(Zone zone)
+    {
+        return zone is Zone_Field or Zone_StartSite;
+    }
+
+    /// <summary>
     ///     A deed read where the player stands on the world map: a tile that already holds a land is the case this
     ///     option is for
     /// </summary>
@@ -70,7 +78,7 @@ internal static class SiblingLands
         }
 
         var lands = LandsAt(x, y);
-        return lands.Count == 0 || lands.Any(l => l is not Zone_Field) ? $"the tile {x},{y} holds no land of players" : null;
+        return lands.Count == 0 || lands.Any(l => !IsPlayerLand(l)) ? $"the tile {x},{y} holds no land of players" : null;
     }
 
     /// <summary>
@@ -197,7 +205,7 @@ internal static class SiblingLands
             return true;
         }
 
-        if (lands.Any(l => l is not Zone_Field)) {
+        if (lands.Any(l => !IsPlayerLand(l))) {
             Msg.Say("invalidClaimZone");
             return false;
         }

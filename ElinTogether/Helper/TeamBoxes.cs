@@ -301,6 +301,12 @@ internal static class TeamBoxes
             return false;
         }
 
+        // (the buffer refreshes a delta just before it goes: a thing new to the players carries its data, or they drop it
+        // as "cannot be resolved", here nothing passes through the buffer)
+        if (!delta.Refresh()) {
+            return true;
+        }
+
         foreach (var (peer, uid) in host.PeerCharas()) {
             if (Owns(uid, owner)) {
                 host.SendDeltaTo(peer, delta);
