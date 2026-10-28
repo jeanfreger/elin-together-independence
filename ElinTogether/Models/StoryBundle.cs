@@ -53,4 +53,22 @@ public class StoryBundle
     /// </summary>
     [Key(6)]
     public Dictionary<int, int>? KeyItems { get; set; }
+
+    /// <summary>
+    ///     What is left of the debt to Loytel (Player.debt); none in a story written before
+    /// </summary>
+    [Key(7)]
+    public int? Debt { get; set; }
+
+    /// <summary>
+    ///     The extra tax that owner chose to pay each month (Player.extraTax); none in a story written before
+    /// </summary>
+    [Key(8)]
+    public int? ExtraTax { get; set; }
+
+    /// <summary>
+    ///     What the story set in Player.flags (Loytel's mart), by name; none in a story written before
+    /// </summary>
+    [Key(9)]
+    public Dictionary<string, int>? Flags { get; set; }
 }

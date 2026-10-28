@@ -12,6 +12,10 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class ExtraTaxDelta : ElinDelta
 {
+    // (each story its own extra tax, host option "Each player or team lives its own story": checked and kept in the
+    // sender's, told to its players only)
+    internal override bool InSendersStory => true;
+
     [Key(0)]
     public required int Value { get; init; }
 

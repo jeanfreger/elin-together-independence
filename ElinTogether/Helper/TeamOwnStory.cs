@@ -32,11 +32,18 @@ internal static class TeamOwnStory
     private const int Schema = 1;
 
     // the quests of the story, by id and by the type name QuestManager.completedTypes holds
-    private static readonly HashSet<string> StoryIds = ["main", "exploration"];
-    private static readonly HashSet<string> StoryTypes = [nameof(QuestMain), nameof(QuestExploration)];
+    // (and Loytel's debt: its bills and rewards are the owner's; how it started, pre_debt and the runaway, is a side
+    // story of the world)
+    private static readonly HashSet<string> StoryIds = ["main", "exploration", "debt"];
+    private static readonly HashSet<string> StoryTypes = [nameof(QuestMain), nameof(QuestExploration), nameof(QuestDebt)];
 
     // the dialog choices of the story (Ash's and Fiama's dramas: setFlag ash1, tutorial1, fiama1)
     private static readonly string[] DialogIds = ["ash1", "tutorial1", "fiama1"];
+
+    // what the story sets in Player.flags (QuestDebt.GiveReward: Loytel's mart and its level)
+    private static readonly System.Reflection.PropertyInfo[] StoryFlagProps = new[] {
+        nameof(Player.Flags.gotLoytelMart), nameof(Player.Flags.loytelMartLv),
+    }.Select(name => typeof(Player.Flags).GetProperty(name)!).ToArray();
 
     // the game that keeps the book: the host of the world, or a game playing alone
     private static bool KeepsBook => NetSession.Instance.Transport is not ElinNetClient;
@@ -88,7 +95,7 @@ internal static class TeamOwnStory
 
     internal static bool IsStory(Quest? quest)
     {
-        return quest is QuestMain or QuestExploration;
+        return quest is QuestMain or QuestExploration or QuestDebt;
     }
 
     /// <summary>
@@ -136,6 +143,7 @@ internal static class TeamOwnStory
             ForgetGoneTeams();
             LookAtLothria();
             CatchUp();
+            DebtCatchUp();
         }
     }
 
@@ -394,14 +402,15 @@ internal static class TeamOwnStory
         return true;
     }
 
-    private static readonly HashSet<string> StoryFlags = [..DialogIds.Select(id => "d:" + id)];
+    private static readonly HashSet<string> StoryFlags = [..DialogIds.Select(id => "d:" + id), ..StoryFlagProps.Select(p => "f:" + p.Name)];
 
     /// <summary>
-    ///     A value the story remembers (DialogFlagSync's id): a dialog flag of the story, a key item
+    ///     A value the story remembers (DialogFlagSync's id): a dialog flag of the story, a key item, the debt, the extra
+    ///     tax, a flag the story sets
     /// </summary>
     internal static bool IsStoryFlag(string id)
     {
-        return StoryFlags.Contains(id) || id.StartsWith("k:");
+        return StoryFlags.Contains(id) || id.StartsWith("k:") || id is "p:debt" or "p:extraTax";
     }
 
     /// <summary>
@@ -417,6 +426,7 @@ internal static class TeamOwnStory
             QuestStartDelta q => IsStoryQuest(q.Uid, null),
             QuestFailDelta q => IsStoryQuest(q.Uid, null),
             DialogFlagDelta f => IsStoryFlag(f.Id),
+            ExtraTaxDelta => true,
             _ => false,
         };
     }
@@ -710,6 +720,83 @@ internal static class TeamOwnStory
             .Select(uid => EClass.game.cards.globalCharas.Find(uid)).OfType<Chara>();
     }
 
+    // ---- the debt and the extra tax
+
+    /// <summary>
+    ///     The extra tax the lands of that team are billed each month (TeamBills): its story's; the lands of no team,
+    ///     the host's own while it plays without a team. None while the box is off (the world's, on the first bill)
+    /// </summary>
+    internal static int? ExtraTaxOf(int team)
+    {
+        if (LocalOwner is not { } local || !On || !Seeded) {
+            return null;
+        }
+
+        if (team != Teams.Wanderers) {
+            return Of(team).ExtraTax ?? 0;
+        }
+
+        return local < 0 ? EClass.player.extraTax : 0;
+    }
+
+    private static float _nextDebt;
+
+    /// <summary>
+    ///     Loytel's debt starts once in the world (the runaway's end, Chara.ShowDialog "loytel"): Loytel joins that
+    ///     story's base and the debt quest is that story's. A story that has no debt quest once the world's runaway is
+    ///     over gets one, already started (Loytel stays where the first story put him), with a line
+    /// </summary>
+    private static void DebtCatchUp()
+    {
+        if (UnityEngine.Time.unscaledTime < _nextDebt || NetSession.Instance.Transport is ElinNetHost { IsZoneSession: true }) {
+            return;
+        }
+
+        _nextDebt = UnityEngine.Time.unscaledTime + 10f;
+        if (!EClass.game.quests.IsCompleted("pre_debt_runaway") || EClass.game.cards.globalCharas.Find("loytel") is not { } loytel) {
+            return;
+        }
+
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        var owners = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Select(OwnerOf).Distinct().ToList();
+        foreach (var owner in owners.Where(o => !HasDebt(o))) {
+            using (As(owner)) {
+                var quest = Quest.Create("debt").SetClient(loytel, false);
+                EClass.game.quests.list.Insert(0, quest);
+            }
+
+            EmpLog.Information("Story {Owner} has no debt quest after the runaway: it gets one", StoryOwner.Name(owner));
+            foreach (var player in StoryPlayers(owner)) {
+                if (player.IsPC) {
+                    Msg.SayRaw("emp_team_story_caught_up_debt".lang());
+                } else if (host is not null) {
+                    foreach (var (to, _) in host.PeerCharas().Where(p => p.CharaUid == player.uid)) {
+                        host.SendDeltaTo(to, new MsgSayDelta { Text = "emp_team_story_caught_up_debt".lang(), R = 1f, G = 1f, B = 1f, A = 1f });
+                    }
+                }
+            }
+
+            // the players of that story hear their story whole: the quest log changed in the host's ledger only
+            if (host is not null && owner != CurrentOwner) {
+                foreach (var (to, _) in host.PeerCharas().Where(p => OwnerOf(p.CharaUid) == owner)) {
+                    host.SendDeltaTo(to, new StoryBundleDelta { Bundle = Of(owner) });
+                }
+            }
+        }
+    }
+
+    // that owner's story has the debt quest, started, offered or done
+    private static bool HasDebt(int owner)
+    {
+        if (owner == CurrentOwner) {
+            var quests = EClass.game.quests;
+            return quests.list.Any(q => q is QuestDebt) || quests.globalList.Any(q => q is QuestDebt) || quests.IsCompleted("debt");
+        }
+
+        var bundle = Of(owner, true);
+        return bundle.Completed.Contains("debt") || Read(bundle.Quests).Concat(Read(bundle.Offers)).Any(q => q is QuestDebt);
+    }
+
     // ---- what the story gives, once per player
 
     // the step of the story being played now ("quest id:phase"), none outside one
@@ -726,7 +813,8 @@ internal static class TeamOwnStory
     private static void BeforeStep(Quest __instance, int a, out string? __state)
     {
         __state = _step;
-        if (IsStory(__instance)) {
+        // (the debt's rewards come with its bills, each owner pays its own: not a step)
+        if (__instance is QuestMain or QuestExploration) {
             _step = $"{__instance.id}:{a}";
         }
     }
@@ -855,7 +943,7 @@ internal static class TeamOwnStory
     }
 
     // the plain values of the story the local game holds, besides its quests: the story quests it finished, the dialog
-    // choices, the key items
+    // choices, the key items, the debt and the extra tax, the story's flags
     private static StoryBundle TakeValues(StoryBundle bundle)
     {
         var quests = EClass.game.quests;
@@ -863,6 +951,13 @@ internal static class TeamOwnStory
         bundle.Completed = [..quests.completedIDs.Where(StoryIds.Contains), ..quests.completedTypes.Where(StoryTypes.Contains)];
         bundle.Dialog = DialogIds.Where(player.dialogFlags.ContainsKey).ToDictionary(id => id, id => player.dialogFlags[id]);
         bundle.KeyItems = new(player.keyItems);
+        bundle.Debt = player.debt;
+        bundle.ExtraTax = player.extraTax;
+        bundle.Flags = StoryFlagProps.ToDictionary(p => p.Name, p => p.GetValue(player.flags) switch {
+            bool set => set ? 1 : 0,
+            int number => number,
+            _ => 0,
+        });
         return bundle;
     }
 
@@ -889,6 +984,20 @@ internal static class TeamOwnStory
             player.keyItems.Clear();
             foreach (var (item, count) in items) {
                 player.keyItems[item] = count;
+            }
+        }
+
+        if (bundle.Debt is { } debt) {
+            player.debt = debt;
+        }
+
+        if (bundle.ExtraTax is { } extraTax) {
+            player.extraTax = extraTax;
+        }
+
+        foreach (var flag in StoryFlagProps) {
+            if (bundle.Flags?.TryGetValue(flag.Name, out var value) == true) {
+                flag.SetValue(player.flags, flag.PropertyType == typeof(bool) ? value != 0 : value);
             }
         }
     }
@@ -937,14 +1046,31 @@ internal static class TeamOwnStory
     {
         StoryBundle? world = null;
         foreach (var owner in ElinNetHost.TeamStoryBundles.Keys.ToArray()) {
-            if (Stored(owner) is not { } bundle || bundle.KeyItems is not null) {
+            if (Stored(owner) is not { } bundle ||
+                (bundle.KeyItems is not null && bundle.Debt is not null && bundle.ExtraTax is not null &&
+                 StoryFlagProps.All(p => bundle.Flags?.ContainsKey(p.Name) == true))) {
                 continue;
             }
 
             world ??= TakeValues(new());
-            bundle.KeyItems = world.KeyItems;
+            if (bundle.Debt is null) {
+                // (the debt quest was the world's then: each story gets the world's)
+                var quests = EClass.game.quests;
+                bundle.Quests = LZ4Bytes.Create(Read(bundle.Quests).Concat(quests.list.OfType<QuestDebt>()).ToList<Quest>()).Bytes;
+                bundle.Offers = LZ4Bytes.Create(Read(bundle.Offers).Concat(quests.globalList.OfType<QuestDebt>()).ToList<Quest>()).Bytes;
+                bundle.Completed = [..bundle.Completed, ..world.Completed.Where(done => done is "debt" or nameof(QuestDebt))];
+            }
+
+            bundle.KeyItems ??= world.KeyItems;
+            bundle.Debt ??= world.Debt;
+            bundle.ExtraTax ??= world.ExtraTax;
+            bundle.Flags ??= [];
+            foreach (var (name, value) in world.Flags!) {
+                bundle.Flags.TryAdd(name, value);
+            }
+
             Store(owner, bundle);
-            EmpLog.Information("The story of {Owner} was written by an older version: it gets the world's key items", Name(owner));
+            EmpLog.Information("The story of {Owner} was written by an older version: it gets the world's values it lacks", Name(owner));
         }
     }
 
