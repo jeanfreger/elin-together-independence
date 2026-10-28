@@ -395,6 +395,13 @@ public class NetSessionRules
     [Key(131)]
     public int LivingWorldMinutes { get; set; }
 
+    /// <summary>
+    ///     Each player has its own affinity with each resident, see AffinityPerPlayer. An older host sends none: one
+    ///     value for the group, as it was
+    /// </summary>
+    [Key(135)]
+    public bool AffinityPerPlayer { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -409,6 +416,7 @@ public class NetSessionRules
         GuestLandingPortal = EmpConfig.Server.GuestLandingPortal.Value,
         GuestSkyHelm = EmpConfig.Server.GuestSkyHelm.Value,
         SharedMarriages = EmpConfig.Server.SharedMarriages.Value,
+        AffinityPerPlayer = EmpConfig.Server.AffinityPerPlayer.Value,
         UseTeams = EmpConfig.Server.Teams.Value,
         TeamBases = EmpConfig.Server.TeamBases.Value,
         TeamPersonal = EmpConfig.Server.TeamPersonal.Value,

@@ -59,8 +59,9 @@ public partial class SteamNetManager
     ///     (two-PC test 2026-10-27: they entered the lobby and never connected). Only there: a game that hosts by
     ///     the local port otherwise is a test bench, where it broke reloads
     /// </param>
-    public void StartServerUdp(ushort port = EmpConstants.LocalPort, bool alsoSteam = false)
+    public void StartServerUdp(ushort port = 0, bool alsoSteam = false)
     {
+        port = port == 0 ? (ushort)EmpConstants.LocalPort : port;
         EmpLog.Debug("Starting local udp server at port {Port}",
             port);
 

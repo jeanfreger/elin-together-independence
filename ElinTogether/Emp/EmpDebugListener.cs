@@ -23,7 +23,9 @@ namespace ElinTogether;
 
 internal sealed class EmpDebugListener : MonoBehaviour
 {
-    internal const int PortStart = 27551;
+    // a second bench on the same PC takes its own range (dev/BENCH2.md)
+    internal static readonly int PortStart =
+        int.TryParse(System.Environment.GetEnvironmentVariable("EMP_PORT_BASE"), out var start) && start > 0 ? start : 27551;
     internal const int PortCount = 10;
     private const string ScriptState = "dev";
 

@@ -44,8 +44,9 @@ public partial class SteamNetManager
     /// <summary>
     ///     Connect to localhost for debugging
     /// </summary>
-    public void Connect(ushort port = EmpConstants.LocalPort)
+    public void Connect(ushort port = 0)
     {
+        port = port == 0 ? (ushort)EmpConstants.LocalPort : port;
 #if DEBUG
         // instances sharing one Steam account are told apart by the port they use, see StartServerUdp
         port += (ushort)EmpConfig.Dev.Identity.Value;

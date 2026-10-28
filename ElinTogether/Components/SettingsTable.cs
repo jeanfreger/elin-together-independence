@@ -306,6 +306,7 @@ internal static class SettingsTable
         yield return new("guest_landing_portal", "friends", true, EmpConfig.Server.GuestLandingPortal);
         yield return new("guest_sky_helm", "friends", true, EmpConfig.Server.GuestSkyHelm);
         yield return new("shared_marriages", "friends", true, EmpConfig.Server.SharedMarriages);
+        yield return new("affinity_per_player", "friends", true, EmpConfig.Server.AffinityPerPlayer);
         yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
@@ -489,6 +490,7 @@ internal static class SettingsTable
             [EmpConfig.Server.GuestLandingPortal] = r.GuestLandingPortal,
             [EmpConfig.Server.GuestSkyHelm] = r.GuestSkyHelm,
             [EmpConfig.Server.SharedMarriages] = r.SharedMarriages,
+            [EmpConfig.Server.AffinityPerPlayer] = r.AffinityPerPlayer,
             [EmpConfig.Server.Teams] = r.UseTeams,
             [EmpConfig.Server.TeamBases] = r.TeamBases,
             [EmpConfig.Server.TeamPersonal] = r.TeamPersonal,

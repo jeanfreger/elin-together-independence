@@ -138,8 +138,9 @@ internal partial class ElinNetClient : ElinNetBase
 
     private string? _returnTo;
 
-    public void ConnectLocalPort(ushort port = EmpConstants.LocalPort)
+    public void ConnectLocalPort(ushort port = 0)
     {
+        port = port == 0 ? (ushort)EmpConstants.LocalPort : port;
         Stop();
         IsLocalConnection = true;
         _rejoin = () => Session.InitializeComponent<ElinNetClient>().ConnectLocalPort(port);
