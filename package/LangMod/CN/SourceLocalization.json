@@ -675,5 +675,7 @@
     "LangGeneral.emp_ui_sv_cfg_container_log.text": "容器访问记录",
     "LangGeneral.emp_ui_sv_desc_container_log.text": "主机为玩家或队伍领地中的每个容器（含银行和快递箱）记录最近50条谁在何时放入或取出了什么。该领地的队伍成员和管理员可在容器右键菜单中查看。关闭：不记录也不显示。",
     "LangGeneral.emp_ui_sv_cfg_admin_extras.text": "版主、冻结与关押",
-    "LangGeneral.emp_ui_sv_desc_admin_extras.text": "主机任命的版主只能禁言和踢出。管理员可以冻结（解除前无法行动）和关押（送到指定地图并冻结），不能对主机和其他管理员使用。关闭：这些命令被拒绝。"
+    "LangGeneral.emp_ui_sv_desc_admin_extras.text": "主机任命的版主只能禁言和踢出。管理员可以冻结（解除前无法行动）和关押（送到指定地图并冻结），不能对主机和其他管理员使用。关闭：这些命令被拒绝。",
+    "LangGeneral.emp_ui_sv_cfg_server_avatar.text": "服务器不扮演角色",
+    "LangGeneral.emp_ui_sv_desc_server_avatar.text": "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身。关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效。"
 }

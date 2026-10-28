@@ -371,6 +371,7 @@ internal static class SettingsTable
         yield return new("soft_recall", "repair", true, EmpConfig.Server.SoftRecall);
         yield return new("auto_save", "repair", true, EmpConfig.Server.AutoSave);
         yield return new("server_rests", "repair", true, EmpConfig.Server.ServerRestsWhenEmpty);
+        yield return new("server_avatar", "repair", true, EmpConfig.Server.ServerAvatar, Apply: "restart");
         yield return new("enforce_ownership", "repair", true, EmpConfig.Server.EnforceOwnership);
         yield return new("bills", "repair", true);
     }
