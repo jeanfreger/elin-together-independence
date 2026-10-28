@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 135 (133-134 reserved for a worker), the next free one is 136. Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 143 (136-138 reserved for a worker), the next free one is 145. Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
@@ -425,6 +425,18 @@ public class NetSessionRules
     [Key(140)]
     public string? RulesText { get; set; }
 
+    /// <summary>
+    ///     The host keeps who put or took what per container (ContainerLog). An older host sends none: no log
+    /// </summary>
+    [Key(142)]
+    public bool ContainerLog { get; set; }
+
+    /// <summary>
+    ///     Moderators, freeze and jail (AdminCommandDelta). An older host sends none: off
+    /// </summary>
+    [Key(143)]
+    public bool AdminExtras { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -446,6 +458,8 @@ public class NetSessionRules
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBoxes = Helper.TeamBoxes.Wanted,
+        ContainerLog = EmpConfig.Server.ContainerAccessLog.Value,
+        AdminExtras = EmpConfig.Server.AdminExtras.Value,
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,

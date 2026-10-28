@@ -310,6 +310,8 @@ internal static class SettingsTable
         yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
+        yield return new("admin_extras", "joining", true, EmpConfig.Server.AdminExtras);
+        yield return new("container_log", "together", true, EmpConfig.Server.ContainerAccessLog);
         yield return new("max_characters", "joining", true, Choice: MaxCharacters);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
@@ -499,6 +501,8 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamPvp] = r.TeamPvp,
             [EmpConfig.Server.TeamKnowledge] = r.TeamKnowledge,
             [EmpConfig.Server.TeamBoxes] = r.TeamBoxes,
+            [EmpConfig.Server.ContainerAccessLog] = r.ContainerLog,
+            [EmpConfig.Server.AdminExtras] = r.AdminExtras,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,
             [EmpConfig.Server.TeamOwnStory] = r.TeamOwnStory,
