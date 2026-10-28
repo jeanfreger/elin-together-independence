@@ -490,6 +490,8 @@ internal static class SettingsTable
         (EmpConfig.Server.PublicGame, true), (EmpConfig.Server.SameGameVersion, true), (EmpConfig.Server.ContainerAccessLog, true),
         (EmpConfig.Server.AdminExtras, true), (EmpConfig.Server.Teams, true), (EmpConfig.Server.TeamBases, true),
         (EmpConfig.Server.PlayerKill, false),
+        // council 2026-10-28: maps from the internet in a persistent shared world are unmoderated, with no undo
+        (EmpConfig.Server.GuestMoongate, false),
         ..Fallbacks().Select(e => ((ConfigEntryBase)e, (object)true)),
     ];
 
@@ -554,8 +556,6 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.GuestSkyHelm, true);
         yield return (EmpConfig.Server.SharedMarriages, true);
         yield return (EmpConfig.Server.AffinityPerPlayer, true);
-        // (C, council pending)
-        yield return (EmpConfig.Server.GuestMoongate, false);
         yield return (EmpConfig.Server.TeamApproval, true);
         yield return (EmpConfig.Server.TeamDeed, true);
         yield return (EmpConfig.Server.TeamLeaders, true);
