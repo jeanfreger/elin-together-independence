@@ -93,6 +93,8 @@ internal static class Teams
 
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
 
+    internal static IEnumerable<int> MembersOfTeam(int teamId) => TeamList.TryGetValue(teamId, out var team) ? MembersOf(team) : [];
+
     /// <summary>
     ///     A guest's copy of the unpaid tax bills of each team (<see cref="TeamBills.Told" />)
     /// </summary>
@@ -676,12 +678,17 @@ internal static class Teams
     /// </summary>
     internal static void OnClaimed(Zone zone)
     {
+        var claimer = Claimer ?? EClass.pc;
+        // whose land it is, for what it earns (BaseIncome), teams or not
+        if (KeepsBook) {
+            zone.SetInt(BaseIncome.ClaimerKey, claimer.uid);
+        }
+
         // teams off: a claim is nobody's, as before (it stays so when the box is ticked later)
         if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
             return;
         }
 
-        var claimer = Claimer ?? EClass.pc;
         var team = TeamOf(claimer.uid);
         if (team == Wanderers) {
             Zones.Remove(zone.uid);

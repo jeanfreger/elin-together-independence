@@ -260,6 +260,29 @@ internal static class TeamKnowledge
         }
     }
 
+    /// <summary>
+    ///     In the game that keeps the book: a craft run here for a player of another team (RemoteCraft.AsCrafter) reads
+    ///     that team's recipe levels and kill list, not the local team's the Player object holds. Their book goes in for
+    ///     the craft and comes out of it (what the craft changed stays in that team's ledger); the returned action puts
+    ///     the local team's back. None when nothing needs to change
+    /// </summary>
+    internal static System.Action? Lend(Chara crafter)
+    {
+        if (LocalTeam is not { } local || StoryOwner.Of(crafter.uid) is var team && team == local ||
+            EClass.game?.player?.recipes is not { } recipes || EClass.player.codex is not { } codex) {
+            return null;
+        }
+
+        var (known, crafted, creatures) = (recipes.knownRecipes, recipes.craftedRecipes, codex.creatures);
+        Put(EClass.player, Book(team));
+        return () => {
+            Store(team, Take(EClass.player));
+            recipes.knownRecipes = known;
+            recipes.craftedRecipes = crafted;
+            codex.creatures = creatures;
+        };
+    }
+
     // ---- learning
 
     /// <summary>

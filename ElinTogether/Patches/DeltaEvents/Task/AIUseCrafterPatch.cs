@@ -196,6 +196,23 @@ internal static class AIUseCrafterPatch
     }
 
     /// <summary>
+    ///     TraitCrafter.Craft adds the idea it just taught to "the player" and plays "idea": the host's, whoever crafts.
+    ///     For a guest the host takes it back out and the crafter's game gets it (host alone, or the host crafting: as the game)
+    /// </summary>
+    private static void TeachCrafter(Chara crafter, HashSet<int> before)
+    {
+        if (NetSession.Instance.Connection is not ElinNetHost host ||
+            host.ActiveRemoteCharas.FirstOrDefault(p => p.Value == crafter) is not { Value: not null } peer) {
+            return;
+        }
+
+        foreach (var id in EClass.player.knownCraft.Except(before).ToArray()) {
+            EClass.player.knownCraft.Remove(id);
+            host.SendDeltaTo(peer.Key, new KnownCraftDelta { Id = id });
+        }
+    }
+
+    /// <summary>
     ///     A fortune roll reads and raises the roll counter and the lucky coins of "the player" (TraitCrafter.Craft,
     ///     FortuneRollData.GetPrize): for another player they are its own, told with the request, and given back to
     ///     its game after the roll (audit 2026-10-23). Host alone, or an older peer: the host's, as in the game
@@ -385,11 +402,14 @@ internal static class AIUseCrafterPatch
                         GiveFirstTimeBonus(act, args, recipe);
                     } else {
                         Thing? t;
+                        var knownBefore = new HashSet<int>(EClass.player.knownCraft);
                         using (MsgRelayContext.RedirectTo(act.owner))
                         using (RemoteCraft.AsCrafter(act.owner))
                         using (RollAs(act, args)) {
                             t = crafter.Craft(act);
                         }
+
+                        TeachCrafter(act.owner, knownBefore);
 
                         if (t is not null) {
                             if (t.category.ignoreBless == 0) {

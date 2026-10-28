@@ -270,6 +270,8 @@ internal static class CardSettingEvent
     internal static void OnSaleSet(Card __instance, bool __state)
     {
         if (__instance.isSale != __state) {
+            // (a guest's sale is marked after this, when the host applies it)
+            __instance.SetInt(Helper.BaseIncome.SellerKey, 0);
             Tell(__instance, CardSettingDelta.Sale);
         }
     }
