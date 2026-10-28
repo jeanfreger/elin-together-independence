@@ -156,6 +156,10 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         group.colorType = UISelectableGroup.ColorType.Tab;
         group.colorWhenSelected = true;
         group.useTransition = true;
+        // the selected pill shows by its button's Selected tint (normal is transparent), and UIButton.OnEnable clears
+        // that flag: a page built hidden, or shown again after another tab, drew its pill like the others (the log
+        // still said C9E0FF). The game's own switch redraws the group on the frame after it comes back
+        group.fixRefreshButtons = true;
 
         // all on one line when they fit (World rules has nine); else two balanced lines, never one pill alone
         // (the view is not laid out yet when the page is built: the window's own width)
