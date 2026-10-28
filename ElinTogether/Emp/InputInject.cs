@@ -58,6 +58,15 @@ public static class InputInject
     }
 
     /// <summary>
+    ///     The pointer on that cell and nothing else (the game's keys act on the cell under it: AutoCombat)
+    /// </summary>
+    public static void Point(int x, int z)
+    {
+        Steps.Enqueue(new(Kind.Point, x, z));
+        Steps.Enqueue(new(Kind.Point, x, z));
+    }
+
+    /// <summary>
     ///     A number key of the hotbar, 1 to 9
     /// </summary>
     public static void Hotbar(int number)
