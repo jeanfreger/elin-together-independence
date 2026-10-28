@@ -110,9 +110,20 @@ internal partial class EmpConfig
             "When the game joined (or the world taken from the depot) has Workshop mods that are not loaded here, download them without subscribing,\n" +
             "restart Elin with exactly the mods of that game for one session, and come back to the game by itself\n" +
             "Your own mod list is back at the next start. Untick it to keep your own mods: you are then only told which mods differ\n" +
-            "These mods are chosen by the host (or by the modlist.txt of the depot) and their code runs on this PC: only with people you trust\n" +
-            "这些模组由主机（或仓库的 modlist.txt）决定，其代码会在本机运行：仅与你信任的人一起使用\n" +
+            "These mods are chosen by the host (or by the modlist.txt of the depot). Only Elin mods of the Workshop are fetched, and mods with code (DLL) only with \"Also code mods (DLL)\"\n" +
+            "这些模组由主机（或仓库的 modlist.txt）决定。只下载创意工坊上的 Elin 模组；含代码（DLL）的模组仅在勾选“也下载代码模组（DLL）”时下载\n" +
             "加入的游戏（或从仓库取得的世界）有本机未加载的创意工坊模组时：不订阅直接下载，以该游戏的模组重启 Elin 一次并自动回到游戏；下次启动恢复你自己的模组列表。取消勾选则保留自己的模组，只提示差异");
+
+        // security: a mod with code (a DLL) runs that code on this PC, with all the rights of the player
+        Client.FetchCodeMods = config.Bind(
+            "Client",
+            "FetchCodeMods",
+            false,
+            "Also fetch the mods of the game that contain code (a DLL file), only for hosts you trust\n" +
+            "Code in a mod runs on this PC with all your rights: a host could name any Workshop item, even one it put there itself\n" +
+            "Off: a game whose missing mods include code is not fetched; you are told which mod, and nothing on this PC changes\n" +
+            "Only with \"Download the game's mods\"\n" +
+            "同时下载包含代码（DLL 文件）的游戏模组，仅限你信任的主机。模组中的代码以你的全部权限在本机运行：主机可以指定任何创意工坊物品，包括它自己上传的。关闭时：缺少的模组含有代码时不下载，会告诉你是哪个模组，本机不做任何更改");
 
         Client.KeepMods = config.Bind(
             "Client",
@@ -1007,6 +1018,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> FetchMods { get; set; } = null!;
         internal static ConfigEntry<bool> RecordReplay { get; set; } = null!;
         internal static ConfigEntry<bool> KeepMods { get; set; } = null!;
+        internal static ConfigEntry<bool> FetchCodeMods { get; set; } = null!;
     }
 
     internal static class Server

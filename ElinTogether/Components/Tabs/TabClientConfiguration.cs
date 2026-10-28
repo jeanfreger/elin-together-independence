@@ -68,6 +68,13 @@ internal class TabClientConfiguration : TabEmpBase
             v => keep.Value = v);
         keepBox.SetTooltipLang(keep.Description.Description);
         keepBox.interactable = fetch.Value;
+
+        // security: mods with code (a DLL) are fetched only with this, off (the code runs on this PC)
+        var code = EmpConfig.Client.FetchCodeMods;
+        var codeBox = card.ToggleRow("emp_ui_cl_code_mods".lang(), "emp_ui_cl_desc_code_mods".lang(), code.Value,
+            v => code.Value = v);
+        codeBox.SetTooltipLang(code.Description.Description);
+        codeBox.interactable = fetch.Value;
     }
 
     // the shared save folder (the depot): optional, not needed to play together

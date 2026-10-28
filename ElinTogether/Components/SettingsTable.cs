@@ -852,7 +852,7 @@ internal static class SettingsTable
     {
         EmpMod.Instance.Config.SettingChanged += (_, e) => {
             var entry = e.ChangedSetting;
-            if (entry == EmpConfig.Client.FetchMods || entry == EmpConfig.Client.KeepMods || HostRules().Contains(entry)) {
+            if (entry == EmpConfig.Client.FetchMods || entry == EmpConfig.Client.KeepMods || entry == EmpConfig.Client.FetchCodeMods || HostRules().Contains(entry)) {
                 _dirty = true;
             }
         };

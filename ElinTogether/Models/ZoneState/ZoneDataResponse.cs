@@ -138,7 +138,8 @@ public class ZoneDataResponse
     {
         var basePath = ResourceFetch.GetEmpSavePath();
 
-        foreach (var (id, asset) in Map) {
+        // (as ZoneLeaseState.WriteFiles: the game writes some twenty files for a map, a host sends no more)
+        foreach (var (id, asset) in Map.Take(64)) {
             if (!ZoneLeaseState.IsMapFileKey(id)) {
                 continue;
             }

@@ -112,6 +112,8 @@ internal static class ModConfigPage
         Toggle(note, "emp_ui_cl_fetch_mods", "emp_ui_cl_desc_fetch_mods", EmpConfig.Client.FetchMods);
         Toggle(note, "emp_ui_cl_keep_mods", "emp_ui_cl_desc_keep_mods", EmpConfig.Client.KeepMods).interactable =
             EmpConfig.Client.FetchMods.Value;
+        Toggle(note, "emp_ui_cl_code_mods", "emp_ui_cl_desc_code_mods", EmpConfig.Client.FetchCodeMods).interactable =
+            EmpConfig.Client.FetchMods.Value;
     }
 
     /// <summary>

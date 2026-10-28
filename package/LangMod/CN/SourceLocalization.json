@@ -252,7 +252,7 @@
     "LangGeneral.emp_ui_sv_cfg_publish_mods.text": "向好友显示游戏的模组",
     "LangGeneral.emp_ui_sv_desc_publish_mods.text": "好友在加入前和加入时都能看到模组列表，被拒绝时会看到哪些模组不同（仓库中的世界使用其 modlist.txt）。关闭：不显示。",
     "LangGeneral.emp_ui_cl_fetch_mods.text": "下载游戏的模组",
-    "LangGeneral.emp_ui_cl_desc_fetch_mods.text": "下载所加入游戏中你缺少的创意工坊模组，不会订阅。Elin 会重启一次。",
+    "LangGeneral.emp_ui_cl_desc_fetch_mods.text": "下载所加入游戏缺少的创意工坊 Elin 模组，不订阅。Elin 会重启一次。含代码（DLL）的模组仅在勾选下方选项时下载。",
     "LangGeneral.emp_ui_mods_lobby.text": "{0} 个模组",
     "LangGeneral.emp_ui_mods_lobby_missing.text": "{0} 个模组，缺少 {1} 个",
     "LangGeneral.emp_ui_mods_world.text": "这个世界有 {0} 个模组没有加载：{1}。完整列表见日志。",
@@ -954,5 +954,8 @@
     "LangGeneral.emp_ui_sv_cfg_large_crowds.text": "大量玩家：只向每名玩家发送其附近的内容",
     "LangGeneral.emp_ui_sv_desc_large_crowds.text": "只以全速向每名玩家发送其角色附近（24格）的内容、其同伴、队伍以及与其交易、决斗或战斗的对象；地图其余部分每秒一次，整张地图每4秒核对一次。不会有东西消失，远处角色的移动会一跳一跳。关闭：每名玩家以全速接收整张地图，如前。",
     "LangGeneral.emp_ui_sv_cfg_fast_joins.text": "大型世界的快速加入与保存",
-    "LangGeneral.emp_ui_sv_desc_fast_joins.text": "适用于大型世界：玩家加入和定期保存时，所有人的游戏卡顿时间更短。世界和地图的副本仍在游戏中制作，其压缩、发送以及存档文件的写入在旁边完成。关闭：全部在游戏中完成。"
+    "LangGeneral.emp_ui_sv_desc_fast_joins.text": "适用于大型世界：玩家加入和定期保存时，所有人的游戏卡顿时间更短。世界和地图的副本仍在游戏中制作，其压缩、发送以及存档文件的写入在旁边完成。关闭：全部在游戏中完成。",
+    "LangGeneral.emp_ui_cl_code_mods.text": "也下载代码模组（DLL）：仅限信任的主机",
+    "LangGeneral.emp_ui_cl_desc_code_mods.text": "模组的代码会以你的全部权限在本机运行，主机可以指定任何创意工坊模组。关闭时：游戏的模组含有代码则不下载，并告诉你是哪个模组。",
+    "LangGeneral.emp_ui_mods_code_refused.text": "未加载游戏的模组：{0} 含有代码（DLL）。仅在信任此主机时，才在客户端设置中勾选“也下载代码模组（DLL）”。"
 }
