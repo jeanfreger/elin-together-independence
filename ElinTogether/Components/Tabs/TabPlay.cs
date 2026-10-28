@@ -163,7 +163,7 @@ internal class TabPlay : TabEmpBase
 
     private void BuildJoin()
     {
-        var card = this.Card("emp_ui_play_join_title".lang(), EmpUi.Icon("icon_Inspect"));
+        var card = this.Card("emp_ui_play_join_title".lang(), EmpUi.Icon("icon_goto"));
         if (EClass.core.IsGameStarted) {
             // (joining leaves this game: from the title screen only, as before)
             card.TextSmall("emp_ui_play_join_ingame".lang(), FontColor.Gray);
@@ -230,7 +230,7 @@ internal class TabPlay : TabEmpBase
 
     private void BuildPublicServers()
     {
-        var card = this.Card("emp_ui_play_public_title".lang(), EmpUi.Icon("icon_Inspect"));
+        var card = this.Card("emp_ui_play_public_title".lang(), EmpUi.Icon("icon_zones"));
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;

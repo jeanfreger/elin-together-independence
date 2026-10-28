@@ -76,7 +76,7 @@ internal class TabClientConfiguration : TabEmpBase
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
     private void BuildMods()
     {
-        var card = this.Card("emp_ui_cl_sec_mods".lang(), EmpUi.Icon("icon_LayerHelp"));
+        var card = this.Card("emp_ui_cl_sec_mods".lang(), EmpUi.Icon("icon_item"));
         var fetch = EmpConfig.Client.FetchMods;
         var fetchBox = card.ToggleRow("emp_ui_cl_fetch_mods".lang(), "emp_ui_cl_desc_fetch_mods".lang(), fetch.Value,
             v => fetch.Value = v);
@@ -132,7 +132,7 @@ internal class TabClientConfiguration : TabEmpBase
 
     private void BuildFriends()
     {
-        var card = this.Card("emp_info_friends".lang(), EmpUi.Icon("icon_LayerChara"));
+        var card = this.Card("emp_info_friends".lang(), EmpUi.Icon("icon_LayerPeople"));
         var online = NetSession.Instance.CurrentPlayers.Where(p => !p.User.IsMe && PlayerSocial.IsFriend(p.User)).ToList();
         foreach (var player in online) {
             var user = (ulong)player.User;
@@ -158,7 +158,7 @@ internal class TabClientConfiguration : TabEmpBase
 
     private void BuildIgnored()
     {
-        var card = this.Card("emp_info_ignored".lang(), EmpUi.Icon("icon_LayerJournal"));
+        var card = this.Card("emp_info_ignored".lang(), EmpUi.Icon("icon_visible"));
         card.TextSmall("emp_info_ignored_note".lang(), FontColor.Gray);
         foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
             ButtonSetting(card, name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {

@@ -269,10 +269,10 @@ internal static class EmpUi
     private static void AddBadge(YKHorizontal row, PlayerBadge badge)
     {
         var (sprite, letter, color) = badge switch {
-            PlayerBadge.Idle => (Icon("icon_speed"), "z", FontColor.Passive),
-            PlayerBadge.Admin => (Icon("icon_focus"), "A", FontColor.Warning),
-            PlayerBadge.Moderator => (Icon("icon_area"), "M", FontColor.Good),
-            _ => (Icon("icon_hot"), "!", FontColor.Bad),
+            PlayerBadge.Idle => (Icon("icon_hotSleep"), "z", FontColor.Passive),
+            PlayerBadge.Admin => (Icon("icon_admin"), "A", FontColor.Warning),
+            PlayerBadge.Moderator => (Icon("icon_influence"), "M", FontColor.Good),
+            _ => (Icon("icon_speed0"), "!", FontColor.Bad),
         };
 
         if (sprite == null) {

@@ -117,7 +117,7 @@ internal class TabTeam : TabEmpBase
         var members = Teams.MembersOfTeam(mine).ToList();
 
         // the header: the team's name, who leads it and whether anyone may join
-        var card = this.Card(Teams.NameOf(mine), EmpUi.Icon("icon_LayerChara"));
+        var card = this.Card(Teams.NameOf(mine), EmpUi.Icon("icon_factions"));
         var head = card.Horizontal();
         head.Layout.childForceExpandWidth = false;
         head.Layout.childAlignment = TextAnchor.MiddleLeft;
@@ -189,7 +189,7 @@ internal class TabTeam : TabEmpBase
     private static void AddCrown(YKHorizontal row)
     {
         var before = row.transform.childCount;
-        if (!row.SpriteIcon(22f, "icon_crown", "icon_Crown", "icon_king", "icon_leader")) {
+        if (!row.SpriteIcon(22f, "icon_medal")) {
             row.Chip("emp_ui_team_crown".lang());
         }
 
@@ -205,7 +205,7 @@ internal class TabTeam : TabEmpBase
     /// </summary>
     private void BuildTools(int mine, bool leads, bool manages)
     {
-        var card = this.Card("emp_ui_team_manage".lang(), EmpUi.Icon("icon_crown", "icon_LayerChara"));
+        var card = this.Card("emp_ui_team_manage".lang(), EmpUi.Icon("icon_medal"));
         if (!manages) {
             card.TextSmall((leads ? "emp_ui_team_tools_host_off" : "emp_ui_team_tools_leader_only").lang(), FontColor.Gray);
         }

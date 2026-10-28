@@ -20,8 +20,8 @@ internal class TabServerInfo : TabEmpBase
 
     public override void OnLayout()
     {
-        BuildNote("motd.txt", "emp_info_motd", ServerInfo.Motd, "icon_LayerHelp");
-        BuildNote("rules.txt", "emp_info_rules", ServerInfo.RulesText, "icon_LayerJournal");
+        BuildNote("motd.txt", "emp_info_motd", ServerInfo.Motd, "icon_book");
+        BuildNote("rules.txt", "emp_info_rules", ServerInfo.RulesText, "icon_page");
         BuildAnnounce();
     }
 

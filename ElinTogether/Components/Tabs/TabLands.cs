@@ -57,7 +57,7 @@ internal class TabLands : TabEmpBase
 
     private void BuildLand(int land, bool leads)
     {
-        var card = this.Card(Teams.ZoneName(land), EmpUi.Icon("icon_area"));
+        var card = this.Card(Teams.ZoneName(land), EmpUi.Icon("icon_LayerHome"));
         if (Where(land) is { Length: > 0 } where) {
             card.TextSmall(where, FontColor.Gray);
         }

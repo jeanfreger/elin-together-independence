@@ -37,22 +37,22 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabPlay>("emp_ui_tab_play", TabPlay.TabName));
         DecorateLastTab("icon_LayerTravel", "emp_tip_tab_play");
         _tabs.Add(CreateTab<TabPlayers>("emp_ui_tab_players", TabPlayers.TabName));
-        DecorateLastTab("icon_LayerChara", "emp_tip_tab_players");
+        DecorateLastTab("icon_LayerPeople", "emp_tip_tab_players");
 
         // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
         _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
-        DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
+        DecorateLastTab("icon_factions", "emp_tip_tab_team");
         _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
-        DecorateLastTab("icon_area", "emp_tip_tab_lands");
+        DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
         // the world's rules: the host edits them, a guest reads the host's (the tab's own guest view)
         if (NetSession.Instance.Transport is ElinNetHost or ElinNetClient) {
             _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
-            DecorateLastTab("icon_LayerJournal", "emp_tip_tab_server");
+            DecorateLastTab("icon_policy", "emp_tip_tab_server");
         }
 
         _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
-        DecorateLastTab("icon_LayerHelp", "emp_tip_tab_info");
+        DecorateLastTab("icon_book", "emp_tip_tab_info");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_m_system", "emp_tip_tab_client");
         _tabs.Add(CreateTab<TabHelp>("emp_ui_tab_help", "emp_tab_help"));

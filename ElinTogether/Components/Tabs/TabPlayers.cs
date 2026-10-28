@@ -34,7 +34,7 @@ internal class TabPlayers : TabEmpBase
     private void BuildPlayerList()
     {
         var players = NetSession.Instance.CurrentPlayers.ToList();
-        var card = this.Card("emp_ui_players_title".Loc(players.Count), EmpUi.Icon("icon_LayerChara"));
+        var card = this.Card("emp_ui_players_title".Loc(players.Count), EmpUi.Icon("icon_LayerPeople"));
         for (var i = 0; i < players.Count; i++) {
             if (i > 0) {
                 card.Divider();

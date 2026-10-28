@@ -15,11 +15,11 @@ internal class TabHelp : TabEmpBase
 
     private static readonly (string Id, string Icon)[] Topics = [
         ("hosting", "icon_LayerTravel"),
-        ("joining", "icon_Inspect"),
-        ("teams", "icon_LayerChara"),
-        ("lands", "icon_LayerJournal"),
-        ("trading", "icon_LayerHelp"),
-        ("duels", "icon_m_system"),
+        ("joining", "icon_goto"),
+        ("teams", "icon_factions"),
+        ("lands", "icon_LayerHome"),
+        ("trading", "icon_money"),
+        ("duels", "icon_hp"),
     ];
 
     public override void OnLayout()
@@ -35,7 +35,7 @@ internal class TabHelp : TabEmpBase
 
     private void BuildAbout()
     {
-        var card = this.Card("emp_help_about".lang(), EmpUi.Icon("icon_LayerHelp"));
+        var card = this.Card("emp_help_about".lang(), EmpUi.Icon("icon_hint"));
         card.Text("emp_help_version".Loc(ModInfo.BuildVersion));
         card.TextSmall("emp_help_about_desc".lang(), FontColor.Gray);
         card.ButtonRow().RowButton("emp_help_github".lang(), () => Application.OpenURL(Repo));
