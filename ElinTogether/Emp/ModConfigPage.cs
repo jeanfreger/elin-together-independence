@@ -86,8 +86,11 @@ internal static class ModConfigPage
                         if (current < 0) {
                             options.Add(choice.OptionLabel(-1));
                         }
-                        Dropdown(note, $"emp_ui_sv_cfg_{row.Id}", options, current < 0 ? options.Count - 1 : current,
+                        var dropdown = Dropdown(note, $"emp_ui_sv_cfg_{row.Id}", options, current < 0 ? options.Count - 1 : current,
                             i => SettingsTable.Write(choice.WriteFor(i)));
+                        if (row.Requires is { } needed) {
+                            dropdown.interactable = needed();
+                        }
                     } else if (row.Entry is { } entry) {
                         var toggle = note.AddToggle($"emp_ui_sv_cfg_{row.Id}", entry.Value, value => SettingsTable.Write([(entry, value)]));
                         toggle.SetTooltipLang($"emp_ui_sv_desc_{row.Id}");
@@ -114,7 +117,7 @@ internal static class ModConfigPage
     /// <summary>
     ///     A labelled dropdown whose value is set before it listens: drawing the page writes nothing
     /// </summary>
-    private static void Dropdown(UINote note, string label, System.Collections.Generic.List<string> options, int value,
+    private static UIDropdown Dropdown(UINote note, string label, System.Collections.Generic.List<string> options, int value,
         System.Action<int> onPick)
     {
         var dropdown = note.AddDropdown(label);
@@ -122,6 +125,7 @@ internal static class ModConfigPage
         dropdown.AddOptions(options);
         dropdown.SetValueWithoutNotify(value);
         dropdown.onValueChanged.AddListener(i => onPick(i));
+        return dropdown;
     }
 
     private static UIButton Toggle(UINote note, string label, string desc, ConfigEntry<bool> entry)

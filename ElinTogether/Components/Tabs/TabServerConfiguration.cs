@@ -98,7 +98,11 @@ internal class TabServerConfiguration : TabEmpBase
                 if (current < 0) {
                     options.Add(choice.OptionLabel(-1));
                 }
-                card.DropdownRow(row.Label, options, i => SettingsTable.Write(choice.WriteFor(i)), current < 0 ? options.Count - 1 : current);
+                var dropdown = card.DropdownRow(row.Label, options, i => SettingsTable.Write(choice.WriteFor(i)), current < 0 ? options.Count - 1 : current);
+                // greyed while what it needs is off, as for a box
+                if (row.Requires is { } needed) {
+                    dropdown.interactable = needed();
+                }
                 break;
             case { Entry: { } entry }:
                 var toggle = card.Toggle($"emp_ui_sv_cfg_{row.Id}", entry.Value, value => SettingsTable.Write([(entry, value)])).AsRow();

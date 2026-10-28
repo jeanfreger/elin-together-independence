@@ -235,7 +235,7 @@ internal static class SettingsTable
                 (EmpConfig.Server.SharedAverageSpeed, false)],
         });
 
-    // (a guest is told only some of the twelve: the ones it knows decide)
+    // (a guest is told only some of the fallbacks: the ones it knows decide)
     internal static Choice OwnEverything => new("own_everything", ["yes", "no"],
         () => [..Fallbacks()],
         source => {
@@ -277,7 +277,7 @@ internal static class SettingsTable
         // (the way back is the import: without it a character that left could only be brought back unchanged)
         yield return new("export_chara", "joining", true, EmpConfig.Server.ExportCharacter,
             Requires: () => EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting, Apply: "join", Under: "characters");
-        yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive, Under: "characters");
+        yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive);
 
         // Playing together
         yield return new("travel", "together", false, Choice: Travel);
@@ -297,8 +297,8 @@ internal static class SettingsTable
         yield return new("duels", "together", true, EmpConfig.Server.Duels, Under: "fights");
         yield return new("player_kill", "together", true, EmpConfig.Server.PlayerKill, Under: "fights");
         yield return new("guest_bouts", "together", true, EmpConfig.Server.GuestBouts);
-        yield return new("duel_arena", "together", true, EmpConfig.Server.DuelArena, Requires: () => EmpConfig.Server.Duels.Value, Under: "fights");
-        yield return new("duel_bets", "together", true, EmpConfig.Server.DuelBets, Requires: () => EmpConfig.Server.Duels.Value, Under: "fights");
+        yield return new("duel_arena", "together", true, EmpConfig.Server.DuelArena, Requires: () => EmpConfig.Server.Duels.Value);
+        yield return new("duel_bets", "together", true, EmpConfig.Server.DuelBets, Requires: () => EmpConfig.Server.Duels.Value);
         yield return new("player_trade", "friends", true, EmpConfig.Server.PlayerTrade);
         yield return new("follow", "friends", true, EmpConfig.Server.Follow);
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
@@ -315,7 +315,7 @@ internal static class SettingsTable
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.IndependentTravel.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
@@ -351,10 +351,10 @@ internal static class SettingsTable
         yield return new("night_passes", "time_details", true, Choice: NightPasses, Requires: () => EmpConfig.Server.OwnSleep.Value);
         yield return new("idle_minutes", "time_details", true, Choice: IdleMinutes);
         yield return new("time_stops_empty", "time_details", true, EmpConfig.Server.TimeStopsWhenEmpty);
-        yield return new("living_world", "time_details", true, Choice: LivingWorld);
+        yield return new("living_world", "time_details", true, Choice: LivingWorld, Requires: () => EmpConfig.Server.SharedWorldTime.Value);
         yield return new("absent_quests_wait", "time_details", true, EmpConfig.Server.AbsentQuestsWait, Requires: () => EmpConfig.Server.PersonalQuests.Value);
         yield return new("catch_up_days", "time_details", true, Choice: CatchUpDays);
-        yield return new("world_map_lead", "time_details", true, Choice: LeadCap);
+        yield return new("world_map_lead", "time_details", true, Choice: LeadCap, Requires: () => EmpConfig.Server.WorldMapTime.Value == Net.WorldMapTime.PersonalPace);
 
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");
         yield return new("dump_spares_belt", "comfort", true, EmpConfig.Server.DumpSparesBelt);
@@ -372,7 +372,8 @@ internal static class SettingsTable
 
     /// <summary>
     ///     Every stored host rule the table shows: what a preset, the reset and the undo touch. Not the client's
-    ///     own options, the depot, SoftRecallSwitchedOn or the keys only in the file
+    ///     own options, the depot, SoftRecallSwitchedOn or the keys only in the file: TravelCheckpointSeconds and
+    ///     StrictValidationMode are file-only on purpose (a tuning value and a hardening switch, not a choice for the page)
     /// </summary>
     internal static ConfigEntryBase[] HostRules() => [
         ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
@@ -387,7 +388,7 @@ internal static class SettingsTable
     internal static readonly string[] Presets = ["recommended", "classic", "custom"];
 
     /// <summary>
-    ///     Classic host-led: the twelve fallbacks off, turn-based combat, everyone follows the host, only the host
+    ///     Classic host-led: the fallbacks off, turn-based combat, everyone follows the host, only the host
     ///     builds and manages the base; all else as recommended
     /// </summary>
     internal static RuleSource Classic
@@ -513,6 +514,13 @@ internal static class SettingsTable
             [EmpConfig.Server.TimeStopsWhenEmpty] = r.TimeStopsWhenEmpty,
             [EmpConfig.Server.CatchUpDays] = r.CatchUpDays,
             [EmpConfig.Server.LivingWorldMinutes] = r.LivingWorldMinutes,
+            [EmpConfig.Server.OwnSleep] = r.UseOwnSleep,
+            [EmpConfig.Server.SharedWorldTime] = r.UseSharedWorldTime,
+            [EmpConfig.Server.WorldKeeper] = r.UseWorldKeeper,
+            [EmpConfig.Server.DumpSparesBelt] = r.DumpSparesBelt,
+            [EmpConfig.Server.AutoReconnect] = r.AllowReconnect,
+            [EmpConfig.Server.AutoResync] = r.AutoResync,
+            [EmpConfig.Server.SoftRecall] = r.SoftRecall,
         };
         return new(e => values.TryGetValue(e, out var v) ? v : null);
     }
