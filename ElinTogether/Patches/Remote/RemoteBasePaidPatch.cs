@@ -89,6 +89,11 @@ internal static class RemoteBasePaidPatch
     [HarmonyPatch(typeof(TraitDeed), nameof(TraitDeed.OnRead))]
     private static bool OnReadDeed()
     {
+        // a deed read on a world-map tile that holds a land is SiblingLands' (it asks the host itself)
+        if (Helper.SiblingLands.ReadsOnLand(out _, out _)) {
+            return true;
+        }
+
         // on the host's map the game asks its question, and the yes is a request to the host (ClaimZonePatch)
         if (!IsNotWorldHost || (IsRequester && !NetSession.Instance.Rules.HostManagesBase)) {
             return true;

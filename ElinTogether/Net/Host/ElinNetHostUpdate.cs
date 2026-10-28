@@ -185,7 +185,7 @@ internal partial class ElinNetHost
             // its chat and the quest log (and its world-map steps, held as its lead in Personal Pace: dropped here,
             // a guest's lead never grew, bench personalpace_suite 2026-10-23); with affinity per player, what its own
             // acts there did to a resident's affinity with it
-            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or CardModCurrencyDelta { Amount: < 0 } or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or PlayerIdleDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true } or AdventurerBoutDelta or BaseRelocateDelta) &&
+            if (away && !OwnGrowth(delta, peer) && delta is not (MsgSayDelta or WhisperDelta or GateItemRequest or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or CardModCurrencyDelta { Amount: < 0 } or StoryOutcomeDelta or QuestFailDelta or QuestUpdateDelta or PersonalQuestDelta or PlayerStandingDelta or BillPayDelta or WorldTimeReportDelta or QuestFollowDelta or CharaSleepDelta or SleepStateDelta or PlayerIdleDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or TentZoneDelta or WorldTravelStepDelta { Away: true } or AdventurerBoutDelta or BaseRelocateDelta or SiblingLandDelta) &&
                 !(delta is CharaAffinityDelta && Helper.AffinityPerPlayer.On)) {
                 continue;
             }

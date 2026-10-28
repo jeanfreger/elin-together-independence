@@ -707,6 +707,14 @@ internal partial class EmpConfig
             "Otherwise a land is as before: its team builds, others visit\n" +
             "队长可为队伍的每块土地设置本队与其他人的权限：封闭（不能进入）、参观、参观并使用、建造；需要开启“据点归队伍所有”；关闭时土地如前：本队可建造，其他人只能参观");
 
+        Server.SiblingLands = config.Bind(
+            "Server",
+            "SiblingLands",
+            false,
+            "Several lands may stand on one world-map tile, each its own team's: a deed read on a tile that already holds a land makes another plot there, and walking onto such a tile lists the lands to enter. Needs \"Team ownership of bases\"\n" +
+            "Otherwise one tile holds one land, as before\n" +
+            "同一个世界地图格子上可以有多块土地，各属于不同队伍：在已有土地的格子上使用土地证书会在同一格再开辟一块地，走进这样的格子时会列出可进入的土地；需要开启“据点归队伍所有”；关闭时一个格子只有一块土地");
+
         Server.LandAbandon = config.Bind(
             "Server",
             "LandAbandon",
@@ -1028,6 +1036,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
         internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
         internal static ConfigEntry<bool> LandRules { get; set; } = null!;
+        internal static ConfigEntry<bool> SiblingLands { get; set; } = null!;
         internal static ConfigEntry<bool> LandAbandon { get; set; } = null!;
         internal static ConfigEntry<int> AbandonDays { get; set; } = null!;
         internal static ConfigEntry<int> LandsPerTeam { get; set; } = null!;
