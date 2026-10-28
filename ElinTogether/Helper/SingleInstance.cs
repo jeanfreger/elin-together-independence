@@ -30,7 +30,7 @@ internal static class SingleInstance
     private const int EntrySize = 40;
     private const int PidOffset = 8;
     private const int HandleOffset = 16;
-    private const int TypeIndexOffset = 28;
+    private const int TypeIndexOffset = 30;  // after access (24, 4 bytes) and the backtrace index (28, 2 bytes)
 
     private static bool _done;
 
