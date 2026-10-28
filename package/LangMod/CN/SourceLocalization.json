@@ -945,5 +945,6 @@
     "LangGeneral.emp_ui_role_idle.text": "暂离",
     "LangGeneral.emp_ui_pl_pick.text": "请在左页选择一名玩家。",
     "LangGeneral.emp_ui_pl_actions.text": "操作",
-    "LangGeneral.emp_ui_team_pick.text": "请在左页选择一名成员。"
+    "LangGeneral.emp_ui_team_pick.text": "请在左页选择一名成员。",
+    "LangGeneral.emp_ui_play_joining.text": "正在接收世界..."
 }

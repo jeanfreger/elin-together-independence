@@ -72,6 +72,8 @@ public static class UIHelper
         row.Layout.childForceExpandWidth = false;
         row.Layout.childAlignment = TextAnchor.MiddleLeft;
         row.Layout.spacing = 10f;
+        // (the game's note texts start a few pixels left of their box: the buttons start where the words do)
+        row.Layout.padding = new(-5, 0, 2, 2);
     }
 
     /// <summary>

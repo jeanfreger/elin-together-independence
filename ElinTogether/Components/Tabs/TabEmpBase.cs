@@ -195,6 +195,7 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     /// </summary>
     internal void Relayout()
     {
+        FitButtons();
         for (var i = 0; i < 2; i++) {
             this.RebuildLayout(true);
             this.RebuildLayoutTo<UIContent>();
@@ -205,9 +206,26 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         }
     }
 
+    /// <summary>
+    ///     A button of a fixed width is widened to its label once the label is measured: at build time the label's
+    ///     width read 0 and a long one ran out of its button ("Take the world from the depot and host it")
+    /// </summary>
+    private void FitButtons()
+    {
+        foreach (var button in GetComponentsInChildren<UIButton>(true)) {
+            if (button.mainText is not { } text || text.text.Length == 0 ||
+                button.GetComponent<LayoutElement>() is not { flexibleWidth: 0f, preferredWidth: >= 80f } element) {
+                continue;
+            }
+
+            element.preferredWidth = Mathf.Max(element.preferredWidth, text.preferredWidth + 48f);
+        }
+    }
+
     private IEnumerator RelayoutLater()
     {
         yield return null;
+        FitButtons();
         this.RebuildLayout(true);
         this.RebuildLayoutTo<UIContent>();
     }

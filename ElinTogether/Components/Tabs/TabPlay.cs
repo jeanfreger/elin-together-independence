@@ -37,6 +37,10 @@ internal class TabPlay : TabEmpBase
     {
         if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
             BuildConnected(page);
+        } else if (NetSession.Instance is { HasActiveConnection: true, Transport: ElinNetClient }) {
+            // a guest at the title screen, already joined and waiting for the world: no host or join cards (a second
+            // join from here would drop the first), only where it stands and the way out
+            BuildJoining(page);
         } else {
             // the project's own public game first: its card is the most visible thing of the page
             var official = BuildOfficialCard(page);
@@ -112,9 +116,19 @@ internal class TabPlay : TabEmpBase
         rt.localRotation = Quaternion.Euler(0f, 0f, 45f);
     }
 
+    private static void BuildJoining(YKVertical page)
+    {
+        var card = page.Card("emp_ui_play_join_title".lang());
+        var host = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.Index == 0)?.User.Name;
+        card.KeyValue("emp_ui_kv_state".lang(), "emp_ui_play_joining".lang());
+        card.KeyValue("emp_ui_kv_host".lang(), host);
+        card.ButtonRow().RowButton("emp_ui_sv_dc".lang(), DisconnectFromPanel);
+    }
+
     private static void DisconnectFromPanel()
     {
-        var isClient = NetSession.Instance.Transport is ElinNetClient;
+        // (a guest still at the title screen has no game to leave: back to the title only from a game)
+        var isClient = NetSession.Instance.Transport is ElinNetClient && EClass.core.IsGameStarted;
 
         // (a host whose guests would take the world over gives them a last save first)
         ElinNetHost.LeaveWithLastCopy(true, () => {
