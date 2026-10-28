@@ -143,4 +143,32 @@ internal static class LivingWorld
             EClass.world.date.AdvanceMin(1);
         }
     }
+
+    /// <summary>
+    ///     The hours of the world's night that starts now: at night, up to the morning; in the day, the sleeper's
+    ///     own hours, as before
+    /// </summary>
+    internal static int NightHours(int hours)
+    {
+        var date = EClass.world.date;
+        if (!Keeps || !date.IsNight) {
+            return hours;
+        }
+
+        var toMorning = ((date.HourMorning + 1) * Date.HourToken - (date.hour * Date.HourToken + date.min) + Date.DayToken) % Date.DayToken;
+        return System.Math.Max(1, (toMorning + Date.HourToken - 1) / Date.HourToken);
+    }
+
+    /// <summary>
+    ///     The night screen of the host opens for the world's night (not a night of its player alone): it runs to the
+    ///     morning
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(LayerSleep), nameof(LayerSleep.Sleep))]
+    internal static void OnNightStart(ref int _hours)
+    {
+        if (!SleepSynchronizationContext.IsOwnNight) {
+            _hours = NightHours(_hours);
+        }
+    }
 }

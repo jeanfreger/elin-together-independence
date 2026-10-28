@@ -232,7 +232,8 @@ internal class SleepSynchronizationContext : SynchronizationContext
         // (counted by who is connected: the last awake one may also have just turned idle)
         if (own && _ownNight && session.CurrentPlayers.Count + _away.Count >= 2 && AllPlayersReady && session.Transport is ElinNetHost &&
             ui.GetLayer<LayerSleep>() is { } layer && _minRef(layer) <= _maxMinRef(layer)) {
-            var hours = _nightHours.GetValueOrDefault(last, _hoursRef(layer));
+            // (living world: at night, up to the morning)
+            var hours = LivingWorld.NightHours(_nightHours.GetValueOrDefault(last, _hoursRef(layer)));
             _ownNight = false;
             _minRef(layer) = 0;
             _hoursRef(layer) = hours;
