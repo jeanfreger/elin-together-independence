@@ -632,14 +632,22 @@ internal static class SettingsTable
     /// </summary>
     internal static string? LastNotice { get; private set; }
 
+    // what the host changed in the last second, told as one line (five boxes of a preset arrived as five lines)
+    private static readonly List<(string Label, string Was, string Value)> _pending = [];
+    private static float _flushAt;
+
     /// <summary>
-    ///     Tells the player, one line per row, what the host changed; before is null for the first rules of a
-    ///     session (the snapshot of the join). True if a line changed
+    ///     Tells the player what the host changed: one line for one row, one summary line when several rows change
+    ///     within a second (FlushNotice); before is null for the first rules of a session (the snapshot of the
+    ///     join). True if a line changed
     /// </summary>
     internal static bool NoticeChanges(NetSessionRules? before, NetSessionRules after)
     {
         if (before is null) {
             LastNotice = null;
+            lock (_pending) {
+                _pending.Clear();
+            }
             return true;
         }
 
@@ -648,12 +656,37 @@ internal static class SettingsTable
         var changed = false;
         foreach (var (label, value) in Lines(FromRules(after), true)) {
             if (old.TryGetValue(label, out var was) && was != value) {
-                LastNotice = "emp_ui_rules_changed".Loc(label, was, value);
-                EmpPop.Information(LastNotice);
+                lock (_pending) {
+                    if (_pending.Count == 0) {
+                        _flushAt = UnityEngine.Time.unscaledTime + 1f;
+                    }
+                    _pending.Add((label, was, value));
+                }
                 changed = true;
             }
         }
         return changed;
+    }
+
+    private static void FlushNotice()
+    {
+        (string Label, string Was, string Value)[] changes;
+        lock (_pending) {
+            if (_pending.Count == 0 || UnityEngine.Time.unscaledTime < _flushAt) {
+                return;
+            }
+
+            changes = [.._pending];
+            _pending.Clear();
+        }
+
+        const int named = 6;
+        LastNotice = changes.Length == 1 ? "emp_ui_rules_changed".Loc(changes[0].Label, changes[0].Was, changes[0].Value)
+            : "emp_ui_rules_changed_many".Loc(changes.Length,
+                string.Join(", ", changes.Take(named).Select(c => c.Label)) + (changes.Length > named ? " …" : ""));
+        EmpPop.Information(LastNotice);
+        // (the page of a friend shows the last notice)
+        _dirty = true;
     }
 
     private static volatile bool _dirty;
@@ -676,6 +709,8 @@ internal static class SettingsTable
 
     internal static void Update()
     {
+        FlushNotice();
+        TabServerConfiguration.Tick();
         if (!_dirty) {
             return;
         }
