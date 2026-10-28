@@ -211,6 +211,13 @@ internal partial class ElinNetHost
             return;
         }
 
+        // a player the first one may not host comes along with the host instead, as one still loading this map
+        // (security audit 2026-10-27, item 8)
+        if (!zone.IsRegion) {
+            var first = staying[0];
+            staying = staying.Where(p => p == first || MayHost(first, p)).ToList();
+        }
+
         // their last actions here are applied and answered, their characters and companions leave the host map
         // (the party of the host must not drag them along)
         foreach (var peer in staying) {
@@ -835,6 +842,14 @@ internal partial class ElinNetHost
         // another player simulates the zone: join it as a guest of its zone session
         if (zone is { IsRegion: false } && GetPeerDenyReason(peer) is null && zone != _zone &&
             FindZoneHolder(zone.uid, peer) is { } holder) {
+            if (!MayHost(holder, peer)) {
+                peer.Send(new ZoneLeaseDenied {
+                    ZoneUid = request.ZoneUid,
+                    Reason = "emp_travel_stranger_map",
+                });
+                return;
+            }
+
             GrantGuestLease(zone, request, peer, holder);
             return;
         }
@@ -989,6 +1004,29 @@ internal partial class ElinNetHost
     /// <summary>
     ///     The client holding the zone, if another connected player
     /// </summary>
+    /// <summary>
+    ///     Security audit 2026-10-27, item 8 (docs_zone_sessions.md): a player holding a map is the host of those who
+    ///     visit it, their characters, bags and lives included, and a modified game abuses that. Where strangers come
+    ///     in (TrustEnforced) a player is placed only under a holder it trusts already: its teammate (not the
+    ///     Wanderers), or one the host vouched for (an admin, or let in with "allow"). Logged otherwise
+    /// </summary>
+    private bool MayHost(ISteamNetPeer holder, ISteamNetPeer visitor)
+    {
+        if (Admins.ContainsKey(holder.User) || Members.ContainsKey(holder.User)) {
+            return true;
+        }
+
+        var team = SavedRemoteCharas.TryGetValue(holder.User, out var held) ? Teams.TeamOf(held) : Teams.Wanderers;
+        if (team != Teams.Wanderers && SavedRemoteCharas.TryGetValue(visitor.User, out var visiting) && Teams.TeamOf(visiting) == team) {
+            return true;
+        }
+
+        var enforce = ElinDelta.TrustEnforced;
+        EmpLog.Warning(enforce ? "Refused {@Visitor} on the map of {@Holder}: not its teammate, nor vouched for" :
+            "Would have refused {@Visitor} on the map of {@Holder}: not its teammate, nor vouched for", visitor, holder);
+        return !enforce;
+    }
+
     private ISteamNetPeer? FindZoneHolder(int zoneUid, ISteamNetPeer asking)
     {
         foreach (var (peerId, zones) in _leases) {
@@ -1086,6 +1124,14 @@ internal partial class ElinNetHost
         });
 
         foreach (var guest in guests.Skip(1)) {
+            // one the heir may not host comes back to the host (security audit 2026-10-27, item 8)
+            if (!MayHost(heir, guest)) {
+                guest.Send(new ZoneLeaseRecall {
+                    ZoneUid = zoneUid,
+                });
+                continue;
+            }
+
             _pendingGuests[guest.Id] = (zoneUid, heir.Id);
             SendGuestRequest(guest, zoneUid, heir.Id, stays: true, stale: dropped);
         }

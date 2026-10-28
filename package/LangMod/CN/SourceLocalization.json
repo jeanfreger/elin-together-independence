@@ -612,5 +612,6 @@
     "LangGeneral.emp_team_story_caught_up_farris.text": "法里斯已经和别人离开了这里：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_boss.text": "别人已经击败了尼梅尔的守护者：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_crystal.text": "别人已经在水晶旁听过菲亚玛的话：你的剧情从那里继续。",
-    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有一份。"
+    "LangGeneral.emp_ui_sv_own_story_official.text": "官方服务器上始终开启：每个玩家和队伍各有一份。",
+    "LangGeneral.emp_travel_stranger_map.text": "另一名玩家正在这张地图上游戏。在公开服务器上，只有同队的队友才能共享地图。"
 }
