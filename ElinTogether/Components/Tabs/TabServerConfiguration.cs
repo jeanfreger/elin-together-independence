@@ -483,6 +483,8 @@ internal class TabServerConfiguration : TabEmpBase
     /// <summary>
     ///     From the list of differences: opens the group and the folded rows, clears the search, scrolls to the row
     /// </summary>
+    internal static void ShowRule(string rowId) => _instance?.Jump(rowId);
+
     private void Jump(string rowId)
     {
         var group = _groups.FirstOrDefault(g => g.Lines.Any(l => l.Row.Id == rowId));

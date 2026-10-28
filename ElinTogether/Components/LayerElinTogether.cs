@@ -39,11 +39,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabPlayers>("emp_ui_tab_players", TabPlayers.TabName));
         DecorateLastTab("icon_LayerChara", "emp_tip_tab_players");
 
-        // the teams (council 2026-10-28): who is in which, and what a leader may do
-        if (NetSession.Instance.HasActiveConnection && NetSession.Instance.Rules.UseTeams) {
-            _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
-            DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
-        }
+        // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
+        _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
+        DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
+        _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
+        DecorateLastTab("icon_area", "emp_tip_tab_lands");
 
         // the world's rules: the host edits them, a guest reads the host's (the tab's own guest view)
         if (NetSession.Instance.Transport is ElinNetHost or ElinNetClient) {

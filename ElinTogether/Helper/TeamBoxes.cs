@@ -540,6 +540,17 @@ internal static class TeamBoxes
         return On && EClass.pc is { } pc ? MyWindows(Bank).Team?.GetCurrency() : null;
     }
 
+    /// <summary>
+    ///     The team bank of this game's own player (the host's real box, a guest's copy), none when the box is off or
+    ///     the player has no team
+    /// </summary>
+    internal static Thing? TeamBankBox() => On ? MyWindows(Bank).Team : null;
+
+    /// <summary>
+    ///     The delivery box of this game's own player (the host's real box, a guest's copy), none when the box is off
+    /// </summary>
+    internal static Thing? DeliveryBox() => On ? MyWindows(Delivery).Own : null;
+
     // ---- windows
 
     /// <summary>

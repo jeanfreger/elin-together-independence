@@ -869,6 +869,11 @@ internal static class Teams
                 EmpLog.Information("Land {ZoneUid} of team {TeamId}: rule {Rule}", zoneUid, landTeam, id);
                 Tell();
                 break;
+            case TeamAsk.SetOpen when LedBy(chara.uid) is var opener and not Wanderers && id is 0 or 1:
+                TeamList[opener][1] = id;
+                EmpLog.Information("Team {TeamId} joining is now {Open}", opener, id == 1 ? "open" : "closed");
+                Tell();
+                break;
             case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
                 Invites.Remove(chara.uid);
                 Join(chara, id);
