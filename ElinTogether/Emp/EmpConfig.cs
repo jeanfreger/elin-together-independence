@@ -683,6 +683,14 @@ internal partial class EmpConfig
             "Otherwise a team keeps what the player list offers: found, join, leave, and the leader's yes or no\n" +
             "队伍的队长可在队伍页面管理队伍：改名、移出成员、移交队长、解散、邀请玩家；同时限制队伍人数以及玩家创建队伍的频率；关闭时队伍只保留玩家列表中的创建、加入、离开以及队长的同意或拒绝");
 
+        Server.LandRules = config.Bind(
+            "Server",
+            "LandRules",
+            false,
+            "The leader of a team sets, for each of its lands, what its own team and everyone else may do there: closed (not even enter), visit, visit and use, or build. Needs \"Team ownership of bases\"\n" +
+            "Otherwise a land is as before: its team builds, others visit\n" +
+            "队长可为队伍的每块土地设置本队与其他人的权限：封闭（不能进入）、参观、参观并使用、建造；需要开启“据点归队伍所有”；关闭时土地如前：本队可建造，其他人只能参观");
+
         Server.TeamMaxSize = config.Bind(
             "Server",
             "TeamMaxSize",
@@ -979,6 +987,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
         internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
+        internal static ConfigEntry<bool> LandRules { get; set; } = null!;
         internal static ConfigEntry<int> TeamMaxSize { get; set; } = null!;
         internal static ConfigEntry<int> TeamFoundCooldown { get; set; } = null!;
         internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;

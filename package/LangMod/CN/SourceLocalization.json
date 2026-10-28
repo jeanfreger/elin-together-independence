@@ -680,5 +680,14 @@
     "LangGeneral.emp_team_invited.text": "{1}邀请你加入{0}。请在队伍页面回复。",
     "LangGeneral.emp_team_invite_refused.text": "{0}拒绝了你的邀请。",
     "LangGeneral.emp_team_full.text": "{0}已满员。",
-    "LangGeneral.emp_team_found_wait.text": "再等待{0}分钟才能创建新队伍。"
+    "LangGeneral.emp_team_found_wait.text": "再等待{0}分钟才能创建新队伍。",
+    "LangGeneral.emp_ui_sv_cfg_land_rules.text": "每块土地的规则",
+    "LangGeneral.emp_ui_sv_desc_land_rules.text": "队长可为队伍的每块土地设置本队与其他人的权限：封闭、参观、参观并使用、建造。需要开启“据点归队伍所有”。关闭：土地如前，本队可建造，其他人只能参观。",
+    "LangGeneral.emp_ui_team_rule_0.text": "封闭",
+    "LangGeneral.emp_ui_team_rule_1.text": "参观",
+    "LangGeneral.emp_ui_team_rule_2.text": "参观并使用",
+    "LangGeneral.emp_ui_team_rule_3.text": "建造",
+    "LangGeneral.emp_ui_team_rule_mine.text": "在这块土地上：本队",
+    "LangGeneral.emp_ui_team_rule_others.text": "在这块土地上：其他人",
+    "LangGeneral.emp_ui_team_land_line.text": "{0}：本队＝{1}，其他人＝{2}"
 }

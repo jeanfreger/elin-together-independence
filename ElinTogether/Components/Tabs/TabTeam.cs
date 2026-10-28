@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
@@ -30,6 +31,35 @@ internal class TabTeam : TabEmpBase
 
         BuildOtherTeams(mine);
         BuildTeamLines();
+    }
+
+    private static string Level(int level) => $"emp_ui_team_rule_{level}".lang();
+
+    /// <summary>
+    ///     A land and, when lands have rules, what its team and everyone else may do there; the leader changes them
+    /// </summary>
+    private static void BuildLand(YKVertical card, int land, bool leads)
+    {
+        if (!Teams.LandRulesOn) {
+            card.Text(Teams.ZoneName(land));
+            return;
+        }
+
+        var rule = Teams.RuleOf(land);
+        var (mine, others) = (Teams.MineLevel(rule), Teams.OthersLevel(rule));
+        if (!leads) {
+            card.Text("emp_ui_team_land_line".Loc(Teams.ZoneName(land), Level(mine), Level(others)));
+            return;
+        }
+
+        card.Text(Teams.ZoneName(land));
+        // (the team keeps at least Visit: a land closed to its own team would shut its owners out)
+        var own = new List<string> { Level(Teams.Visit), Level(Teams.Use), Level(Teams.Build) };
+        card.DropdownRow("emp_ui_team_rule_mine".lang(), own,
+            i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(i + 1, others, Teams.OfflineClosed(rule)), land), mine - 1);
+        var all = new List<string> { Level(Teams.Closed), Level(Teams.Visit), Level(Teams.Use), Level(Teams.Build) };
+        card.DropdownRow("emp_ui_team_rule_others".lang(), all,
+            i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mine, i, Teams.OfflineClosed(rule)), land), others);
     }
 
     /// <summary>
@@ -83,7 +113,12 @@ internal class TabTeam : TabEmpBase
 
         var lands = Teams.LandsOf(mine).ToList();
         card.HeaderSmall("emp_ui_team_lands".lang());
-        card.Text(lands.Count == 0 ? "emp_ui_team_no_land".lang() : string.Join(", ", lands.Select(Teams.ZoneName)));
+        if (lands.Count == 0) {
+            card.Text("emp_ui_team_no_land".lang());
+        }
+        foreach (var land in lands) {
+            BuildLand(card, land, leader == me);
+        }
 
         if (TeamBills.On) {
             card.Text("emp_ui_team_bills".Loc(TeamBills.UnpaidOf(mine)));

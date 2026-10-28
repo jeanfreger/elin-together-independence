@@ -26,6 +26,7 @@ internal static class Teams
     private static Dictionary<int, int> _owners = [];
     private static Dictionary<int, int> _requests = [];
     private static Dictionary<int, int> _invites = [];
+    private static Dictionary<int, int> _zoneRules = [];
     private static Dictionary<int, int> _bills = [];
     private static Dictionary<int, int> _story = [];
     private static bool _told;
@@ -39,6 +40,7 @@ internal static class Teams
     private static Dictionary<int, int> Owners => KeepsBook ? ElinNetHost.CardOwners : _owners;
     private static Dictionary<int, int> Requests => KeepsBook ? ElinNetHost.TeamRequests : _requests;
     private static Dictionary<int, int> Invites => KeepsBook ? ElinNetHost.TeamInvites : _invites;
+    private static Dictionary<int, int> ZoneRules => KeepsBook ? ElinNetHost.ZoneRules : _zoneRules;
 
     // the host's memory of this session, not saved: when a leader last invited, when a player last founded a team,
     // and the invitations a player turned down (a team cannot ask that player again)
@@ -55,6 +57,7 @@ internal static class Teams
         _owners = [];
         _requests = [];
         _invites = [];
+        _zoneRules = [];
         InviteAt.Clear();
         FoundAt.Clear();
         Refused.Clear();
@@ -78,6 +81,7 @@ internal static class Teams
         _owners = new(delta.Owners);
         _requests = new(delta.Requests ?? []);
         _invites = new(delta.Invites ?? []);
+        _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
         // (not the book told on joining: nothing changed then)
@@ -290,18 +294,84 @@ internal static class Teams
         return owner == chara.uid ? 0 : owner;
     }
 
+    // what a land lets a player do (host box "Land rules"): nothing, walk and talk and trade at shops only, also
+    // open containers and take things, everything
+    internal const int Closed = 0;
+    internal const int Visit = 1;
+    internal const int Use = 2;
+    internal const int Build = 3;
+
+    // a land with no rule of its own: its team builds, others visit (the game as it was)
+    private const int DefaultRule = Build | Visit << 2;
+
+    internal static bool LandRulesOn => BasesOwned && NetSession.Instance.Rules.LandRules;
+
     /// <summary>
-    ///     That character may use this land: a land of no team or of its team. Only players are asked, residents and
-    ///     companions go on as before
+    ///     A rule as one number: the level of the team (bits 0-1), of everyone else (2-3), and "closed to others while
+    ///     no member is online" (bit 4)
+    /// </summary>
+    internal static int PackRule(int mine, int others, bool offlineClosed = false)
+    {
+        return mine & 3 | (others & 3) << 2 | (offlineClosed ? 1 << 4 : 0);
+    }
+
+    internal static int RuleOf(int zoneUid) => ZoneRules.GetValueOrDefault(zoneUid, DefaultRule);
+
+    internal static int MineLevel(int rule) => rule & 3;
+
+    internal static int OthersLevel(int rule) => rule >> 2 & 3;
+
+    internal static bool OfflineClosed(int rule) => (rule >> 4 & 1) == 1;
+
+    /// <summary>
+    ///     Someone of that team is in the game right now
+    /// </summary>
+    internal static bool AnyOnline(int teamId)
+    {
+        return MembersOfTeam(teamId).Any(IsOnline);
+    }
+
+    /// <summary>
+    ///     What that character may do on this land, as a level: everything on a land of no team (and for residents and
+    ///     companions: only players are asked)
+    /// </summary>
+    internal static int LevelOn(Chara chara, Zone? zone)
+    {
+        var team = TeamOfZone(zone);
+        if (!BasesOwned || !chara.IsPlayer || team == Wanderers) {
+            return Build;
+        }
+
+        var own = team == TeamOf(chara.uid);
+        if (!LandRulesOn) {
+            // the game as it was: a team's land is its own to build, others visit
+            return own ? Build : Visit;
+        }
+
+        var rule = RuleOf(zone!.uid);
+        if (own) {
+            return MineLevel(rule);
+        }
+
+        // (closed to others while the team is away: the team's own level is never touched)
+        return OfflineClosed(rule) && !AnyOnline(team) ? Closed : OthersLevel(rule);
+    }
+
+    /// <summary>
+    ///     That character may do this much on that land. Only players are asked, residents and companions go on as before
+    /// </summary>
+    internal static bool Allowed(Chara chara, Zone? zone, int need)
+    {
+        return LevelOn(chara, zone) >= need;
+    }
+
+    /// <summary>
+    ///     That character may use this land: a land of no team or of its team (its team's rule of the land, when
+    ///     lands have rules)
     /// </summary>
     internal static bool CanTouch(Chara chara, Zone? zone)
     {
-        if (!BasesOwned || !chara.IsPlayer) {
-            return true;
-        }
-
-        var team = TeamOfZone(zone);
-        return team == Wanderers || team == TeamOf(chara.uid);
+        return Allowed(chara, zone, Build);
     }
 
     /// <summary>
@@ -319,7 +389,7 @@ internal static class Teams
             return false;
         }
 
-        return !BasesOwned || card.GetRootCard() is Chara || CanTouch(chara, EClass._zone);
+        return !BasesOwned || card.GetRootCard() is Chara || Allowed(chara, EClass._zone, Use);
     }
 
     /// <summary>
@@ -329,7 +399,7 @@ internal static class Teams
     internal static bool CanOpen(Chara chara, Card card)
     {
         return !BasesOwned || card.parent is null || OwnerOf(card) == chara.uid || card.GetRootCard() is Chara ||
-               CanTouch(chara, EClass._zone);
+               Allowed(chara, EClass._zone, Use);
     }
 
     /// <summary>
@@ -779,6 +849,17 @@ internal static class Teams
             case TeamAsk.Invite when LedBy(chara.uid) is var inviter and not Wanderers:
                 Invite(chara, inviter, id);
                 break;
+            case TeamAsk.LandRule when LandRulesOn && Zones.TryGetValue(zoneUid, out var landTeam) && LeaderOf(landTeam) == chara.uid &&
+                                       id is >= 0 and < 32 && MineLevel(id) != Closed:
+                if (id == DefaultRule) {
+                    ZoneRules.Remove(zoneUid);
+                } else {
+                    ZoneRules[zoneUid] = id;
+                }
+
+                EmpLog.Information("Land {ZoneUid} of team {TeamId}: rule {Rule}", zoneUid, landTeam, id);
+                Tell();
+                break;
             case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
                 Invites.Remove(chara.uid);
                 Join(chara, id);
@@ -869,6 +950,8 @@ internal static class Teams
         }
 
         var team = TeamOf(claimer.uid);
+        // (a new claim starts with the default rule)
+        ZoneRules.Remove(zone.uid);
         if (team == Wanderers) {
             Zones.Remove(zone.uid);
         } else {
@@ -921,6 +1004,7 @@ internal static class Teams
         Names.Remove(teamId);
         foreach (var zone in Zones.Where(z => z.Value == teamId).Select(z => z.Key).ToArray()) {
             Zones.Remove(zone);
+            ZoneRules.Remove(zone);
         }
         foreach (var uid in Requests.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
             Requests.Remove(uid);

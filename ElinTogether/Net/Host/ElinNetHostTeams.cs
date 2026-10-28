@@ -43,6 +43,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Zone uid -> the rule its team set for it (<see cref="Teams.PackRule" />). A land without a row has the default
+    ///     rule: its team builds, others visit
+    /// </summary>
+    [ElinGameIOProperty("zone_rules")]
+    internal static Dictionary<int, int> ZoneRules
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Card uid -> the chara uid of the player it belongs to
     /// </summary>
     [ElinGameIOProperty("card_owner")]
@@ -278,6 +289,7 @@ internal partial class ElinNetHost
             Owners = new(CardOwners),
             Requests = new(TeamRequests),
             Invites = new(TeamInvites),
+            ZoneRules = new(ZoneRules),
             Bills = TeamBills.Told(),
             Story = TeamStory.Told(),
         });

@@ -74,6 +74,12 @@ public enum TeamAsk : byte
     ///     The invited player declines. Id is the team
     /// </summary>
     RefuseInvite,
+
+    /// <summary>
+    ///     The leader sets the rule of one of its team's lands (box "Land rules"). ZoneUid is the land, Id the rule
+    ///     (<see cref="Teams.PackRule" />)
+    /// </summary>
+    LandRule,
 }
 
 /// <summary>

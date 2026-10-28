@@ -330,6 +330,7 @@ internal static class SettingsTable
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("land_rules", "together", true, EmpConfig.Server.LandRules, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("team_leaders", "together", true, EmpConfig.Server.TeamLeaders, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_max_size", "together", true, Choice: TeamMaxSize, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamLeaders.Value);
         yield return new("team_found_cooldown", "together", true, Choice: TeamFoundCooldown, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamLeaders.Value);
@@ -518,6 +519,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamKnowledge] = r.TeamKnowledge,
             [EmpConfig.Server.TeamBoxes] = r.TeamBoxes,
             [EmpConfig.Server.TeamLeaders] = r.TeamLeaders,
+            [EmpConfig.Server.LandRules] = r.LandRules,
             [EmpConfig.Server.TeamMaxSize] = r.TeamMaxSize,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,

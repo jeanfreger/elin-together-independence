@@ -424,6 +424,13 @@ public class NetSessionRules
     public bool TeamLeaders { get; set; }
 
     /// <summary>
+    ///     Team leaders set a rule for each land (<see cref="Helper.Teams.Allowed" />). An older host sends none: a land
+    ///     is its team's to build and others' to visit, as it was
+    /// </summary>
+    [Key(137)]
+    public bool LandRules { get; set; }
+
+    /// <summary>
     ///     With TeamLeaders: the most players a team holds, 0 no limit
     /// </summary>
     [Key(138)]
@@ -451,6 +458,7 @@ public class NetSessionRules
         TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBoxes = Helper.TeamBoxes.Wanted,
         TeamLeaders = EmpConfig.Server.TeamLeaders.Value,
+        LandRules = EmpConfig.Server.LandRules.Value,
         TeamMaxSize = System.Math.Max(0, EmpConfig.Server.TeamMaxSize.Value),
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
