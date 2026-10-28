@@ -74,7 +74,8 @@ internal partial class ElinNetClient
 
         AdvanceHandshake(NetHandshakePhase.AwaitingIntegrity);
 
-        Host.Send(NetIntegrityResponse.Create());
+        // (only to a server of this machine: the token is not for anyone else)
+        Host.Send(NetIntegrityResponse.Create(IsLocalConnection ? Helper.HiddenServer.OwnerToken() : null));
     }
 
     private void OnNetHandshakeRejected(NetIntegrityRejected rejected)

@@ -39,6 +39,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
 
         SteamNetworkingSockets.GetConnectionInfo(connection, out var info);
         RemoteIdentity = info.m_identityRemote;
+        IsLoopback = info.m_addrRemote.IsLocalHost();
 
         User = RemoteIdentity.GetSteamID64();
         Friends.Client.RequestUserInformation(User, true);
@@ -64,6 +65,11 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
             : ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None;
 
     public virtual int Id => _id;
+
+    /// <summary>
+    ///     Connected from this very machine (127.0.0.1), not through Steam
+    /// </summary>
+    public bool IsLoopback { get; }
     public UserData User { get; private set; }
 
     private int _id;

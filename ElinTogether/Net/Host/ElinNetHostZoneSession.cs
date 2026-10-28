@@ -47,7 +47,7 @@ internal partial class ElinNetHost
 
         var selfState = States[0] = new() {
             Index = 0,
-            User = UserData.Me,
+            User = ServerAvatar.HostUser,
             CharaUid = player.uidChara,
         };
 

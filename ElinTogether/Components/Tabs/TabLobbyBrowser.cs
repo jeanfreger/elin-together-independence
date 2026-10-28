@@ -208,6 +208,12 @@ internal class TabLobbyBrowser : TabEmpBase
 
     private void StartServerFromPanel()
     {
+        // (with the box "hidden server", the world starts in a second, hidden game and this one joins it)
+        if (HiddenServer.TryStart(() => NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer())) {
+            LayerElinTogether.Instance?.Close();
+            return;
+        }
+
         NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer();
         LayerElinTogether.Instance?.Reopen();
     }

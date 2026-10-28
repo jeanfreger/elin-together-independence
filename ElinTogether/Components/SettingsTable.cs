@@ -290,6 +290,12 @@ internal static class SettingsTable
             i => [(a, values[i].A), (b, values[i].B)]);
     }
 
+    /// <summary>
+    ///     The box "Play as a guest of a hidden server" exists on Windows only (HiddenServer)
+    /// </summary>
+    internal static bool HiddenServerAvailable => UnityEngine.Application.platform is UnityEngine.RuntimePlatform.WindowsPlayer
+        or UnityEngine.RuntimePlatform.WindowsEditor;
+
     internal static IEnumerable<Choice> Choices() => Rows().Where(r => r.Choice is not null).Select(r => r.Choice!);
 
     internal static IEnumerable<SettingRow> Rows()
@@ -370,6 +376,11 @@ internal static class SettingsTable
         yield return new("takeover", "host_leaves", true, EmpConfig.Server.Takeover, Requires: () => EmpConfig.Server.WorldCopy.Value,
             Under: "host_leaves");
         yield return new("auto_host", "host_leaves", true, EmpConfig.Server.AutoHost, Apply: "load");
+        // (Windows only: the hidden server needs the single-instance mutex of Windows; it is the player's own choice,
+        // not a rule of the world: no preset, reset or undo touches it, see HostRules)
+        if (HiddenServerAvailable) {
+            yield return new("hidden_server", "host_leaves", true, EmpConfig.Server.HiddenServer);
+        }
 
         // Advanced: the way back to the host-centred game, one box each
         yield return new("personal_quests", "fallbacks", true, EmpConfig.Server.PersonalQuests);
@@ -419,7 +430,7 @@ internal static class SettingsTable
     ///     StrictValidationMode are file-only on purpose (a tuning value and a hardening switch, not a choice for the page)
     /// </summary>
     internal static ConfigEntryBase[] HostRules() => [
-        ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
+        ..Rows().Where(r => r.Entry is not null && r.Id != "hidden_server").Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
         EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
@@ -455,7 +466,7 @@ internal static class SettingsTable
     /// </summary>
     internal static List<string> Differences(RuleSource current, RuleSource target)
     {
-        var rows = Rows().Where(r => r.Under is null);
+        var rows = Rows().Where(r => r.Under is null && r.Id != "hidden_server");
         return [
             ..rows.Where(r => r.Choice is { } c ? c.Read(current) != c.Read(target) : r.Entry is { } e && current.Get(e) != target.Get(e))
                 .Select(r => r.Id),

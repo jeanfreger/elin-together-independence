@@ -88,22 +88,18 @@ internal static class ServerAvatar
     }
 
     /// <summary>
-    ///     The Steam id this game is known by in its own world. Test builds with a server on the same Steam account as
-    ///     the player (two processes, one account) give the server an identity of its own, reserved here, so that
-    ///     neither takes the other's place: a Release build needs a real answer to this (council blocker 3), until
-    ///     then it is the account the machine runs
+    ///     The Steam id this game is known by in its own world. A server has an identity of its own, reserved here: it
+    ///     runs on the account of the player who started it (a hidden server, see HiddenServer: two processes, one
+    ///     account), and neither must take the other's place. The Steam account stays the server's transport (lobby,
+    ///     relay, listen socket); this is only who "the host" is for the world's tables. The player keeps its real
+    ///     account for its character, so that old worlds need no rekeying (council 2026-10-28, blocker 3)
     /// </summary>
     internal static ulong HostUser =>
-#if DEBUG
-        EmpServer.Requested && EmpConfig.Dev.Identity.Value == 0 ? SteamNetPeer.DevIdentityBase + ServerDevIdentity :
-#endif
-        UserData.Me;
+        EmpServer.Requested && EmpConfig.Dev.Identity.Value == 0 ? SteamNetPeer.DevIdentityBase + ServerIdentity : UserData.Me;
 
-#if DEBUG
     /// <summary>
-    ///     The test identity of a server (the windows of the bench use 1 to 8, the ones with a local port): the last
+    ///     The reserved identity of a server (the windows of the bench use 1 to 8, the ones with a local port): the last
     ///     one the setting allows
     /// </summary>
-    internal const ulong ServerDevIdentity = 999;
-#endif
+    internal const ulong ServerIdentity = 999;
 }

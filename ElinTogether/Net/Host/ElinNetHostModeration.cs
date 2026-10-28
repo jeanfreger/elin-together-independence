@@ -137,7 +137,7 @@ internal partial class ElinNetHost
     /// </summary>
     internal string Ban(ulong user, string? reason = null)
     {
-        ulong me = UserData.Me;
+        ulong me = Helper.ServerAvatar.HostUser;
         if (user == me) {
             return "The host cannot ban itself";
         }
@@ -154,7 +154,7 @@ internal partial class ElinNetHost
 
     internal string Mute(ulong user, string? reason = null)
     {
-        ulong me = UserData.Me;
+        ulong me = Helper.ServerAvatar.HostUser;
         if (user == me) {
             return "The host cannot mute itself";
         }
@@ -228,7 +228,7 @@ internal partial class ElinNetHost
     /// </summary>
     internal void RunAdminOrder(int originPeer, AdminCommandDelta order)
     {
-        ulong host = UserData.Me;
+        ulong host = Helper.ServerAvatar.HostUser;
         var sender = Socket.Peers.FirstOrDefault(p => p.Id == originPeer);
         ulong from = sender is null ? 0UL : sender.User;
         // announcements and restart warnings are about no player (Reason is the text, or the minutes)

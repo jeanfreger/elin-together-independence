@@ -916,6 +916,13 @@ internal partial class EmpConfig
             "A dedicated server (-empserver) plays no character: the save owner's character becomes an ordinary player character tied to its Steam id (it joins like any guest), and the server's own player is a hidden, untouchable stand-in. Off: the owner's character stays planted at the base as before. Has no effect on a game hosted from the menu\n" +
             "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身；关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效");
 
+        Server.HiddenServer = config.Bind(
+            "Server",
+            "HiddenServer",
+            false,
+            "Beta, Windows only: \"Start Server\" starts your world in a second, hidden Elin on this machine (as a Minecraft server is started), and your own game joins it like any other player. You then live exactly what your friends live: no host character. Needs about 2 GB of free memory; if the hidden game is not up in 2 minutes, the world is hosted as before\n" +
+            "测试版，仅 Windows：“启动服务器”会在本机另开一个隐藏的 Elin 来运行你的世界（像启动 Minecraft 服务器一样），你自己的游戏像其他玩家一样加入，不再有主机角色，体验与好友完全相同。需要约 2 GB 空闲内存；隐藏游戏 2 分钟内未启动时，像以前一样直接开放世界");
+
         Dev.Listener = config.Bind(
             "Dev",
             "Listener",
@@ -1079,5 +1086,6 @@ internal partial class EmpConfig
         internal static ConfigEntry<int> TravelCheckpointSeconds { get; set; } = null!;
         internal static ConfigEntry<bool> ServerRestsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> ServerAvatar { get; set; } = null!;
+        internal static ConfigEntry<bool> HiddenServer { get; set; } = null!;
     }
 }

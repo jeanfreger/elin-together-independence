@@ -42,6 +42,30 @@ internal static class EmpServer
 
     internal static bool Requested => _save is not null;
 
+    /// <summary>
+    ///     The process of the game that started this server (-empparent): a server of a player's own machine, hidden
+    ///     (HiddenServer). It listens on the loopback only, and stops by itself when that game is gone
+    /// </summary>
+    private static readonly int _parent = int.TryParse(Arg("-empparent"), out var pid) ? pid : 0;
+
+    internal static bool Hidden => Requested && _parent > 0;
+
+    // how long the guests of a server whose player left are waited for (the player is gone, nobody is to wait long)
+    private const float ParentGoneWaitSeconds = 5f;
+    private static float _stopWait = StopWaitSeconds;
+
+    private static bool ParentGone()
+    {
+        try {
+            return System.Diagnostics.Process.GetProcessById(_parent).HasExited;
+        } catch (ArgumentException) {
+            return true;
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Server: the parent process could not be looked at");
+            return false;
+        }
+    }
+
     private static string? Arg(string name)
     {
         var args = Environment.GetCommandLineArgs();
@@ -66,6 +90,20 @@ internal static class EmpServer
 
         _next = Time.unscaledTime + 2f;
         AudioListener.volume = 0f;
+
+        // the visible game that started this server is gone (closed, crashed): saved and stopped within seconds, no
+        // process left behind holding 2 GB. Before the session is open there is nothing to save
+        if (Hidden && !_stopping && ParentGone()) {
+            EmpLog.Information("Server: the game that started it is gone, stopping");
+            if (NetSession.Instance.Transport is null) {
+                Application.Quit();
+                return;
+            }
+
+            _stopping = true;
+            _stopAt = Time.unscaledTime;
+            _stopWait = ParentGoneWaitSeconds;
+        }
 
         var session = NetSession.Instance;
         if (!EClass.core.IsGameStarted) {
@@ -131,7 +169,7 @@ internal static class EmpServer
             // character takes the local place back from the stand-in (ServerAvatar). A player who is slow to go is
             // waited for a little; then the world is saved as it is (a crash save is mended when it is opened)
             if (ServerAvatar.Active && ServerAvatar.Is(EClass.pc) && session.Connection is ElinNetHost stopping) {
-                if (!stopping.EmptiedForStop() && Time.unscaledTime - _stopAt < StopWaitSeconds) {
+                if (!stopping.EmptiedForStop() && Time.unscaledTime - _stopAt < _stopWait) {
                     Tell("stopping");
                     return;
                 }
@@ -145,6 +183,10 @@ internal static class EmpServer
 
             EClass.game.Save(false, true);
             Tell("stopped");
+            if (Hidden) {
+                HiddenServer.Clean();
+            }
+
             Application.Quit();
             return;
         }

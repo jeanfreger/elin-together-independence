@@ -113,7 +113,7 @@ internal static class ContainerLog
             return false;
         }
 
-        if (user == UserData.Me || ElinNetHost.Admins.ContainsKey(user)) {
+        if (user == ServerAvatar.HostUser || ElinNetHost.Admins.ContainsKey(user)) {
             return true;
         }
 
@@ -151,7 +151,7 @@ internal static class ContainerLog
     {
         switch (NetSession.Instance.Transport) {
             case ElinNetHost host:
-                if (MayRead(EClass.pc, UserData.Me, uid)) {
+                if (MayRead(EClass.pc, ServerAvatar.HostUser, uid)) {
                     Display(Answer(uid));
                 }
 

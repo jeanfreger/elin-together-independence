@@ -214,7 +214,9 @@ internal partial class ElinNetHost : ElinNetBase
         // (no wait for the Steam name: it arrives through a callback of this very thread, a spin of 0.5 s only froze
         // every join, reliability audit 2026-10-27)
         // banned, or kicked a moment ago: turned away before anything of the world is sent (ElinNetHostModeration)
-        if (Refusal(peer.User) is { } refused) {
+        // (the owner of a hidden server is the seat of its own account on the loopback, see AcceptOwnerSeat: its
+        // token is not known yet, the handshake decides; until then it is the owner's, not a stranger to turn away)
+        if (!IsOwnerCandidate(peer) && Refusal(peer.User) is { } refused) {
             EmpLog.Information("Player {@Peer} refused: {Reason}", peer, refused);
             AdminLog($"refused {(ulong)peer.User} {peer.User.Name}: {refused}");
             Socket.Disconnect(peer, refused);
