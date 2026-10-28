@@ -235,7 +235,7 @@ internal static class SettingsTable
                 (EmpConfig.Server.SharedAverageSpeed, false)],
         });
 
-    // (a guest is told only some of the twelve: the ones it knows decide)
+    // (a guest is told only some of the fallbacks: the ones it knows decide)
     internal static Choice OwnEverything => new("own_everything", ["yes", "no"],
         () => [..Fallbacks()],
         source => {
@@ -386,7 +386,7 @@ internal static class SettingsTable
     internal static readonly string[] Presets = ["recommended", "classic", "custom"];
 
     /// <summary>
-    ///     Classic host-led: the twelve fallbacks off, turn-based combat, everyone follows the host, only the host
+    ///     Classic host-led: the fallbacks off, turn-based combat, everyone follows the host, only the host
     ///     builds and manages the base; all else as recommended
     /// </summary>
     internal static RuleSource Classic
