@@ -30,6 +30,63 @@ internal partial class ElinNetHost
         set;
     }
 
+    private const int TotalNum = 0;
+    private const int TotalMoney = 1;
+
+    /// <summary>
+    ///     Host option "Teams live their own story" (<see cref="TeamOwnStory" />): owner (<see cref="StoryOwner" />) ->
+    ///     [goods shipped, money shipped], that owner's shipping total and so its bonus tiers. An owner never seen
+    ///     starts from what the world held. Off: the world's own total, as before
+    /// </summary>
+    [ElinGameIOProperty("ship_totals")]
+    internal static Dictionary<int, long[]> ShipTotals
+    {
+        get => field ??= [];
+        set;
+    }
+
+    private static long[] TotalsOf(int charaUid)
+    {
+        var owner = StoryOwner.Of(charaUid);
+        if (!ShipTotals.TryGetValue(owner, out var totals) || totals.Length < 2) {
+            totals = ShipTotals[owner] = [player.stats.shipNum, player.stats.shipMoney];
+        }
+
+        return totals;
+    }
+
+    /// <summary>
+    ///     The shipping total (goods, money) that player is told and earns its bonus tiers from
+    /// </summary>
+    private static (int Num, long Money) TotalOf(int charaUid)
+    {
+        if (!TeamOwnStory.On) {
+            return (player.stats.shipNum, player.stats.shipMoney);
+        }
+
+        var totals = TotalsOf(charaUid);
+        return ((int)Math.Min(totals[TotalNum], int.MaxValue), totals[TotalMoney]);
+    }
+
+    /// <summary>
+    ///     The host's own sale is the game's (<see cref="WorldShipGoodsEvent" />): its owner's total goes in the
+    ///     world's stats for that sale and comes out of it after, the world's figures stay what they were
+    /// </summary>
+    internal static (int, long) SwapHostTotal(int charaUid, (int Num, long Money)? back = null)
+    {
+        var (num, money) = (player.stats.shipNum, player.stats.shipMoney);
+        var totals = TotalsOf(charaUid);
+        if (back is { } kept) {
+            totals[TotalNum] = num;
+            totals[TotalMoney] = money;
+            (player.stats.shipNum, player.stats.shipMoney) = kept;
+        } else {
+            (player.stats.shipNum, player.stats.shipMoney) = ((int)Math.Min(totals[TotalNum], int.MaxValue), totals[TotalMoney]);
+        }
+
+        return (num, money);
+    }
+
     private static long[] GetShippingAccount(int charaUid)
     {
         if (!ShippingAccounts.TryGetValue(charaUid, out var account) || account.Length < 2) {
@@ -294,6 +351,8 @@ internal partial class ElinNetHost
             return;
         }
 
+        var shared = zone;
+
         var players = SavedRemoteCharas.Values.Concat(PlayerRosters.Values.SelectMany(roster => roster)).ToHashSet();
         // the character this game plays is not another player, whatever the tables say (the host of a world taken
         // over stays in the roster of its account): its goods are left to the game's own sale, paid and reported
@@ -305,7 +364,8 @@ internal partial class ElinNetHost
             .ToList();
 
         foreach (var group in goods) {
-            ShipFor(group.Key, group.ToList(), zone);
+            // the hearth of the shipper's own team land when lands are owned, else the base last used
+            ShipFor(group.Key, group.ToList(), Teams.OwnLand(group.Key, 0) ?? shared);
         }
     }
 
@@ -346,7 +406,7 @@ internal partial class ElinNetHost
         var result = new ShippingResult {
             rawDate = world.date.GetRaw(),
             uidZone = zone.uid,
-            total = player.stats.shipMoney,
+            total = TotalOf(shipperUid).Money,
             hearthLv = zone.branch.lv,
             hearthExp = zone.branch.exp,
         };
@@ -380,11 +440,20 @@ internal partial class ElinNetHost
         exp = zone.branch.policies.IsActive(2515) ? 0 : exp / 2 + 1;
         result.hearthExpGained = exp;
 
-        // one shipping total for the world, the bonus of a tier goes to whoever reaches it
-        var bonusBefore = player.stats.GetShippingBonus(player.stats.shipMoney);
-        player.stats.shipNum += count;
-        player.stats.shipMoney += income;
-        var bonus = Math.Max(0, player.stats.GetShippingBonus(player.stats.shipMoney) - bonusBefore);
+        // one shipping total for the world (the bonus of a tier goes to whoever reaches it), or one per owner
+        long bonus;
+        if (TeamOwnStory.On) {
+            var totals = TotalsOf(shipperUid);
+            var bonusOwn = player.stats.GetShippingBonus(totals[TotalMoney]);
+            totals[TotalNum] += count;
+            totals[TotalMoney] += income;
+            bonus = Math.Max(0, player.stats.GetShippingBonus(totals[TotalMoney]) - bonusOwn);
+        } else {
+            var bonusBefore = player.stats.GetShippingBonus(player.stats.shipMoney);
+            player.stats.shipNum += count;
+            player.stats.shipMoney += income;
+            bonus = Math.Max(0, player.stats.GetShippingBonus(player.stats.shipMoney) - bonusBefore);
+        }
 
         foreach (var thing in goods) {
             thing.Destroy();
@@ -442,15 +511,15 @@ internal partial class ElinNetHost
         result ??= new() {
             rawDate = world.date.GetRaw(),
             uidZone = pc.homeZone?.uid ?? 0,
-            total = player.stats.shipMoney,
+            total = TotalOf(shipperUid).Money,
         };
 
         var zone = game.spatials.Find(result.uidZone);
         peer.Send(new ShippingPayout {
             Ints = [..result.ints],
             ItemStrs = [..result.items.Select(item => item._strs)],
-            ShipNum = player.stats.shipNum,
-            ShipMoney = player.stats.shipMoney,
+            ShipNum = TotalOf(shipperUid).Num,
+            ShipMoney = TotalOf(shipperUid).Money,
             BranchLv = zone?.branch?.lv ?? 0,
             BranchExp = zone?.branch?.exp ?? 0,
             Money = money,

@@ -164,6 +164,22 @@ internal static class Teams
         };
     }
 
+    /// <summary>
+    ///     The land of that player's team with a base (the preferred one when it is the team's), none when the lands
+    ///     are not owned or its team has none: the shipping sale pays the hearth of its own team, not the last base
+    ///     anyone used
+    /// </summary>
+    internal static Zone? OwnLand(int charaUid, int preferredUid)
+    {
+        if (!BasesOwned || TeamOf(charaUid) is var team && team == Wanderers) {
+            return null;
+        }
+
+        var uids = Zones.Where(pair => pair.Value == team).Select(pair => pair.Key).OrderBy(uid => uid).ToList();
+        var uid = uids.Contains(preferredUid) ? preferredUid : uids.FirstOrDefault(u => EClass.game.spatials.Find(u)?.branch is not null);
+        return uid == 0 ? null : EClass.game.spatials.Find(uid) is { branch: not null } zone ? zone : null;
+    }
+
     internal static int OwnerOf(Card card)
     {
         return Owners.GetValueOrDefault(card.uid);

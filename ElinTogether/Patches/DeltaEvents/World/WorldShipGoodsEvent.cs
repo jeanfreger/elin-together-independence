@@ -1,4 +1,5 @@
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -8,6 +9,9 @@ namespace ElinTogether.Patches;
 [HarmonyPatch(typeof(GameDate), nameof(GameDate.ShipGoods))]
 internal static class WorldShipGoodsEvent
 {
+    // the world's own total, kept while the host's sale runs on its owner's
+    private static (int, long)? _world;
+
     [HarmonyPrefix]
     internal static bool OnShipGoods(ref ShippingResult? __state)
     {
@@ -20,6 +24,15 @@ internal static class WorldShipGoodsEvent
 
         // every player is paid for its own goods, what is left in the box is the host's
         (NetSession.Instance.Connection as ElinNetHost)?.ShipPlayersGoods();
+        if (NetSession.Instance.Connection is ElinNetHost) {
+            // the host is a player like any other: the hearth of its own team land, and its owner's shipping total
+            if (Teams.OwnLand(EClass.pc.uid, EClass.player.uidLastShippedZone) is { } land) {
+                EClass.player.uidLastShippedZone = land.uid;
+            }
+
+            _world = TeamOwnStory.On ? ElinNetHost.SwapHostTotal(EClass.pc.uid) : null;
+        }
+
         return true;
     }
 
@@ -31,6 +44,12 @@ internal static class WorldShipGoodsEvent
             return;
         }
 
+        var hostTotal = (EClass.player.stats.shipNum, EClass.player.stats.shipMoney);
+        if (_world is { } world) {
+            ElinNetHost.SwapHostTotal(EClass.pc.uid, world);
+            _world = null;
+        }
+
         if (EClass.player.shippingResults.LastItem() is not { } result || result == __state) {
             return;
         }
@@ -39,8 +58,8 @@ internal static class WorldShipGoodsEvent
         host.Delta.AddRemote(new ShippingResultDelta {
             Ints = [..result.ints],
             ItemStrs = [..result.items.Select(item => item._strs)],
-            ShipNum = EClass.player.stats.shipNum,
-            ShipMoney = EClass.player.stats.shipMoney,
+            ShipNum = hostTotal.shipNum,
+            ShipMoney = hostTotal.shipMoney,
             BranchLv = zone?.branch?.lv ?? 0,
             BranchExp = zone?.branch?.exp ?? 0,
         });
