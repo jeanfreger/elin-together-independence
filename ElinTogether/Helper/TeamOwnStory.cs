@@ -78,6 +78,9 @@ internal static class TeamOwnStory
     private static Game? _game;
     private static int? _owner;
 
+    // the box as the last frame read it (none: just after a save was read)
+    private static bool? _wasWanted;
+
     /// <summary>
     ///     The owner whose story the local quest log holds, in the game that keeps the book; none while it holds the
     ///     world owner's as the save has it, or the box is off
@@ -103,6 +106,7 @@ internal static class TeamOwnStory
             // (a save just read: its quest log holds the world owner's story)
             _game = EClass.game;
             _owner = null;
+            _wasWanted = null;
             if (State[0] > Schema) {
                 EmpLog.Warning("The teams' story was written by a newer version of the mod ({Schema}): one story for everyone",
                     State[0]);
@@ -113,9 +117,13 @@ internal static class TeamOwnStory
             return;
         }
 
+        // (merged back only when the host unticks the box in this game: a world opened with the box reading off for another
+        // reason, the official server without its switch, keeps its records)
+        var unticked = _wasWanted == true && !Wanted;
+        _wasWanted = Wanted;
         if (On && !Seeded) {
             Seed();
-        } else if (!On && Seeded) {
+        } else if (!On && Seeded && unticked) {
             MergeBack();
             TellEveryone();
         }

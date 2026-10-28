@@ -40,6 +40,7 @@ internal static class TeamKnowledge
     // as the save has it)
     private static Game? _game;
     private static int? _team;
+    private static bool? _wasWanted;
 
     /// <summary>
     ///     The team whose knowledge the local Player object holds, in the game that keeps the book; none while it holds
@@ -63,6 +64,7 @@ internal static class TeamKnowledge
             // (a save just read: its Player object knows what every team knew)
             _game = EClass.game;
             _team = null;
+            _wasWanted = null;
             if (ElinNetHost.TeamLoreState[0] > Schema) {
                 EmpLog.Warning("The teams' knowledge was written by a newer version of the mod ({Schema}): left as it is",
                     ElinNetHost.TeamLoreState[0]);
@@ -73,11 +75,14 @@ internal static class TeamKnowledge
             return;
         }
 
+        // (merged back only when the host unticks the box in this game, see TeamOwnStory.Update)
         var flipped = false;
+        var unticked = _wasWanted == true && !Wanted;
+        _wasWanted = Wanted;
         if (On && !Seeded) {
             Seed();
             flipped = true;
-        } else if (!On && Seeded) {
+        } else if (!On && Seeded && unticked) {
             MergeBack();
             flipped = true;
         }
