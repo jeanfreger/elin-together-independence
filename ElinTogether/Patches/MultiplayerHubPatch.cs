@@ -17,7 +17,7 @@ internal static class MultiplayerHubPatch
 
     private static Sprite? _icon;
 
-    /// <summary>Two putits one on top of the other, built from the game's own putit sprite (null if unavailable).</summary>
+    /// <summary>A putit, from the game's own putit sprite (null if unavailable).</summary>
     internal static Sprite? Icon {
         get {
             if (_icon != null) {
@@ -90,15 +90,14 @@ internal static class MultiplayerHubPatch
 
         var src = Read(putit);
         var box = AlphaBox(src.Pixels, src.W, src.H);
-        var small = Mathf.RoundToInt(size * 0.6f);
+        // one putit, centred (user, 2026-10-28: "just a putit")
+        var small = Mathf.RoundToInt(size * 0.85f);
         var scale = (float)small / Mathf.Max(box.width, box.height);
         var w = Mathf.Max(1, Mathf.RoundToInt(box.width * scale));
         var h = Mathf.Max(1, Mathf.RoundToInt(box.height * scale));
 
         var outPx = new Color32[size * size];
-        // the lower putit first, the upper one in front of it and offset up
-        Draw(outPx, size, src, box, (size - w) / 2, 0, w, h);
-        Draw(outPx, size, src, box, (size - w) / 2, size - h, w, h);
+        Draw(outPx, size, src, box, (size - w) / 2, (size - h) / 2, w, h);
 
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) {
             filterMode = FilterMode.Point,
