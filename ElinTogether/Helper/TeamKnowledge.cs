@@ -34,7 +34,7 @@ internal static class TeamKnowledge
     /// <summary>
     ///     The host's box, read as on whatever is stored while this game hosts the official public server
     /// </summary>
-    internal static bool Wanted => EmpConfig.Server.TeamKnowledge.Value || Net.Steam.OfficialServer.Hosting;
+    internal static bool Wanted => EmpConfig.Server.TeamKnowledge.Value || StoryOwner.OfficialHosting;
 
     // the game the ledger was read against, and the team whose knowledge its Player object holds (none: the world's,
     // as the save has it)

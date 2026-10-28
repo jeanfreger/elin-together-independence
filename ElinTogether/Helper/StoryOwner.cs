@@ -69,6 +69,27 @@ internal static class StoryOwner
         return owner > 0 && !ElinNetHost.TeamList.ContainsKey(owner);
     }
 
+    private static float _officialAt = float.MinValue;
+    private static bool _official;
+
+    /// <summary>
+    ///     This game hosts the official public server (the user, 2026-10-28: there the story and the knowledge are
+    ///     separated by player and team, whatever the boxes say). Read once a second: it looks at a file, and the
+    ///     boxes are read for every message the host sends
+    /// </summary>
+    internal static bool OfficialHosting
+    {
+        get {
+            var now = UnityEngine.Time.unscaledTime;
+            if (now - _officialAt > 1f || now < _officialAt) {
+                _officialAt = now;
+                _official = Net.Steam.OfficialServer.Hosting;
+            }
+
+            return _official;
+        }
+    }
+
     internal static string Name(int owner)
     {
         return owner == Seed ? "seed" : owner > 0 ? $"team {owner}" : owner == 0 ? "wanderers (old ledger)" : $"player {-owner}";

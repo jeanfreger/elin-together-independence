@@ -53,7 +53,7 @@ internal static class TeamOwnStory
     ///     The host's box, read as on whatever is stored while this game hosts the official public server (the user,
     ///     2026-10-28: there the story is separated by player and team)
     /// </summary>
-    internal static bool Wanted => EmpConfig.Server.TeamOwnStory.Value || Net.Steam.OfficialServer.Hosting;
+    internal static bool Wanted => EmpConfig.Server.TeamOwnStory.Value || StoryOwner.OfficialHosting;
 
     // (an owner the ledger never heard of, a player new to the world: the story point of the tick)
     private const int SeedOwner = StoryOwner.Seed;
