@@ -319,6 +319,7 @@ internal static class SettingsTable
         yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.IndependentTravel.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
+        yield return new("team_boxes", "together", true, EmpConfig.Server.TeamBoxes, Requires: () => EmpConfig.Server.Teams.Value && !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
@@ -497,6 +498,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamPersonal] = r.TeamPersonal,
             [EmpConfig.Server.TeamPvp] = r.TeamPvp,
             [EmpConfig.Server.TeamKnowledge] = r.TeamKnowledge,
+            [EmpConfig.Server.TeamBoxes] = r.TeamBoxes,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,
             [EmpConfig.Server.TeamOwnStory] = r.TeamOwnStory,

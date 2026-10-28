@@ -25,7 +25,8 @@ internal static class ShippingHelper
     internal const int BoxBank = 2;
 
     /// <summary>
-    ///     The bank and the delivery box are one for the world, like the shipping box: 0 for any other card
+    ///     The bank and the delivery box are one for the world, like the shipping box, or one for each owner
+    ///     (<see cref="TeamBoxes" />): 0 for any other card
     /// </summary>
     internal static int OtherWorldBox(Card? card)
     {
@@ -33,7 +34,12 @@ internal static class ShippingHelper
             return 0;
         }
 
-        return card == cards.container_deliver ? BoxDelivery : card == cards.container_deposit ? BoxBank : 0;
+        if (card == cards.container_deliver) {
+            return BoxDelivery;
+        }
+
+        // (and the boxes of each owner, see TeamBoxes: told and mirrored like the world's)
+        return card == cards.container_deposit ? BoxBank : TeamBoxes.KindOf(card);
     }
 
     /// <summary>

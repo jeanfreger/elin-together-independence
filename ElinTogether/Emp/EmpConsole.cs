@@ -135,6 +135,15 @@ internal class EmpConsole
     }
 
     /// <summary>
+    ///     Bench: the world's bank and each owner's boxes (host option "Teams keep their own bank and delivery box")
+    /// </summary>
+    [ConsoleCommand("team.boxes")]
+    internal static string TeamBoxLedger()
+    {
+        return TeamBoxes.Describe();
+    }
+
+    /// <summary>
     ///     Bench: what each team knows in the host's ledger (host option "Teams learn on their own")
     /// </summary>
     [ConsoleCommand("team.lore")]

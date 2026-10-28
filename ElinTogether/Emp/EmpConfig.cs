@@ -698,6 +698,14 @@ internal partial class EmpConfig
             "Otherwise everyone shares one book of recipes and one codex, as before\n" +
             "每个玩家有自己的配方、制作记录和图鉴：队友共享一套，没有队伍的玩家有自己的一套。存档保留所有人知道的一切。官方公共服务器上始终开启；关闭时所有人如前共用一套配方和图鉴");
 
+        Server.TeamBoxes = config.Bind(
+            "Server",
+            "TeamBoxes",
+            false,
+            "Each team (a player without a team: alone) keeps its own bank and its own delivery box. What the old boxes hold stays shared. Needs Teams. Always on for the official public server\n" +
+            "Unticked, every team's box is merged back into the shared one\n" +
+            "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧箱子里的东西仍然共享。需要开启队伍；官方公共服务器上始终开启。取消勾选时，各队的箱子并回共享箱子");
+
         Server.TeamBills = config.Bind(
             "Server",
             "TeamBills",
@@ -953,6 +961,7 @@ internal partial class EmpConfig
 
         internal static ConfigEntry<bool> TeamPvp { get; set; } = null!;
         internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamBoxes { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnStory { get; set; } = null!;

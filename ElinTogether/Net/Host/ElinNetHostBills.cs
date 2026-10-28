@@ -45,6 +45,7 @@ internal partial class ElinNetHost
             loose.Add(bank);
         }
 
+        loose.AddRange(TeamBoxes.All());
         if (game.cards.container_shipping is { } shipping) {
             loose.Add(shipping);
         }
