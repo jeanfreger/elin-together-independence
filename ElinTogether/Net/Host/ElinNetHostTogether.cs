@@ -28,13 +28,20 @@ internal partial class ElinNetHost
     /// </summary>
     internal bool AllOnWorldMap()
     {
-        if (_zone is not { IsRegion: true }) {
+        // A server's own character is a hidden stand-in that nobody sees (council 2026-10-28): it is no traveller, so
+        // the players alone are asked, and the map it stands on does not count
+        var serverOnly = Helper.ServerAvatar.Active;
+        if (serverOnly ? Socket.Peers.Count == 0 : _zone is not { IsRegion: true }) {
             return false;
         }
 
         foreach (var peer in Socket.Peers) {
             // on this map
             if (ActiveRemoteCharas.ContainsKey(peer.Id)) {
+                if (serverOnly && _zone is not { IsRegion: true }) {
+                    return false;
+                }
+
                 continue;
             }
 
