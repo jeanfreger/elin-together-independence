@@ -19,7 +19,7 @@ public class CardModCurrencyDelta : ElinDelta
             return;
         }
 
-        if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var chara)) {
+        if (host.PlayerChara(OriginPeer) is not { } chara) {
             return;
         }
 
@@ -30,6 +30,11 @@ public class CardModCurrencyDelta : ElinDelta
         if (Amount < 0) {
             Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount, CurrencyId));
             Spent.RemoveAll(s => UnityEngine.Time.realtimeSinceStartup - s.At > SpentWindow);
+        }
+
+        // away from the host map the purse travels with the character, its game already paid: only the record is kept
+        if (host.IsAwayPeer(OriginPeer)) {
+            return;
         }
 
         EmpLog.Debug("Mod currency {CurrencyId} by {CurrencyAmount} on chara {Uid}",

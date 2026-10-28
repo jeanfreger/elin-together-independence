@@ -15,12 +15,18 @@ internal static class CardModCurrencyEvent
             return;
         }
 
-        if (NetSession.Instance.Connection is not ElinNetClient client ||
-            ElinDelta.IsRemoteStateLanding) {
+        if (ElinDelta.IsRemoteStateLanding || !__instance.IsPC) {
             return;
         }
 
-        if (!__instance.IsPC) {
+        if (NetSession.Instance.Connection is not ElinNetClient client) {
+            // away on its own map (or hosting one): there is no session to sync through, but what it pays is still
+            // told to the host, which checks the debt, the land, the investment it pays against it (a real payment
+            // was refused: gold gone, debt unchanged)
+            if (a < 0) {
+                QuestAwaySync.Send(new CardModCurrencyDelta { Amount = a, CurrencyId = id });
+            }
+
             return;
         }
 
