@@ -556,6 +556,14 @@ internal partial class EmpConfig
             "A game far behind the world's date (a player's long trip, a map left alone) lives at most this many of the last days, a day per frame; the time before them is skipped over without its days. 1, 3 or 7\n" +
             "远远落后于世界日期的游戏（玩家长途旅行、无人的地图）最多经历最后这么多天，每帧一天；更早的时间直接跳过。1、3 或 7");
 
+        // council 2026-10-26, stage 6: off until proven, then the default for new worlds only
+        Server.LivingWorldMinutes = config.Bind(
+            "Server",
+            "LivingWorldMinutes",
+            0,
+            "Living world: the clock of the world follows real time, one game day per this many real minutes, whether the players act or stand still; it stops while nobody plays (TimeStopsWhenEmpty), a night slept as the night rule allows runs to the morning. 0: off, the date moves with the players' turns as before. 20, 40, 60 or 120\n" +
+            "活的世界：世界的时钟跟随现实时间，每这么多现实分钟过一个游戏日，不论玩家行动还是静止；无人游玩时停止（TimeStopsWhenEmpty），按夜晚规则度过的夜晚会一直睡到早晨。0：关闭，日期像以前一样随玩家的回合推进。20、40、60 或 120");
+
         Server.SummonsFollowMaster = config.Bind(
             "Server",
             "SummonsFollowMaster",
@@ -901,6 +909,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;
         internal static ConfigEntry<int> CatchUpDays { get; set; } = null!;
+        internal static ConfigEntry<int> LivingWorldMinutes { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;
         internal static ConfigEntry<bool> PlayersAtBase { get; set; } = null!;
         internal static ConfigEntry<bool> GlobalChat { get; set; } = null!;

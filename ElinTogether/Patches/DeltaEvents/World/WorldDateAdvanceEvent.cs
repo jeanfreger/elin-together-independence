@@ -92,8 +92,9 @@ internal static class WorldDateAdvanceEvent
         _advancing = a;
 
         // nobody plays: the date of the world stands still (council 2026-10-26, stage 3). A catch-up is the time
-        // a player made pass elsewhere, it still comes
-        _frozen = !IsCatchingUp && NetSession.Instance.IsHost && EmptyWorld.Frozen;
+        // a player made pass elsewhere, it still comes. Living world (stage 6): the minute of the turns is not
+        // the clock, real time is
+        _frozen = (!IsCatchingUp && NetSession.Instance.IsHost && EmptyWorld.Frozen) || LivingWorld.RefusesTurnMinute(a);
         return NetSession.Instance.IsHost && !_frozen;
     }
 

@@ -386,6 +386,13 @@ public class NetSessionRules
     [Key(130)]
     public bool TeamOwnStory { get; set; }
 
+    /// <summary>
+    ///     Council 2026-10-26 (MMO world time, stage 6, "Living world"): the world's clock follows real time, a game
+    ///     day per this many real minutes, not the players' turns, see LivingWorld. 0: off; an older host sends none
+    /// </summary>
+    [Key(131)]
+    public int LivingWorldMinutes { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -423,6 +430,7 @@ public class NetSessionRules
         NightPasses = EmpConfig.Server.NightPasses.Value,
         TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
         CatchUpDays = System.Math.Max(1, EmpConfig.Server.CatchUpDays.Value),
+        LivingWorldMinutes = System.Math.Max(0, EmpConfig.Server.LivingWorldMinutes.Value),
         PermadeathRevive = EmpConfig.Server.PermadeathRevive.Value,
         OwnJournal = EmpConfig.Server.OwnJournal.Value,
         TimeJumpsTogether = EmpConfig.Server.WorldMapTime.Value == WorldMapTime.TravelTogether,

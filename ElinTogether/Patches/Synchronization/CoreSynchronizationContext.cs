@@ -65,6 +65,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         AreaWatch.Update();
         QuestSynchronizationContext.Update();
         SleepSynchronizationContext.Update();
+        LivingWorld.Update();
         connection.Delta.RefreshBuffer();
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:
