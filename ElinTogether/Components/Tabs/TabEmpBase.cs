@@ -80,6 +80,9 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
 
         if (_pills != null && index < _pills.list.Count) {
             _pills.Select(_pills.list[index]);
+            // (Select does nothing when that pill is already the group's: draw it anyway, a page built hidden never did)
+            _pills.RefreshButtons();
+            LogPills("shown");
         }
 
         OnSubTabShown(index);
@@ -111,6 +114,18 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     }
 
     private UISelectableGroup? _pills;
+
+    private void LogPills(string when)
+    {
+        if (_pills == null) {
+            return;
+        }
+
+        var state = string.Join(", ", _pills.list.Select((p, i) =>
+            $"{i}{(p == _pills.selected ? "*" : "")}:{(p.isChecked ? "chk" : "-")}/{(p.selected ? "sel" : "-")}/{(p.imageCheck != null ? p.imageCheck.gameObject.activeSelf ? "img" : "noimg" : "null")}/{ColorUtility.ToHtmlStringRGBA(p.image.color)}"));
+        EmpLog.Debug($"Sub-tab pills of {GetType().Name} {when}: wanted {_subKey}={SubTab}, group selected {_pills.list.IndexOf(_pills.selected)}, " +
+                     $"selectedColor {ColorUtility.ToHtmlStringRGBA(_pills.colorSelected)}, active {gameObject.activeInHierarchy} [{state}]");
+    }
 
     private void BuildPills(List<string> labels)
     {
@@ -202,8 +217,12 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         }
 
         holder.SetActive(true);
+        // (Awake, which takes the colours, does not run while this tab is hidden: take them now or the selected pill
+        // is drawn with a blank colour; Players and World rules are built hidden, Play is not)
+        group.SetColors();
         group.Init(SubTab, i => ShowSubTab(i));
         _pills = group;
+        LogPills("built");
     }
 
     public override void OnSwitchContent(int idTab)
