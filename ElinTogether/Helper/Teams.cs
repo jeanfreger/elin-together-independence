@@ -193,7 +193,7 @@ internal static class Teams
         return Owners.GetValueOrDefault(card.uid);
     }
 
-    private static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
+    internal static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
 
     private static bool PersonalOwned => NetSession.Instance.Rules is { UseTeams: true, TeamPersonal: true };
 
