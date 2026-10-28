@@ -48,8 +48,10 @@ internal partial class ElinNetHost
         Session.CurrentZone = _zone;
         RefreshSharedSpeed();
 
+        // host box "Large crowds": every character in this one, each player then sent its own part (ElinNetHostCrowd)
+        var crowd = Crowds && core.game?.activeZone?.map is not null;
         try {
-            _lastTick = PropagateWorldState(true);
+            _lastTick = crowd ? WorldStateSnapshot.Create() : PropagateWorldState(true);
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Exception at server tick update");
         }
@@ -60,6 +62,16 @@ internal partial class ElinNetHost
         }
 
         var tick = _lastTick;
+        if (crowd) {
+            try {
+                SendCrowdSnapshot(tick);
+                return;
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "Exception at the crowd snapshot of tick {Tick}, sent whole", Session.Tick);
+                _crowdSent.Clear();
+            }
+        }
+
         SendByMap(tick, () => tick.Lean());
     }
 
@@ -119,6 +131,11 @@ internal partial class ElinNetHost
         }
 
         if (Delta.FlushOutBuffer() is not { Count: > 0 } deltaList) {
+            return;
+        }
+
+        if (Crowds && _crowdViews.Count > 0) {
+            SendCrowdDeltas(deltaList);
             return;
         }
 
@@ -376,7 +393,11 @@ internal partial class ElinNetHost
 
         SeePlayers();
 
-        SendByMap(SessionPlayersSnapshot.Create(), () => null);
+        if (Crowds) {
+            SendPlayersOnChange(SessionPlayersSnapshot.Create());
+        } else {
+            SendByMap(SessionPlayersSnapshot.Create(), () => null);
+        }
     }
 
 #region Scheduler Jobs

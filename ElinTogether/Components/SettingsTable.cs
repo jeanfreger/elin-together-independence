@@ -436,6 +436,7 @@ internal static class SettingsTable
         yield return new("soft_recall", "repair", true, EmpConfig.Server.SoftRecall);
         yield return new("auto_save", "repair", true, EmpConfig.Server.AutoSave);
         yield return new("server_rests", "repair", true, EmpConfig.Server.ServerRestsWhenEmpty);
+        yield return new("large_crowds", "repair", true, EmpConfig.Server.LargeCrowds);
         yield return new("server_avatar", "repair", true, EmpConfig.Server.ServerAvatar, Apply: "restart");
         yield return new("enforce_ownership", "repair", true, EmpConfig.Server.EnforceOwnership);
         yield return new("bills", "repair", true);
@@ -581,6 +582,7 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.SoftRecall, true);
         yield return (EmpConfig.Server.AutoSave, true);
         yield return (EmpConfig.Server.EnforceOwnership, true);
+        yield return (EmpConfig.Server.LargeCrowds, true);
     }
 
     /// <summary>
@@ -703,6 +705,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamLeaders] = r.TeamLeaders,
             [EmpConfig.Server.LandRules] = r.LandRules,
             [EmpConfig.Server.SiblingLands] = r.SiblingLands,
+            [EmpConfig.Server.LargeCrowds] = r.LargeCrowds,
             [EmpConfig.Server.TeamMaxSize] = r.TeamMaxSize,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,

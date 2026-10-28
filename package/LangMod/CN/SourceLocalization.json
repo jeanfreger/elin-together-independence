@@ -950,5 +950,7 @@
     "LangGeneral.emp_travel_map_full.text": "这张地图已满（最多10名访客）。",
     "LangGeneral.emp_ui_sv_cfg_stranger_visits.text": "陌生人可以拜访玩家的地图",
     "LangGeneral.emp_ui_sv_desc_stranger_visits.text": "在主机之外持有地图的玩家也接待其他队伍的玩家。先检查土地规则，一张地图最多10名访客。访客的角色、背包和金币只采用访客本人上传的数据（不采用地图持有者上传的），金币增加有每小时上限。关闭：在公开服务器上只有队友、管理员和被“允许”的玩家能共享地图。",
-    "LangGeneral.emp_chat_flood.text": "发言太快了，聊天将被禁言30秒。"
+    "LangGeneral.emp_chat_flood.text": "发言太快了，聊天将被禁言30秒。",
+    "LangGeneral.emp_ui_sv_cfg_large_crowds.text": "大量玩家：只向每名玩家发送其附近的内容",
+    "LangGeneral.emp_ui_sv_desc_large_crowds.text": "只以全速向每名玩家发送其角色附近（24格）的内容、其同伴、队伍以及与其交易、决斗或战斗的对象；地图其余部分每秒一次，整张地图每4秒核对一次。不会有东西消失，远处角色的移动会一跳一跳。关闭：每名玩家以全速接收整张地图，如前。"
 }

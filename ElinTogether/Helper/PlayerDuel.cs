@@ -441,6 +441,24 @@ public static class PlayerDuel
     }
 
     /// <summary>
+    ///     The other side of that character's duel, 0 when none (ElinNetHost.Crowd)
+    /// </summary>
+    internal static int FoeOf(int uid)
+    {
+        foreach (var f in _fights) {
+            if (f.UidA == uid) {
+                return f.UidB;
+            }
+
+            if (f.UidB == uid) {
+                return f.UidA;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
     ///     Another connection or another world (see PlayerTrade.WatchSession): whatever duel was going on is over
     /// </summary>
     internal static void Clear()
