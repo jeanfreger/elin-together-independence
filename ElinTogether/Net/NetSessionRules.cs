@@ -416,6 +416,19 @@ public class NetSessionRules
     [Key(135)]
     public bool AffinityPerPlayer { get; set; }
 
+    /// <summary>
+    ///     Team leaders manage their team from the Team page (<see cref="Helper.Teams" />). An older host sends none: the
+    ///     choices of the player list, as they were
+    /// </summary>
+    [Key(136)]
+    public bool TeamLeaders { get; set; }
+
+    /// <summary>
+    ///     With TeamLeaders: the most players a team holds, 0 no limit
+    /// </summary>
+    [Key(138)]
+    public int TeamMaxSize { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -437,6 +450,8 @@ public class NetSessionRules
         TeamPvp = EmpConfig.Server.TeamPvp.Value,
         TeamKnowledge = Helper.TeamKnowledge.Wanted,
         TeamBoxes = Helper.TeamBoxes.Wanted,
+        TeamLeaders = EmpConfig.Server.TeamLeaders.Value,
+        TeamMaxSize = System.Math.Max(0, EmpConfig.Server.TeamMaxSize.Value),
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,

@@ -25,6 +25,7 @@ internal static class Teams
     private static Dictionary<int, int> _zones = [];
     private static Dictionary<int, int> _owners = [];
     private static Dictionary<int, int> _requests = [];
+    private static Dictionary<int, int> _invites = [];
     private static Dictionary<int, int> _bills = [];
     private static Dictionary<int, int> _story = [];
     private static bool _told;
@@ -37,6 +38,13 @@ internal static class Teams
     private static Dictionary<int, int> Zones => KeepsBook ? ElinNetHost.ZoneTeams : _zones;
     private static Dictionary<int, int> Owners => KeepsBook ? ElinNetHost.CardOwners : _owners;
     private static Dictionary<int, int> Requests => KeepsBook ? ElinNetHost.TeamRequests : _requests;
+    private static Dictionary<int, int> Invites => KeepsBook ? ElinNetHost.TeamInvites : _invites;
+
+    // the host's memory of this session, not saved: when a leader last invited, when a player last founded a team,
+    // and the invitations a player turned down (a team cannot ask that player again)
+    private static readonly Dictionary<int, float> InviteAt = [];
+    private static readonly Dictionary<int, float> FoundAt = [];
+    private static readonly HashSet<(int Team, int Target)> Refused = [];
 
     [ElinPreLoad]
     private static void Forget(GameIOContext context)
@@ -46,6 +54,11 @@ internal static class Teams
         _zones = [];
         _owners = [];
         _requests = [];
+        _invites = [];
+        InviteAt.Clear();
+        FoundAt.Clear();
+        Refused.Clear();
+        ElinNetHost.TeamInvites.Clear();
         _bills = [];
         _story = [];
         _told = false;
@@ -64,6 +77,7 @@ internal static class Teams
         _zones = new(delta.Zones);
         _owners = new(delta.Owners);
         _requests = new(delta.Requests ?? []);
+        _invites = new(delta.Invites ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
         // (not the book told on joining: nothing changed then)
@@ -90,6 +104,45 @@ internal static class Teams
             if (!askedBefore.Contains(uid) && LeaderOf(id) == pc.uid) {
                 Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
             }
+        }
+    }
+
+    /// <summary>
+    ///     Host box "Team leaders manage their team": the leader's choices on the Team page, the size cap and the wait
+    ///     before founding again. Off: the choices of the player list, as they were
+    /// </summary>
+    internal static bool LeadersManage => NetSession.Instance.Rules is { UseTeams: true, TeamLeaders: true };
+
+    /// <summary>
+    ///     The team that player leads, none when it leads none or the leaders do not manage their team
+    /// </summary>
+    internal static int LedBy(int charaUid)
+    {
+        return LeadersManage && TeamOf(charaUid) is var team and not Wanderers && LeaderOf(team) == charaUid ? team : Wanderers;
+    }
+
+    /// <summary>
+    ///     The team that invited that player and waits for its answer, none when there is none
+    /// </summary>
+    internal static int InviteOf(int charaUid) => Invites.GetValueOrDefault(charaUid);
+
+    internal static IEnumerable<int> InvitedBy(int teamId) => Invites.Where(i => i.Value == teamId).Select(i => i.Key);
+
+    private static bool Full(int teamId)
+    {
+        return LeadersManage && NetSession.Instance.Rules.TeamMaxSize is > 0 and var cap && MembersOfTeam(teamId).Count() >= cap;
+    }
+
+    /// <summary>
+    ///     A line in the log of that player, wherever it plays (the host's own, or a guest told by the host)
+    /// </summary>
+    private static void Say(int charaUid, string key, params object[] args)
+    {
+        var line = key.Loc(args);
+        if (charaUid == EClass.pc.uid) {
+            Msg.SayRaw(line);
+        } else if (NetSession.Instance.Transport is ElinNetHost host && host.PeerOfChara(charaUid) is >= 0 and var peer) {
+            host.SendDeltaTo(peer, new MsgSayDelta { Text = line, R = 1f, G = 1f, B = 1f, A = 1f });
         }
     }
 
@@ -628,8 +681,16 @@ internal static class Teams
         }
 
         var from = TeamOf(chara.uid);
+        if (from != teamId && Full(teamId)) {
+            Requests.Remove(chara.uid);
+            Say(chara.uid, "emp_team_full", NameOf(teamId));
+            Tell();
+            return false;
+        }
+
         Remove(chara.uid);
         Requests.Remove(chara.uid);
+        Invites.Remove(chara.uid);
         var team = TeamList[teamId];
         TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
@@ -682,8 +743,9 @@ internal static class Teams
 
         var (team, asked) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray());
         switch (kind) {
-            case TeamAsk.Found:
+            case TeamAsk.Found when MayFound(chara):
                 Found(chara, CleanName(text) is { Length: > 0 } name ? name : chara.NameSimple);
+                FoundAt[chara.uid] = UnityEngine.Time.realtimeSinceStartup;
                 break;
             case TeamAsk.Join when TeamList.TryGetValue(id, out var wanted) && TeamOf(chara.uid) != id:
                 // at once into an open team, a team without a leader, or when the host does not ask the leaders
@@ -696,6 +758,36 @@ internal static class Teams
                 break;
             case TeamAsk.Leave:
                 Leave(chara);
+                break;
+            case TeamAsk.Rename when LedBy(chara.uid) is var renamed and not Wanderers && CleanName(text) is { Length: > 0 } newName:
+                Names[renamed] = newName;
+                EmpLog.Information("Team {TeamId} renamed {TeamName} by its leader", renamed, newName);
+                Tell();
+                break;
+            case TeamAsk.Kick when LedBy(chara.uid) is var kicker and not Wanderers && id != chara.uid && TeamOf(id) == kicker:
+                Put(id, "emp_team_kicked", NameOf(kicker));
+                break;
+            case TeamAsk.Promote when LedBy(chara.uid) is var promoter and not Wanderers && id != chara.uid && TeamOf(id) == promoter:
+                TeamList[promoter][0] = id;
+                EmpLog.Information("Team {TeamId} handed to {CharaUid}", promoter, id);
+                Say(id, "emp_team_promoted", NameOf(promoter));
+                Tell();
+                break;
+            case TeamAsk.Disband when LedBy(chara.uid) is var ended and not Wanderers:
+                Disband(ended);
+                break;
+            case TeamAsk.Invite when LedBy(chara.uid) is var inviter and not Wanderers:
+                Invite(chara, inviter, id);
+                break;
+            case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
+                Invites.Remove(chara.uid);
+                Join(chara, id);
+                break;
+            case TeamAsk.RefuseInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var turned) && turned == id:
+                Invites.Remove(chara.uid);
+                Refused.Add((id, chara.uid));
+                Say(LeaderOf(id), "emp_team_invite_refused", PlayerName(chara.uid));
+                Tell();
                 break;
             case TeamAsk.Own when PersonalOwned:
                 Own(chara, id, zoneUid);
@@ -784,6 +876,86 @@ internal static class Teams
         }
 
         EmpLog.Information("Land {ZoneUid} claimed by {CharaUid}, team {TeamId}", zone.uid, claimer.uid, team);
+        Tell();
+    }
+
+    /// <summary>
+    ///     Founding is not asked again at once (host box "Team leaders manage their team")
+    /// </summary>
+    private static bool MayFound(Chara chara)
+    {
+        var wait = LeadersManage ? EmpConfig.Server.TeamFoundCooldown.Value * 60f : 0f;
+        if (wait <= 0f || !FoundAt.TryGetValue(chara.uid, out var at) || UnityEngine.Time.realtimeSinceStartup - at >= wait) {
+            return true;
+        }
+
+        Say(chara.uid, "emp_team_found_wait", (int)System.Math.Ceiling((wait - (UnityEngine.Time.realtimeSinceStartup - at)) / 60f));
+        return false;
+    }
+
+    /// <summary>
+    ///     The leader puts that member out (it is a Wanderer, told so)
+    /// </summary>
+    private static void Put(int charaUid, string key, string teamName)
+    {
+        if (EClass.game.cards.globalCharas.Find(charaUid) is { } chara) {
+            Leave(chara);
+        } else if (Remove(charaUid)) {
+            Tell();
+        }
+
+        Say(charaUid, key, teamName);
+    }
+
+    /// <summary>
+    ///     The team ends: every member a Wanderer, its lands nobody's, its requests and invitations void
+    /// </summary>
+    private static void Disband(int teamId)
+    {
+        var name = NameOf(teamId);
+        foreach (var uid in MembersOfTeam(teamId).ToArray()) {
+            Put(uid, "emp_team_disbanded", name);
+        }
+
+        TeamList.Remove(teamId);
+        Names.Remove(teamId);
+        foreach (var zone in Zones.Where(z => z.Value == teamId).Select(z => z.Key).ToArray()) {
+            Zones.Remove(zone);
+        }
+        foreach (var uid in Requests.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
+            Requests.Remove(uid);
+        }
+        foreach (var uid in Invites.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
+            Invites.Remove(uid);
+        }
+
+        EmpLog.Information("Team {TeamId} {TeamName} disbanded by its leader", teamId, name);
+        Tell();
+    }
+
+    /// <summary>
+    ///     The leader invites a player in the game: one pending invitation per player, one invitation a second per
+    ///     leader, none to a player whose refusal this session is known, none to a full team
+    /// </summary>
+    private static void Invite(Chara leader, int teamId, int targetUid)
+    {
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (InviteAt.TryGetValue(leader.uid, out var at) && now - at < 1f) {
+            return;
+        }
+
+        InviteAt[leader.uid] = now;
+        if (TeamOf(targetUid) == teamId || !IsOnline(targetUid) || Invites.ContainsKey(targetUid) || Refused.Contains((teamId, targetUid))) {
+            return;
+        }
+
+        if (Full(teamId)) {
+            Say(leader.uid, "emp_team_full", NameOf(teamId));
+            return;
+        }
+
+        Invites[targetUid] = teamId;
+        Say(targetUid, "emp_team_invited", NameOf(teamId), PlayerName(leader.uid));
         Tell();
     }
 

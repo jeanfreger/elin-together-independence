@@ -257,6 +257,11 @@ internal partial class ElinNetHost
     internal static Dictionary<int, int> TeamRequests { get; } = [];
 
     /// <summary>
+    ///     Chara uid -> the team that invited it, until it answers. Not saved
+    /// </summary>
+    internal static Dictionary<int, int> TeamInvites { get; } = [];
+
+    /// <summary>
     ///     The teams changed, or a player joins: everyone is told the whole book
     /// </summary>
     internal void TellTeams()
@@ -272,6 +277,7 @@ internal partial class ElinNetHost
             Zones = new(ZoneTeams),
             Owners = new(CardOwners),
             Requests = new(TeamRequests),
+            Invites = new(TeamInvites),
             Bills = TeamBills.Told(),
             Story = TeamStory.Told(),
         });

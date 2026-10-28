@@ -37,6 +37,43 @@ public enum TeamAsk : byte
     ///     The player's own card is the team's again. Id is the card's uid
     /// </summary>
     Share,
+
+    // (the team page, council 2026-10-28: the leader's choices, behind the host box "Team leaders manage their team")
+
+    /// <summary>
+    ///     The leader renames its team. Text is the new name
+    /// </summary>
+    Rename,
+
+    /// <summary>
+    ///     The leader puts a member out. Id is that member's chara uid
+    /// </summary>
+    Kick,
+
+    /// <summary>
+    ///     The leader hands the team to a member. Id is that member's chara uid
+    /// </summary>
+    Promote,
+
+    /// <summary>
+    ///     The leader ends its team: its members become Wanderers, its lands nobody's
+    /// </summary>
+    Disband,
+
+    /// <summary>
+    ///     The leader invites a player who is in the game. Id is that player's chara uid
+    /// </summary>
+    Invite,
+
+    /// <summary>
+    ///     The invited player joins. Id is the team
+    /// </summary>
+    AcceptInvite,
+
+    /// <summary>
+    ///     The invited player declines. Id is the team
+    /// </summary>
+    RefuseInvite,
 }
 
 /// <summary>

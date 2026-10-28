@@ -2,6 +2,7 @@ using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
+using ElinTogether.Net;
 using YKF;
 
 namespace ElinTogether.Components;
@@ -20,6 +21,7 @@ internal class TabTeam : TabEmpBase
         }
 
         var mine = Teams.TeamOf(pc.uid);
+        BuildInvitation(pc.uid);
         if (mine == Teams.Wanderers) {
             BuildFound();
         } else {
@@ -28,6 +30,24 @@ internal class TabTeam : TabEmpBase
 
         BuildOtherTeams(mine);
         BuildTeamLines();
+    }
+
+    /// <summary>
+    ///     A team invited this player: a line and the two answers (no popup)
+    /// </summary>
+    private void BuildInvitation(int me)
+    {
+        var team = Teams.InviteOf(me);
+        if (team == Teams.Wanderers) {
+            return;
+        }
+
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_team_invite_title".lang());
+        card.Text("emp_ui_team_invite_line".Loc(Teams.NameOf(team), Teams.PlayerName(Teams.LeaderOf(team))));
+        var row = card.ButtonRow();
+        row.RowButton("emp_ui_team_invite_accept".lang(), () => Teams.Ask(TeamAsk.AcceptInvite, team));
+        row.RowButton("emp_ui_team_invite_refuse".lang(), () => Teams.Ask(TeamAsk.RefuseInvite, team));
     }
 
     private void BuildFound()
@@ -50,9 +70,15 @@ internal class TabTeam : TabEmpBase
         var card = this.MakeCard();
         card.HeaderSmall("emp_ui_team_mine".Loc(Teams.NameOf(mine)));
         card.Text("emp_ui_team_leader".Loc(Teams.PlayerName(leader), (Teams.IsOpen(mine) ? "emp_ui_team_open" : "emp_ui_team_closed").lang()));
-        foreach (var uid in Teams.MembersOfTeam(mine)) {
-            var line = Teams.PlayerName(uid) + "  " + (Teams.IsOnline(uid) ? "emp_ui_team_online" : "emp_ui_team_offline").lang();
-            card.Text(uid == leader ? line + "  " + "emp_ui_team_leader_tag".lang() : line);
+        var manages = leader == me && Teams.LeadersManage;
+        foreach (var member in Teams.MembersOfTeam(mine)) {
+            var line = Teams.PlayerName(member) + "  " + (Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang();
+            card.Text(member == leader ? line + "  " + "emp_ui_team_leader_tag".lang() : line);
+            if (manages && member != me) {
+                var row = card.ButtonRow();
+                row.RowButton("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member));
+                row.RowButton("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member));
+            }
         }
 
         var lands = Teams.LandsOf(mine).ToList();
@@ -80,8 +106,47 @@ internal class TabTeam : TabEmpBase
             }
         }
 
+        if (manages) {
+            BuildManagement(mine);
+        }
+
         card.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => {
             Teams.Ask(TeamAsk.Leave);
+        });
+    }
+
+    /// <summary>
+    ///     The leader's choices (host box "Team leaders manage their team"): rename, invite the players in the game who
+    ///     have no team, end the team
+    /// </summary>
+    private void BuildManagement(int mine)
+    {
+        var card = this.MakeCard();
+        card.HeaderSmall("emp_ui_team_manage".lang());
+        card.ButtonRow().RowButton("emp_ui_team_rename".lang(), () => {
+            Dialog.InputName("emp_ui_team_rename_ask", Teams.NameOf(mine), (cancel, text) => {
+                if (!cancel) {
+                    Teams.Ask(TeamAsk.Rename, text: text);
+                }
+            }).input.field.characterLimit = Teams.NameMax;
+        });
+
+        foreach (var invited in Teams.InvitedBy(mine)) {
+            card.TextSmall("emp_ui_team_invited_line".Loc(Teams.PlayerName(invited)));
+        }
+
+        // (a player in the game, in no team and not yet asked: the host checks the same again)
+        foreach (var player in NetSession.Instance.CurrentPlayers.Select(p => p.CharaUid).Distinct().ToList()) {
+            if (Teams.TeamOf(player) == mine || Teams.InviteOf(player) != Teams.Wanderers) {
+                continue;
+            }
+
+            var target = player;
+            card.ButtonRow().RowButton("emp_ui_team_invite".Loc(Teams.PlayerName(player)), () => Teams.Ask(TeamAsk.Invite, target));
+        }
+
+        card.ButtonRow().RowButton("emp_ui_team_disband".lang(), () => {
+            Dialog.YesNo("emp_ui_team_disband_confirm".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Disband));
         });
     }
 

@@ -675,6 +675,28 @@ internal partial class EmpConfig
             "Otherwise a team buys its deed from the merchant as in the game\n" +
             "新队伍的创建者获得一张土地证书，每个队伍一次、每位玩家一次；关闭时队伍如游戏中一样从商人处购买证书");
 
+        Server.TeamLeaders = config.Bind(
+            "Server",
+            "TeamLeaders",
+            false,
+            "The leader of a team manages it from the Team page: rename, put a member out, hand the team over, end it, invite players. Also limits a team's size and how often a player may found a team\n" +
+            "Otherwise a team keeps what the player list offers: found, join, leave, and the leader's yes or no\n" +
+            "队伍的队长可在队伍页面管理队伍：改名、移出成员、移交队长、解散、邀请玩家；同时限制队伍人数以及玩家创建队伍的频率；关闭时队伍只保留玩家列表中的创建、加入、离开以及队长的同意或拒绝");
+
+        Server.TeamMaxSize = config.Bind(
+            "Server",
+            "TeamMaxSize",
+            10,
+            "With \"Team leaders manage their team\": the most players a team holds. 0: no limit\n" +
+            "启用“队长管理队伍”时：一个队伍最多容纳多少玩家。0：不限");
+
+        Server.TeamFoundCooldown = config.Bind(
+            "Server",
+            "TeamFoundCooldown",
+            5,
+            "With \"Team leaders manage their team\": minutes a player waits before founding another team. 0: no wait\n" +
+            "启用“队长管理队伍”时：玩家再次创建队伍前需等待的分钟数。0：无需等待");
+
         Server.SpawnZone = config.Bind(
             "Server",
             "SpawnZone",
@@ -956,6 +978,9 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
         internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
+        internal static ConfigEntry<int> TeamMaxSize { get; set; } = null!;
+        internal static ConfigEntry<int> TeamFoundCooldown { get; set; } = null!;
         internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;
         internal static ConfigEntry<string> SpawnZone { get; set; } = null!;
 
