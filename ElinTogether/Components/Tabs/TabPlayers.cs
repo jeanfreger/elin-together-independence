@@ -97,19 +97,24 @@ internal class TabPlayers : TabEmpBase
     {
         var chara = player.FindChara();
         var name = string.IsNullOrWhiteSpace(player.User.Name) ? chara?.Name ?? "?" : player.User.Name;
-        var facts = page.Card(Short(name, 22));
         if (chara is null) {
-            facts.TextSmall("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid), FontColor.Gray);
+            page.Card(name).TextSmall("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid), FontColor.Gray);
             return;
         }
 
-        var head = facts.Row();
+        // the character sheet's head: portrait and sprite on the left with some air, then the name as a title (in full,
+        // no header bullet over the portrait) and the facts under it
+        var head = page.Row();
+        head.Layout.padding = new(12, 8, 4, 12);
         head.Layout.spacing = 14f;
+        head.Layout.childAlignment = TextAnchor.UpperLeft;
         head.Portrait(chara);
         var lines = head.Vertical();
         lines.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
         lines.LayoutElement().flexibleWidth = 1f;
-        lines.KeyValue("emp_ui_kv_character".lang(), Short(chara.Name, 16));
+        lines.Layout.spacing = 2f;
+        lines.Text(name).SetSize(UIHelper.LabelSize + 4);
+        lines.KeyValue("emp_ui_kv_character".lang(), chara.Name);
         lines.KeyValue("emp_ui_kv_level".lang(), chara.LV.ToString());
         if (NetSession.Instance.Rules.UseTeams) {
             lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(Teams.TeamOf(chara.uid)));
@@ -128,14 +133,6 @@ internal class TabPlayers : TabEmpBase
             var action = act;
             buttons.ButtonRow().RowButton(label, () => action());
         }
-    }
-
-    /// <summary>
-    ///     A name cut to what the right page holds (the full one is on the left page)
-    /// </summary>
-    private static string Short(string text, int max)
-    {
-        return text.Length <= max ? text : text[..(max - 1)] + "…";
     }
 
     private static string RoleOf(NetPeerState player)
