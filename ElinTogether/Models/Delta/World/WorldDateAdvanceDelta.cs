@@ -67,7 +67,10 @@ public class WorldDateAdvanceDelta : ElinDelta
         // world it catches up when the world went further without it; a visitor hears it from the map's holder
         if (NetSession.Instance.IsAway) {
             if (NetSession.Instance is { IsZoneAuthority: true, Rules.UseSharedWorldTime: true }) {
-                WorldDateAdvanceEvent.CatchUpNextFrame([..GameDate], traveller);
+                // living world: a minute of the world's clock is lived on this map too, not caught up with
+                if (CatchUp || Traveller is not null || !LivingWorld.Follow(Minutes, WorldDateAdvanceEvent.Minutes([..GameDate]))) {
+                    WorldDateAdvanceEvent.CatchUpNextFrame([..GameDate], traveller);
+                }
             } else if (others && net.IsZoneSession) {
                 PersonalQuests.Postpone(Minutes);
             }
