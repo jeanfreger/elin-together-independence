@@ -1872,7 +1872,19 @@ internal partial class ElinNetHost
     /// </summary>
     private void ReturnToAwayZone(ISteamNetPeer peer)
     {
-        if (!_awayAt.Remove(peer.User, out var away) || UnityEngine.Time.realtimeSinceStartup > away.Until ||
+        if (!_awayAt.Remove(peer.User, out var away)) {
+            // the owner of a server's world, the first time it joins after the exchange of characters (ServerAvatar):
+            // it comes back where its character was, as a player does after a lost link. Once: the zone is forgotten
+            var table = ServerAvatarTable;
+            if (!ServerAvatar.Active || table[AvatarOwnerZone] == 0 || (ulong)table[AvatarOwnerUser] != (ulong)peer.User) {
+                return;
+            }
+
+            away = ((int)table[AvatarOwnerZone], float.MaxValue);
+            table[AvatarOwnerZone] = 0;
+        }
+
+        if (UnityEngine.Time.realtimeSinceStartup > away.Until ||
             game.spatials.Find(away.ZoneUid) is not { } zone || zone == _zone ||
             (!zone.IsRegion && _leases.Any(kv => kv.Key != peer.Id && kv.Value.ContainsKey(zone.uid)))) {
             return;

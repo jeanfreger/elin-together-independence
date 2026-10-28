@@ -48,7 +48,8 @@ internal static class BasePlayersPatch
 
     internal static bool AllAsleep(Chara pc)
     {
-        return pc.IsDeadOrSleeping && OthersOnMap(pc).All(c => c.IsDeadOrSleeping);
+        // (a server's stand-in never sleeps: the players on the base decide)
+        return (pc.IsDeadOrSleeping || IsMultiplayer && ServerAvatar.Is(pc)) && OthersOnMap(pc).All(c => c.IsDeadOrSleeping);
     }
 
     /// <summary>

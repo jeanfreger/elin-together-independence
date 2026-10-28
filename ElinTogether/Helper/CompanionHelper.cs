@@ -61,7 +61,9 @@ internal static class CompanionHelper
             return null;
         }
 
-        return chara.CompanionOwnerUid is var uid and not 0 ? EClass.game.cards.globalCharas.Find(uid) : party.leader;
+        // (an untagged one is the leader's, unless the leader is a server's stand-in: nobody's then, see ServerAvatar)
+        return chara.CompanionOwnerUid is var uid and not 0 ? EClass.game.cards.globalCharas.Find(uid)
+            : ServerAvatar.Is(party.leader) ? null : party.leader;
     }
 
     /// <summary>

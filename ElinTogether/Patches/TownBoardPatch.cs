@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -13,7 +14,11 @@ namespace ElinTogether.Net
         /// </summary>
         internal List<(Chara Player, int Fame)> PlayersOnMap()
         {
-            var list = new List<(Chara, int)> { (pc, player.fame) };
+            var list = new List<(Chara, int)>();
+            if (!ServerAvatar.Is(pc)) {
+                list.Add((pc, player.fame));
+            }
+
             foreach (var chara in ActiveRemoteCharas.Values) {
                 if (chara.IsAliveInCurrentZone && PlayerStandings.TryGetValue(chara.uid, out var standing) &&
                     standing.Length >= 2) {
@@ -56,7 +61,7 @@ namespace ElinTogether.Patches
             }
 
             var players = host.PlayersOnMap();
-            if (players.Count < 2) {
+            if (players.Count < (ServerAvatar.Is(EClass.pc) ? 1 : 2)) {
                 return;
             }
 
