@@ -36,7 +36,7 @@ public class ClaimZoneDelta : ElinDelta
 
         if (NetSession.Instance.Rules.HostManagesBase || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
             host.IsAwayPeer(OriginPeer) || _zone.uid != ZoneUid || _zone.mainFaction == pc.faction || !_zone.isClaimable ||
-            _zone.instance is not null || sender.things.List(t => t.trait is TraitDeed, true).FirstOrDefault() is not { } deed) {
+            _zone.instance is not null || Teams.LandCapReached(sender) || sender.things.List(t => t.trait is TraitDeed, true).FirstOrDefault() is not { } deed) {
             EmpLog.Information("Land {ZoneUid} not claimed for peer {Peer}", ZoneUid, OriginPeer);
             host.SendDeltaTo(OriginPeer, new ClaimZoneDelta { ZoneUid = ZoneUid, Refused = true });
             return;

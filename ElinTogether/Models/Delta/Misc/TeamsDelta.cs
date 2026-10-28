@@ -52,6 +52,18 @@ public class TeamsDelta : ElinDelta
     [Key(6)]
     public Dictionary<int, int>? Story { get; init; }
 
+    /// <summary>
+    ///     Chara uid -> the team that invited it, waiting for its answer
+    /// </summary>
+    [Key(7)]
+    public Dictionary<int, int>? Invites { get; init; }
+
+    /// <summary>
+    ///     Zone uid -> the rule of that land (<see cref="Teams.PackRule" />); a land with none has the default
+    /// </summary>
+    [Key(8)]
+    public Dictionary<int, int>? ZoneRules { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

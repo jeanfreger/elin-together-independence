@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 143 (136-138 reserved for a worker), the next free one is 145. Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 143 (141 unused), the next free one is 144 (145 reserved for the server avatar). Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
@@ -417,6 +417,26 @@ public class NetSessionRules
     public bool AffinityPerPlayer { get; set; }
 
     /// <summary>
+    ///     Team leaders manage their team from the Team page (<see cref="Helper.Teams" />). An older host sends none: the
+    ///     choices of the player list, as they were
+    /// </summary>
+    [Key(136)]
+    public bool TeamLeaders { get; set; }
+
+    /// <summary>
+    ///     Team leaders set a rule for each land (<see cref="Helper.Teams.Allowed" />). An older host sends none: a land
+    ///     is its team's to build and others' to visit, as it was
+    /// </summary>
+    [Key(137)]
+    public bool LandRules { get; set; }
+
+    /// <summary>
+    ///     With TeamLeaders: the most players a team holds, 0 no limit
+    /// </summary>
+    [Key(138)]
+    public int TeamMaxSize { get; set; }
+
+    /// <summary>
     ///     The host's message of the day and rules, read from its ElinMP/motd.txt and rules.txt (see ServerInfo)
     /// </summary>
     [Key(139)]
@@ -460,6 +480,9 @@ public class NetSessionRules
         TeamBoxes = Helper.TeamBoxes.Wanted,
         ContainerLog = EmpConfig.Server.ContainerAccessLog.Value,
         AdminExtras = EmpConfig.Server.AdminExtras.Value,
+        TeamLeaders = EmpConfig.Server.TeamLeaders.Value,
+        LandRules = EmpConfig.Server.LandRules.Value,
+        TeamMaxSize = System.Math.Max(0, EmpConfig.Server.TeamMaxSize.Value),
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,

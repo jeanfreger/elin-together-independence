@@ -168,6 +168,12 @@ internal partial class ElinNetHost
             zone = game.spatials.Find(leaving.uidZone) ?? zone;
         }
 
+        // a land closed to the host's player: it stays where it is, told so (never a refusal to leave)
+        if (Teams.EntryDenied(pc, zone) is { } closed) {
+            Msg.SayRaw(closed.lang());
+            return false;
+        }
+
         if (!CanEnterNow(zone, transition)) {
             return false;
         }
@@ -369,6 +375,7 @@ internal partial class ElinNetHost
         UpdateQuestAsk();
         UpdateSoftRejoins();
         UpdateWorldMapTogether();
+        UpdateLandRules();
     }
 
     /// <summary>
@@ -839,6 +846,16 @@ internal partial class ElinNetHost
         var zone = request.Blueprint is { } blueprint && GetPeerDenyReason(peer) is null
             ? CreateClientZone(blueprint)
             : game.spatials.Find(request.ZoneUid);
+
+        // a land closed to that player: it stays where it is and hears why (Teams.Allowed, host box "Land rules")
+        if (Teams.EntryDenied(PlayerChara(peer.Id), zone) is { } closed) {
+            EmpLog.Information("Denied zone lease {ZoneFullName} to {@Peer}: {Reason}", request.ZoneFullName, peer, closed);
+            peer.Send(new ZoneLeaseDenied {
+                ZoneUid = request.ZoneUid,
+                Reason = closed,
+            });
+            return;
+        }
 
         // another player simulates the zone: join it as a guest of its zone session
         if (zone is { IsRegion: false } && GetPeerDenyReason(peer) is null && zone != _zone &&

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Components;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -24,6 +25,8 @@ internal static class Teams
     private static Dictionary<int, int> _zones = [];
     private static Dictionary<int, int> _owners = [];
     private static Dictionary<int, int> _requests = [];
+    private static Dictionary<int, int> _invites = [];
+    private static Dictionary<int, int> _zoneRules = [];
     private static Dictionary<int, int> _bills = [];
     private static Dictionary<int, int> _story = [];
     private static bool _told;
@@ -36,6 +39,14 @@ internal static class Teams
     private static Dictionary<int, int> Zones => KeepsBook ? ElinNetHost.ZoneTeams : _zones;
     private static Dictionary<int, int> Owners => KeepsBook ? ElinNetHost.CardOwners : _owners;
     private static Dictionary<int, int> Requests => KeepsBook ? ElinNetHost.TeamRequests : _requests;
+    private static Dictionary<int, int> Invites => KeepsBook ? ElinNetHost.TeamInvites : _invites;
+    private static Dictionary<int, int> ZoneRules => KeepsBook ? ElinNetHost.ZoneRules : _zoneRules;
+
+    // the host's memory of this session, not saved: when a leader last invited, when a player last founded a team,
+    // and the invitations a player turned down (a team cannot ask that player again)
+    private static readonly Dictionary<int, float> InviteAt = [];
+    private static readonly Dictionary<int, float> FoundAt = [];
+    private static readonly HashSet<(int Team, int Target)> Refused = [];
 
     [ElinPreLoad]
     private static void Forget(GameIOContext context)
@@ -45,6 +56,12 @@ internal static class Teams
         _zones = [];
         _owners = [];
         _requests = [];
+        _invites = [];
+        _zoneRules = [];
+        InviteAt.Clear();
+        FoundAt.Clear();
+        Refused.Clear();
+        ElinNetHost.TeamInvites.Clear();
         _bills = [];
         _story = [];
         _told = false;
@@ -63,12 +80,15 @@ internal static class Teams
         _zones = new(delta.Zones);
         _owners = new(delta.Owners);
         _requests = new(delta.Requests ?? []);
+        _invites = new(delta.Invites ?? []);
+        _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
         // (not the book told on joining: nothing changed then)
         if (known) {
             Notice(team, asked);
         }
+        Redraw();
     }
 
     /// <summary>
@@ -89,6 +109,67 @@ internal static class Teams
                 Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
             }
         }
+    }
+
+    /// <summary>
+    ///     Host box "Team leaders manage their team": the leader's choices on the Team page, the size cap and the wait
+    ///     before founding again. Off: the choices of the player list, as they were
+    /// </summary>
+    internal static bool LeadersManage => NetSession.Instance.Rules is { UseTeams: true, TeamLeaders: true };
+
+    /// <summary>
+    ///     The team that player leads, none when it leads none or the leaders do not manage their team
+    /// </summary>
+    internal static int LedBy(int charaUid)
+    {
+        return LeadersManage && TeamOf(charaUid) is var team and not Wanderers && LeaderOf(team) == charaUid ? team : Wanderers;
+    }
+
+    /// <summary>
+    ///     The team that invited that player and waits for its answer, none when there is none
+    /// </summary>
+    internal static int InviteOf(int charaUid) => Invites.GetValueOrDefault(charaUid);
+
+    internal static IEnumerable<int> InvitedBy(int teamId) => Invites.Where(i => i.Value == teamId).Select(i => i.Key);
+
+    private static bool Full(int teamId)
+    {
+        return LeadersManage && NetSession.Instance.Rules.TeamMaxSize is > 0 and var cap && MembersOfTeam(teamId).Count() >= cap;
+    }
+
+    /// <summary>
+    ///     A line in the log of that player, wherever it plays (the host's own, or a guest told by the host)
+    /// </summary>
+    internal static void Say(int charaUid, string key, params object[] args)
+    {
+        var line = key.Loc(args);
+        if (charaUid == EClass.pc.uid) {
+            Msg.SayRaw(line);
+        } else if (NetSession.Instance.Transport is ElinNetHost host && host.PeerOfChara(charaUid) is >= 0 and var peer) {
+            host.SendDeltaTo(peer, new MsgSayDelta { Text = line, R = 1f, G = 1f, B = 1f, A = 1f });
+        }
+    }
+
+    internal static bool IsOpen(int teamId) => TeamList.TryGetValue(teamId, out var team) && team[1] == 1;
+
+    /// <summary>
+    ///     The players who ask to join that team and wait for its leader
+    /// </summary>
+    internal static IEnumerable<int> Asking(int teamId) => Requests.Where(r => r.Value == teamId).Select(r => r.Key);
+
+    /// <summary>
+    ///     The lands that team holds
+    /// </summary>
+    internal static IEnumerable<int> LandsOf(int teamId) => Zones.Where(z => z.Value == teamId).Select(z => z.Key).OrderBy(uid => uid);
+
+    internal static string ZoneName(int zoneUid) => EClass.game.spatials.Find(zoneUid)?.Name ?? zoneUid.ToString();
+
+    /// <summary>
+    ///     That player character is in this game right now (the host's own included)
+    /// </summary>
+    internal static bool IsOnline(int charaUid)
+    {
+        return NetSession.Instance.CurrentPlayers.Any(p => p.CharaUid == charaUid);
     }
 
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
@@ -213,18 +294,93 @@ internal static class Teams
         return owner == chara.uid ? 0 : owner;
     }
 
+    // what a land lets a player do (host box "Land rules"): nothing, walk and talk and trade at shops only, also
+    // open containers and take things, everything
+    internal const int Closed = 0;
+    internal const int Visit = 1;
+    internal const int Use = 2;
+    internal const int Build = 3;
+
+    // a land with no rule of its own: its team builds, others visit (the game as it was)
+    private const int DefaultRule = Build | Visit << 2;
+
+    internal static bool LandRulesOn => BasesOwned && NetSession.Instance.Rules.LandRules;
+
     /// <summary>
-    ///     That character may use this land: a land of no team or of its team. Only players are asked, residents and
-    ///     companions go on as before
+    ///     A rule as one number: the level of the team (bits 0-1), of everyone else (2-3), and "closed to others while
+    ///     no member is online" (bit 4)
+    /// </summary>
+    internal static int PackRule(int mine, int others, bool offlineClosed = false)
+    {
+        return mine & 3 | (others & 3) << 2 | (offlineClosed ? 1 << 4 : 0);
+    }
+
+    internal static int RuleOf(int zoneUid) => ZoneRules.GetValueOrDefault(zoneUid, DefaultRule);
+
+    internal static int MineLevel(int rule) => rule & 3;
+
+    internal static int OthersLevel(int rule) => rule >> 2 & 3;
+
+    internal static bool OfflineClosed(int rule) => (rule >> 4 & 1) == 1;
+
+    /// <summary>
+    ///     Someone of that team is in the game right now
+    /// </summary>
+    internal static bool AnyOnline(int teamId)
+    {
+        return MembersOfTeam(teamId).Any(IsOnline);
+    }
+
+    /// <summary>
+    ///     What that character may do on this land, as a level: everything on a land of no team (and for residents and
+    ///     companions: only players are asked)
+    /// </summary>
+    internal static int LevelOn(Chara chara, Zone? zone)
+    {
+        var team = TeamOfZone(zone);
+        if (!BasesOwned || !chara.IsPlayer || team == Wanderers) {
+            return Build;
+        }
+
+        var own = team == TeamOf(chara.uid);
+        if (!LandRulesOn) {
+            // the game as it was: a team's land is its own to build, others visit
+            return own ? Build : Visit;
+        }
+
+        var rule = RuleOf(zone!.uid);
+        if (own) {
+            return MineLevel(rule);
+        }
+
+        // (closed to others while the team is away: the team's own level is never touched)
+        return OfflineClosed(rule) && !AnyOnline(team) ? Closed : OthersLevel(rule);
+    }
+
+    /// <summary>
+    ///     That character may do this much on that land. Only players are asked, residents and companions go on as before
+    /// </summary>
+    internal static bool Allowed(Chara chara, Zone? zone, int need)
+    {
+        return LevelOn(chara, zone) >= need;
+    }
+
+    /// <summary>
+    ///     The reason (a text id) that character may not enter this land, none when it may. Only a land closed to it
+    ///     refuses: a player never stays out of the world map, nor out of a land of no team
+    /// </summary>
+    internal static string? EntryDenied(Chara? chara, Zone? zone)
+    {
+        return chara is null || zone is not { IsRegion: false } || Allowed(chara, zone, Visit) ? null : "emp_land_closed";
+    }
+
+    /// <summary>
+    ///     That character may use this land: a land of no team or of its team (its team's rule of the land, when
+    ///     lands have rules)
     /// </summary>
     internal static bool CanTouch(Chara chara, Zone? zone)
     {
-        if (!BasesOwned || !chara.IsPlayer) {
-            return true;
-        }
-
-        var team = TeamOfZone(zone);
-        return team == Wanderers || team == TeamOf(chara.uid);
+        return Allowed(chara, zone, Build);
     }
 
     /// <summary>
@@ -242,7 +398,7 @@ internal static class Teams
             return false;
         }
 
-        return !BasesOwned || card.GetRootCard() is Chara || CanTouch(chara, EClass._zone);
+        return !BasesOwned || card.GetRootCard() is Chara || Allowed(chara, EClass._zone, Use);
     }
 
     /// <summary>
@@ -252,7 +408,7 @@ internal static class Teams
     internal static bool CanOpen(Chara chara, Card card)
     {
         return !BasesOwned || card.parent is null || OwnerOf(card) == chara.uid || card.GetRootCard() is Chara ||
-               CanTouch(chara, EClass._zone);
+               Allowed(chara, EClass._zone, Use);
     }
 
     /// <summary>
@@ -530,6 +686,17 @@ internal static class Teams
         return string.Join("\n", lines.Concat(zones).DefaultIfEmpty("no teams"));
     }
 
+    internal const int NameMax = 24;
+
+    /// <summary>
+    ///     A team name a player typed: one line, no control characters, at most <see cref="NameMax" /> characters
+    /// </summary>
+    internal static string CleanName(string? text)
+    {
+        var clean = new string((text ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+        return clean.Length > NameMax ? clean[..NameMax].Trim() : clean;
+    }
+
     /// <summary>
     ///     That player founds a team named so and leads it, leaving its former team. Only in the game that keeps the
     ///     book; 0 when it does not
@@ -593,8 +760,16 @@ internal static class Teams
         }
 
         var from = TeamOf(chara.uid);
+        if (from != teamId && Full(teamId)) {
+            Requests.Remove(chara.uid);
+            Say(chara.uid, "emp_team_full", NameOf(teamId));
+            Tell();
+            return false;
+        }
+
         Remove(chara.uid);
         Requests.Remove(chara.uid);
+        Invites.Remove(chara.uid);
         var team = TeamList[teamId];
         TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
@@ -627,19 +802,19 @@ internal static class Teams
     ///     The local player's choice in a team menu: answered here in the game that keeps the book, asked of the
     ///     host otherwise (wherever this player is)
     /// </summary>
-    internal static void Ask(TeamAsk kind, int id = 0, int zoneUid = 0)
+    internal static void Ask(TeamAsk kind, int id = 0, int zoneUid = 0, string text = "")
     {
         if (KeepsBook) {
-            Answer(EClass.pc, kind, id, zoneUid);
+            Answer(EClass.pc, kind, id, zoneUid, text);
         } else {
-            PersonalQuests.TellHost(new TeamRequestDelta { Kind = kind, Id = id, ZoneUid = zoneUid });
+            PersonalQuests.TellHost(new TeamRequestDelta { Kind = kind, Id = id, ZoneUid = zoneUid, Text = text });
         }
     }
 
     /// <summary>
     ///     In the game that keeps the book: what that player asks, read against the book as it is now
     /// </summary>
-    internal static void Answer(Chara chara, TeamAsk kind, int id, int zoneUid)
+    internal static void Answer(Chara chara, TeamAsk kind, int id, int zoneUid, string text = "")
     {
         if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
             return;
@@ -647,8 +822,9 @@ internal static class Teams
 
         var (team, asked) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray());
         switch (kind) {
-            case TeamAsk.Found:
-                Found(chara, chara.NameSimple);
+            case TeamAsk.Found when MayFound(chara):
+                Found(chara, CleanName(text) is { Length: > 0 } name ? name : chara.NameSimple);
+                FoundAt[chara.uid] = UnityEngine.Time.realtimeSinceStartup;
                 break;
             case TeamAsk.Join when TeamList.TryGetValue(id, out var wanted) && TeamOf(chara.uid) != id:
                 // at once into an open team, a team without a leader, or when the host does not ask the leaders
@@ -661,6 +837,47 @@ internal static class Teams
                 break;
             case TeamAsk.Leave:
                 Leave(chara);
+                break;
+            case TeamAsk.Rename when LedBy(chara.uid) is var renamed and not Wanderers && CleanName(text) is { Length: > 0 } newName:
+                Names[renamed] = newName;
+                EmpLog.Information("Team {TeamId} renamed {TeamName} by its leader", renamed, newName);
+                Tell();
+                break;
+            case TeamAsk.Kick when LedBy(chara.uid) is var kicker and not Wanderers && id != chara.uid && TeamOf(id) == kicker:
+                Put(id, "emp_team_kicked", NameOf(kicker));
+                break;
+            case TeamAsk.Promote when LedBy(chara.uid) is var promoter and not Wanderers && id != chara.uid && TeamOf(id) == promoter:
+                TeamList[promoter][0] = id;
+                EmpLog.Information("Team {TeamId} handed to {CharaUid}", promoter, id);
+                Say(id, "emp_team_promoted", NameOf(promoter));
+                Tell();
+                break;
+            case TeamAsk.Disband when LedBy(chara.uid) is var ended and not Wanderers:
+                Disband(ended);
+                break;
+            case TeamAsk.Invite when LedBy(chara.uid) is var inviter and not Wanderers:
+                Invite(chara, inviter, id);
+                break;
+            case TeamAsk.LandRule when LandRulesOn && Zones.TryGetValue(zoneUid, out var landTeam) && LeaderOf(landTeam) == chara.uid &&
+                                       id is >= 0 and < 32 && MineLevel(id) != Closed:
+                if (id == DefaultRule) {
+                    ZoneRules.Remove(zoneUid);
+                } else {
+                    ZoneRules[zoneUid] = id;
+                }
+
+                EmpLog.Information("Land {ZoneUid} of team {TeamId}: rule {Rule}", zoneUid, landTeam, id);
+                Tell();
+                break;
+            case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
+                Invites.Remove(chara.uid);
+                Join(chara, id);
+                break;
+            case TeamAsk.RefuseInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var turned) && turned == id:
+                Invites.Remove(chara.uid);
+                Refused.Add((id, chara.uid));
+                Say(LeaderOf(id), "emp_team_invite_refused", PlayerName(chara.uid));
+                Tell();
                 break;
             case TeamAsk.Own when PersonalOwned:
                 Own(chara, id, zoneUid);
@@ -742,6 +959,8 @@ internal static class Teams
         }
 
         var team = TeamOf(claimer.uid);
+        // (a new claim starts with the default rule)
+        ZoneRules.Remove(zone.uid);
         if (team == Wanderers) {
             Zones.Remove(zone.uid);
         } else {
@@ -749,6 +968,144 @@ internal static class Teams
         }
 
         EmpLog.Information("Land {ZoneUid} claimed by {CharaUid}, team {TeamId}", zone.uid, claimer.uid, team);
+        Tell();
+    }
+
+    /// <summary>
+    ///     Founding is not asked again at once (host box "Team leaders manage their team")
+    /// </summary>
+    private static bool MayFound(Chara chara)
+    {
+        var wait = LeadersManage ? EmpConfig.Server.TeamFoundCooldown.Value * 60f : 0f;
+        if (wait <= 0f || !FoundAt.TryGetValue(chara.uid, out var at) || UnityEngine.Time.realtimeSinceStartup - at >= wait) {
+            return true;
+        }
+
+        Say(chara.uid, "emp_team_found_wait", (int)System.Math.Ceiling((wait - (UnityEngine.Time.realtimeSinceStartup - at)) / 60f));
+        return false;
+    }
+
+    internal static bool AbandonOn => BasesOwned && EmpConfig.Server.LandAbandon.Value;
+
+    private static int Today() => (int)(System.DateTime.UtcNow - new System.DateTime(2020, 1, 1)).TotalDays;
+
+    /// <summary>
+    ///     Host box "Abandoned land", once a minute: a team with someone in the game is seen today; a team nobody of which
+    ///     was seen for the set days loses its claim on its lands (they are nobody's: the mod's claim, the game's own
+    ///     base stays as it is). A team never seen before starts counting now
+    /// </summary>
+    internal static void CheckAbandon()
+    {
+        if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
+            return;
+        }
+
+        var (today, days, seen) = (Today(), System.Math.Max(1, EmpConfig.Server.AbandonDays.Value), ElinNetHost.TeamSeen);
+        foreach (var id in TeamList.Keys.ToArray()) {
+            if (AnyOnline(id) || !seen.ContainsKey(id)) {
+                seen[id] = today;
+            } else if (AbandonOn && today - seen[id] >= days && LandsOf(id).ToArray() is { Length: > 0 } lands) {
+                foreach (var land in lands) {
+                    Zones.Remove(land);
+                    ZoneRules.Remove(land);
+                }
+
+                EmpLog.Information("Team {TeamId} {TeamName} was away for {Days} days: its {Count} lands are nobody's", id, NameOf(id), today - seen[id],
+                    lands.Length);
+                Tell();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     That player's team already holds as many lands as the host allows (box "Lands per team"): a deed is not read
+    /// </summary>
+    internal static bool LandCapReached(Chara chara)
+    {
+        return BasesOwned && EmpConfig.Server.LandsPerTeam.Value is > 0 and var cap && TeamOf(chara.uid) is var team and not Wanderers &&
+               LandsOf(team).Count() >= cap;
+    }
+
+    /// <summary>
+    ///     The deed of a team at its cap of lands is not read (the host's own player: a guest's deed is refused by the
+    ///     host, see ClaimZoneDelta)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitDeed), nameof(TraitDeed.OnRead))]
+    private static bool OnReadDeed(Chara c)
+    {
+        if (!KeepsBook || !c.IsPC || !LandCapReached(c)) {
+            return true;
+        }
+
+        Msg.Say("emp_team_land_cap".Loc(EmpConfig.Server.LandsPerTeam.Value));
+        return false;
+    }
+
+    /// <summary>
+    ///     The leader puts that member out (it is a Wanderer, told so)
+    /// </summary>
+    private static void Put(int charaUid, string key, string teamName)
+    {
+        if (EClass.game.cards.globalCharas.Find(charaUid) is { } chara) {
+            Leave(chara);
+        } else if (Remove(charaUid)) {
+            Tell();
+        }
+
+        Say(charaUid, key, teamName);
+    }
+
+    /// <summary>
+    ///     The team ends: every member a Wanderer, its lands nobody's, its requests and invitations void
+    /// </summary>
+    private static void Disband(int teamId)
+    {
+        var name = NameOf(teamId);
+        foreach (var uid in MembersOfTeam(teamId).ToArray()) {
+            Put(uid, "emp_team_disbanded", name);
+        }
+
+        TeamList.Remove(teamId);
+        Names.Remove(teamId);
+        foreach (var zone in Zones.Where(z => z.Value == teamId).Select(z => z.Key).ToArray()) {
+            Zones.Remove(zone);
+            ZoneRules.Remove(zone);
+        }
+        foreach (var uid in Requests.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
+            Requests.Remove(uid);
+        }
+        foreach (var uid in Invites.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
+            Invites.Remove(uid);
+        }
+
+        EmpLog.Information("Team {TeamId} {TeamName} disbanded by its leader", teamId, name);
+        Tell();
+    }
+
+    /// <summary>
+    ///     The leader invites a player in the game: one pending invitation per player, one invitation a second per
+    ///     leader, none to a player whose refusal this session is known, none to a full team
+    /// </summary>
+    private static void Invite(Chara leader, int teamId, int targetUid)
+    {
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        if (InviteAt.TryGetValue(leader.uid, out var at) && now - at < 1f) {
+            return;
+        }
+
+        InviteAt[leader.uid] = now;
+        if (TeamOf(targetUid) == teamId || !IsOnline(targetUid) || Invites.ContainsKey(targetUid) || Refused.Contains((teamId, targetUid))) {
+            return;
+        }
+
+        if (Full(teamId)) {
+            Say(leader.uid, "emp_team_full", NameOf(teamId));
+            return;
+        }
+
+        Invites[targetUid] = teamId;
+        Say(targetUid, "emp_team_invited", NameOf(teamId), PlayerName(leader.uid));
         Tell();
     }
 
@@ -770,5 +1127,16 @@ internal static class Teams
     private static void Tell()
     {
         (NetSession.Instance.Transport as ElinNetHost)?.TellTeams();
+        Redraw();
+    }
+
+    /// <summary>
+    ///     The team page, when it is open, shows the book as it is now
+    /// </summary>
+    private static void Redraw()
+    {
+        if (LayerElinTogether.Instance is { } page) {
+            page.Reopen();
+        }
     }
 }

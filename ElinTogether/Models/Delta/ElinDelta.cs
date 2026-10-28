@@ -203,6 +203,8 @@ namespace ElinTogether.Models;
 // Container access log (2026-10-28)
 [Union(1210, typeof(ContainerLogRequest))]
 [Union(1211, typeof(ContainerLogAnswer))]
+// Closed lands: a player is moved out (council 2026-10-28)
+[Union(1200, typeof(TeamEvictDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
