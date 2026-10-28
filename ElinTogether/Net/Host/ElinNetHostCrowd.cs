@@ -263,6 +263,7 @@ internal partial class ElinNetHost
             foreach (var id in gone) {
                 _crowdViews.Remove(id);
                 _crowdSent.Remove(id);
+                _playersSent.Remove(id);
             }
         }
     }
@@ -314,8 +315,9 @@ internal partial class ElinNetHost
             var delta = deltas[i];
             var drop = delta switch {
                 CharaMoveDelta move => move.Owner.Uid == me.uid || !view.Near(move.Owner.Uid, move.Pos.X, move.Pos.Z),
-                // (not an act with a tool: its replay waters the tiles on each game)
-                CharaActPerformDelta { Tool: null } act => FarActor(act, view),
+                // only plain fighting and waiting: other acts change the map on replay (fire, webs, a thrown potion)
+                // or carry state nothing else sends (riding)
+                CharaActPerformDelta { Tool: null } act when SkippableFar(act.ActId) => FarActor(act, view),
                 _ => false,
             };
 
@@ -327,6 +329,11 @@ internal partial class ElinNetHost
         }
 
         return kept;
+    }
+
+    private static bool SkippableFar(int actId)
+    {
+        return actId is ABILITY.ActWait or ABILITY.ActMelee or ABILITY.ActRanged or ABILITY.ActKick;
     }
 
     private static bool FarActor(CharaActPerformDelta act, CrowdView view)
