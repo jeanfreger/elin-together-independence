@@ -271,6 +271,8 @@ public class CardSettingDelta : ElinDelta
                 break;
             case Sale:
                 thing.SetSale(Value != 0);
+                // whose goods they are, for who gets the money (BaseIncome)
+                thing.SetInt(BaseIncome.SellerKey, Value != 0 && net is ElinNetHost saleHost && saleHost.ActiveRemoteCharas.TryGetValue(OriginPeer, out var seller) ? seller.uid : 0);
                 break;
             case Bed:
                 thing.c_bedType = (BedType)Value;
