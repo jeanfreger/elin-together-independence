@@ -108,6 +108,39 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Host option "Teams live their own story" (<see cref="TeamOwnStory" />): team id -> where that team stands
+    ///     in the story, as text (<see cref="StoryBundle" />). The Wanderers (team 0) too. Empty while the box was never on
+    /// </summary>
+    [ElinGameIOProperty("team_story_bundle")]
+    internal static Dictionary<int, string> TeamStoryBundles
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     [the ledger's schema version, 1 once every team was given the world's story, the world team (whose story
+    ///     the save keeps), 1 while Ash and Fiama wait for every team before they leave for Lothria]
+    /// </summary>
+    [ElinGameIOProperty("team_story_bundle_state")]
+    internal static int[] TeamStoryBundleState
+    {
+        get => field is { Length: 4 } ? field : field = new int[4];
+        set;
+    }
+
+    /// <summary>
+    ///     Chara uid -> the story steps ("quest id:phase") whose rewards that player had: once per player, whatever
+    ///     team it plays the step with (team hopping farms nothing)
+    /// </summary>
+    [ElinGameIOProperty("team_story_had")]
+    internal static Dictionary<int, string[]> TeamStoryHad
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     The chara uid of every player of this world, the host's own included
     /// </summary>
     internal static IEnumerable<int> PlayerCharaUids()

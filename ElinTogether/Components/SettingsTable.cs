@@ -307,6 +307,7 @@ internal static class SettingsTable
         yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => EmpConfig.Server.Teams.Value);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
@@ -478,6 +479,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamKnowledge] = r.TeamKnowledge,
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,
+            [EmpConfig.Server.TeamOwnStory] = r.TeamOwnStory,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,

@@ -698,6 +698,14 @@ internal partial class EmpConfig
             "Otherwise no journal per team\n" +
             "每个队伍保留自己的剧情日志：其玩家参与过的主线最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上；剧情本身仍属于整个世界。关闭时没有队伍日志");
 
+        Server.TeamOwnStory = config.Bind(
+            "Server",
+            "TeamOwnStory",
+            false,
+            "Experimental. Each team lives its own main story: its own quest journal for Ash's quest and Nymelle, its own story dialogs. Every team starts at the story point the world is at when the box is ticked. Farris joins the base of the first team only; a later team reaching a floor another team already cleared takes the story on from there\n" +
+            "The world team (the host's team when the box is ticked) is the one whose story the save keeps: unticked, or the save opened without the mod, the world goes on with that team's story\n" +
+            "实验性。每个队伍各自经历主线剧情：阿什的任务和尼梅尔的探索有各自的日志与剧情对话。勾选时所有队伍从世界当前的剧情进度开始。法里斯只加入第一个队伍的据点；之后的队伍到达已被其他队伍通过的楼层时从那里继续。存档保留世界队伍（勾选时房主的队伍）的剧情：取消勾选或不带模组打开存档时，世界沿用该队伍的剧情");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -914,6 +922,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamKnowledge { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamOwnStory { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

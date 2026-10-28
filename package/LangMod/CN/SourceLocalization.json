@@ -605,5 +605,11 @@
     "LangGeneral.emp_ui_chara_recall_confirm.text": "按离开时的样子召回 #1？单人存档中的那个角色将再也不能来到这里。",
     "LangGeneral.emp_ui_chara_recalled.text": "角色已按离开时的样子召回。",
     "LangGeneral.emp_ui_chara_export_arrived.text": "#1 从合作世界来到这里，替换了该存档的角色（原存档保存在备份中）。",
-    "LangGeneral.emp_ui_chara_export_load_fail.text": "无法把来自合作世界的角色放入该存档。存档保持原样，角色在 ElinMP/Incoming 中等待。"
+    "LangGeneral.emp_ui_chara_export_load_fail.text": "无法把来自合作世界的角色放入该存档。存档保持原样，角色在 ElinMP/Incoming 中等待。",
+    "LangGeneral.emp_ui_sv_cfg_team_own_story.text": "队伍各自经历剧情（实验性）",
+    "LangGeneral.emp_ui_sv_desc_team_own_story.text": "实验性。每个队伍各自经历主线剧情：阿什的任务、尼梅尔的探索及其对话都属于该队伍。勾选时所有队伍从世界当前的剧情进度开始。法里斯只加入第一个队伍的据点；到达已被其他队伍通过的楼层的队伍从那里继续剧情。存档保留世界队伍（勾选时房主的队伍）的剧情：取消勾选或不带模组打开存档时，世界沿用该队伍的剧情。需要开启队伍。",
+    "LangGeneral.emp_team_story_moved.text": "你的日志现在跟随你所在队伍的剧情。",
+    "LangGeneral.emp_team_story_caught_up_farris.text": "法里斯已经和另一个队伍离开了这里：你的队伍从那里继续剧情。",
+    "LangGeneral.emp_team_story_caught_up_boss.text": "另一个队伍已经击败了尼梅尔的守护者：你的队伍从那里继续剧情。",
+    "LangGeneral.emp_team_story_caught_up_crystal.text": "另一个队伍已经在水晶旁听过菲亚玛的话：你的队伍从那里继续剧情。"
 }

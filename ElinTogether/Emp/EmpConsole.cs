@@ -143,6 +143,24 @@ internal class EmpConsole
         return TeamKnowledge.Describe();
     }
 
+    /// <summary>
+    ///     Bench: where each team stands in the story in the host's ledger (host option "Teams live their own story")
+    /// </summary>
+    [ConsoleCommand("team.story")]
+    internal static string TeamStoryLedger()
+    {
+        return TeamOwnStory.Describe();
+    }
+
+    /// <summary>
+    ///     The host's explicit choice of the world team: the team whose story the save keeps
+    /// </summary>
+    [ConsoleCommand("team.story_world")]
+    internal static string TeamStoryWorld(int teamId)
+    {
+        return TeamOwnStory.SetWorldTeam(teamId);
+    }
+
     [ConsoleCommand("team.found")]
     internal static string TeamFound(int charaUid, string name)
     {
