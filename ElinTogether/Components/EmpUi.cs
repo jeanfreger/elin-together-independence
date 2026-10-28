@@ -130,7 +130,18 @@ internal static class EmpUi
     {
         var row = Line(parent);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
+        GrowWithText(row);
         return row;
+    }
+
+    /// <summary>
+    ///     A row takes the height of its tallest child (a description that wraps to two lines) instead of keeping
+    ///     its minimum and letting the text run into the row below
+    /// </summary>
+    private static void GrowWithText(YKHorizontal row)
+    {
+        row.Layout.childControlHeight = true;
+        row.Layout.childForceExpandHeight = false;
     }
 
     /// <summary>
@@ -382,6 +393,7 @@ internal static class EmpUi
     {
         var row = Line(parent);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
+        GrowWithText(row);
 
         var col = row.Vertical();
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -423,7 +435,7 @@ internal static class EmpUi
         group.alpha = 0f;
         group.blocksRaycasts = false;
 
-        var slot = Line(row, TextAnchor.MiddleLeft, 0f);
+        var slot = Line(row, TextAnchor.MiddleRight, 0f);
         var slotElement = slot.LayoutElement();
         slotElement.preferredWidth = UIHelper.ControlWidth;
         slotElement.minWidth = UIHelper.ControlWidth;
