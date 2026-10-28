@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ElinTogether.Common;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
@@ -221,6 +222,18 @@ internal partial class ElinNetHost
         ulong host = UserData.Me;
         var sender = Socket.Peers.FirstOrDefault(p => p.Id == originPeer);
         ulong from = sender is null ? 0UL : sender.User;
+        // announcements and restart warnings are about no player (Reason is the text, or the minutes)
+        if (order.Verb is "say" or "restart" or "restart_cancel") {
+            var allowed = sender is not null && Admins.ContainsKey(from);
+            var result = !allowed ? "refused: not an admin" : order.Verb switch {
+                "say" => Announce(order.Reason ?? ""),
+                "restart" => WarnRestart(int.TryParse(order.Reason, out var m) ? m : 10),
+                _ => CancelRestart(),
+            };
+            AdminLog($"by admin {from} {sender?.User.Name}: {order.Verb}: {result}");
+            return;
+        }
+
         if (sender is null || !Admins.ContainsKey(from) || order.Target == host || Admins.ContainsKey(order.Target)) {
             AdminLog($"refused order {order.Verb} {order.Target} from {from}: not an admin, or about the host or an admin");
             return;
@@ -236,6 +249,77 @@ internal partial class ElinNetHost
             _ => "unknown order",
         };
         AdminLog($"by admin {from} {sender.User.Name}: {order.Verb} {order.Target}: {done}");
+    }
+
+    /// <summary>
+    ///     A line of the server to every player, the host's own included (admin announcement, council 2026-10-28)
+    /// </summary>
+    internal string Announce(string text)
+    {
+        text = text.Trim();
+        if (text.Length == 0) {
+            return "error: nothing to say";
+        }
+
+        text = text.Length > 300 ? text.Substring(0, 300) : text;
+        SendDeltaToAllExcept(int.MinValue, new MsgSayDelta {
+            Text = text,
+            R = 1,
+            G = 1,
+            B = 1,
+            A = 1,
+            Notice = true,
+            Name = "[Server]",
+        });
+        if (EClass.core.IsGameStarted) {
+            MsgSayDelta.ShowNotice(text);
+        }
+
+        AdminLog($"say {text}");
+        return "Said to everyone";
+    }
+
+    // when the restart is due (real time), and the warnings still to give, in minutes left (largest first)
+    private static float _restartAt;
+    private static readonly List<int> RestartWarnings = [];
+
+    internal string WarnRestart(int minutes)
+    {
+        minutes = Mathf.Clamp(minutes, 1, 600);
+        _restartAt = Time.realtimeSinceStartup + minutes * 60f;
+        RestartWarnings.Clear();
+        RestartWarnings.AddRange(new[] { minutes, 5, 1 }.Where(m => m <= minutes).Distinct().OrderByDescending(m => m));
+        AdminLog($"restart warning {minutes} min");
+        UpdateRestartWarnings();
+        return $"Restart announced in {minutes} min";
+    }
+
+    internal string CancelRestart()
+    {
+        if (RestartWarnings.Count == 0) {
+            return "no restart announced";
+        }
+
+        RestartWarnings.Clear();
+        return Announce("emp_info_restart_cancel".lang());
+    }
+
+    /// <summary>
+    ///     Each frame of the host: the next warning when its time came
+    /// </summary>
+    internal void UpdateRestartWarnings()
+    {
+        if (RestartWarnings.Count == 0 || IsZoneSession) {
+            return;
+        }
+
+        var left = Mathf.CeilToInt((_restartAt - Time.realtimeSinceStartup) / 60f);
+        if (left > RestartWarnings[0]) {
+            return;
+        }
+
+        RestartWarnings.RemoveAt(0);
+        Announce("emp_info_restart".Loc(Mathf.Max(left, 1)));
     }
 
     internal static string Unban(ulong user)
@@ -283,24 +367,13 @@ internal partial class ElinNetHost
     {
         // a line to every player, wherever they are, from the server's operator
         if (line.TrimStart().StartsWith("say ", StringComparison.OrdinalIgnoreCase)) {
-            var text = line.Trim().Substring(4).Trim();
-            if (text.Length == 0) {
-                return "error: nothing to say";
-            }
+            return Announce(line.Trim().Substring(4).Trim());
+        }
 
-            SendDeltaToAllExcept(int.MinValue, new MsgSayDelta {
-                Text = text.Length > 300 ? text.Substring(0, 300) : text,
-                R = 1,
-                G = 1,
-                B = 1,
-                A = 1,
-                Chat = true,
-                ChatId = UnityEngine.Random.Range(1, int.MaxValue),
-                SpeakerUid = 0,
-                Name = "[Server]",
-            });
-            AdminLog($"say {text}");
-            return "Said to everyone";
+        // restart [minutes]: the warning at that many minutes, then at 5 and 1 (council 2026-10-28)
+        if (line.Trim().StartsWith("restart", StringComparison.OrdinalIgnoreCase)) {
+            var rest = line.Trim().Substring(7).Trim();
+            return rest == "cancel" ? CancelRestart() : WarnRestart(int.TryParse(rest, out var m) ? m : 10);
         }
 
         var words = line.Trim().Split([' '], 3, StringSplitOptions.RemoveEmptyEntries);

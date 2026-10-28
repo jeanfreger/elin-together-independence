@@ -104,6 +104,7 @@ internal partial class ElinNetClient
         var changed = Components.SettingsTable.NoticeChanges(_rulesReceived ? NetSession.Instance.Rules : null, rules);
         _rulesReceived = true;
         NetSession.Instance.Rules = rules;
+        Helper.ServerInfo.Arrived();
         if (changed) {
             Components.SettingsTable.MarkDirty();
         }

@@ -416,6 +416,15 @@ public class NetSessionRules
     [Key(135)]
     public bool AffinityPerPlayer { get; set; }
 
+    /// <summary>
+    ///     The host's message of the day and rules, read from its ElinMP/motd.txt and rules.txt (see ServerInfo)
+    /// </summary>
+    [Key(139)]
+    public string? Motd { get; set; }
+
+    [Key(140)]
+    public string? RulesText { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -482,6 +491,8 @@ public class NetSessionRules
         UsePlayerStepPace = EmpConfig.Server.PlayerStepPace.Value,
         UseSharedWorldTime = EmpConfig.Server.SharedWorldTime.Value,
         UseWorldKeeper = EmpConfig.Server.WorldKeeper.Value,
+        Motd = Helper.ServerInfo.ReadFile("motd.txt"),
+        RulesText = Helper.ServerInfo.ReadFile("rules.txt"),
     };
 }
 

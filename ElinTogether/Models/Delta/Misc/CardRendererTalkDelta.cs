@@ -47,7 +47,7 @@ public class CardRendererTalkDelta : ElinDelta
             net.Delta.AddRemote(this);
         }
 
-        if (card is Chara { IsPC: true }) {
+        if (card is Chara { IsPC: true } || (card is Chara { IsPlayer: true } talker && PlayerSocial.IsIgnoredUid(talker.uid))) {
             return;
         }
 

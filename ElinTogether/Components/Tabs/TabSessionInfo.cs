@@ -163,6 +163,21 @@ internal class TabSessionInfo : TabEmpBase
             parent.ButtonRow().RowButton("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
         }
 
+        // my own friends and ignore lists, on the line of every other player
+        if (!player.User.IsMe) {
+            var other = player.User;
+            var name = other.Name;
+            var own = parent.ButtonRow();
+            own.RowButton((PlayerSocial.IsFriend(other) ? "emp_ui_unfriend" : "emp_ui_friend").lang(), () => {
+                PlayerSocial.SetFriend(other, name, !PlayerSocial.IsFriend(other));
+                LayerElinTogether.Instance?.Reopen();
+            });
+            own.RowButton((PlayerSocial.IsIgnored(other) ? "emp_ui_unignore" : "emp_ui_ignore").lang(), () => {
+                PlayerSocial.SetIgnored(other, name, !PlayerSocial.IsIgnored(other));
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
+
         // moderation: the host and the admins, on the line of a player who is neither the host nor an admin
         ulong target = player.User;
         var self = NetSession.Instance.Self;

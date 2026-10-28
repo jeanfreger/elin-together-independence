@@ -158,7 +158,7 @@ internal static class PlayerPeoplePatch
     /// </summary>
     private static void AddTeamEntries(UIContextMenu menu, Chara c, Layer? layer)
     {
-        foreach (var (label, act) in Teams.MenuFor(c)) {
+        foreach (var (label, act) in Teams.MenuFor(c).Concat(PlayerSocial.MenuFor(c))) {
             // (a text already in the player's language: the game's lookup gives it back as it is)
             menu.AddButton(label, () => {
                 act();
