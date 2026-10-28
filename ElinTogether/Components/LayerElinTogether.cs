@@ -33,10 +33,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             Lang.setting.hyphenation = false;
         }
 
-        if (NetSession.Instance.HasActiveConnection) {
-            _tabs.Add(CreateTab<TabSessionInfo>("emp_ui_session", "emp_tab_session"));
-            DecorateLastTab("icon_LayerTravel", "emp_tip_tab_session");
-        }
+        // Play and Players: always there, the same for everyone
+        _tabs.Add(CreateTab<TabPlay>("emp_ui_tab_play", TabPlay.TabName));
+        DecorateLastTab("icon_LayerTravel", "emp_tip_tab_play");
+        _tabs.Add(CreateTab<TabPlayers>("emp_ui_tab_players", TabPlayers.TabName));
+        DecorateLastTab("icon_LayerChara", "emp_tip_tab_players");
 
         // the teams (council 2026-10-28): who is in which, and what a leader may do
         if (NetSession.Instance.HasActiveConnection && NetSession.Instance.Rules.UseTeams) {
@@ -51,8 +52,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
         DecorateLastTab("icon_LayerHelp", "emp_tip_tab_info");
-        _tabs.Add(CreateTab<TabLobbyBrowser>("emp_ui_tab_lobby", "emp_tab_lobby"));
-        DecorateLastTab("icon_Inspect", "emp_tip_tab_lobby");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_m_system", "emp_tip_tab_client");
 
