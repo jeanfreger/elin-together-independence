@@ -16,7 +16,7 @@ internal static class ZoneActivateEvent
         IsHappening = true;
         TileStateDelta.Forget();
         ActionModeCombat.EnemyVisibility.Clear();
-        FovCellLightOffsetPatch.PlayerFovs.Clear();
+        FovCellLightOffsetPatch.Reset();
 
         // before the game looks at the date: it would regenerate a cave another player is in, floors included
         if (NetSession.Instance.Transport is ElinNetHost host && host.IsHeld(__instance)) {
