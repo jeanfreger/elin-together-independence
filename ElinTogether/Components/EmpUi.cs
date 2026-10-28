@@ -244,6 +244,64 @@ internal static class EmpUi
         }
     }
 
+    // ---------------------------------------------------------------- (h) Book
+
+    /// <summary>
+    ///     The journal's two pages: a list on the left page, what is picked on the right page, a thin fold between
+    /// </summary>
+    public static (YKVertical Left, YKVertical Right) Book(this YKLayout parent)
+    {
+        var spread = parent.Horizontal();
+        spread.Layout.childForceExpandWidth = false;
+        spread.Layout.childControlWidth = true;
+        spread.Layout.childControlHeight = true;
+        spread.Layout.childForceExpandHeight = true;
+        spread.Layout.childAlignment = TextAnchor.UpperLeft;
+        spread.Layout.spacing = 0f;
+        spread.LayoutElement().flexibleWidth = 1f;
+        // (a page as tall as the window: the fold runs down the whole book even when a page is short)
+        spread.LayoutElement().minHeight = 420f;
+
+        YKVertical Page(int padLeft, int padRight)
+        {
+            var page = spread.Vertical();
+            page.Fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+            page.Layout.spacing = UIHelper.RowSpacing;
+            page.Layout.childAlignment = TextAnchor.UpperLeft;
+            page.Layout.padding = new(padLeft, padRight, 0, 8);
+            var element = page.LayoutElement();
+            element.flexibleWidth = 1f;
+            element.preferredWidth = 0f;
+            element.minWidth = 0f;
+            return page;
+        }
+
+        var left = Page(0, 14);
+        var fold = NewBox(spread.transform, "Fold", 2f, 1f);
+        fold.GetComponent<LayoutElement>().flexibleHeight = 1f;
+        Stretch(NewImage(fold, "Line", new(0.28f, 0.22f, 0.13f, 0.22f)).rectTransform);
+        var right = Page(16, 0);
+        return (left, right);
+    }
+
+    /// <summary>
+    ///     A row of the left page: a player row that is picked by a click, the picked one shaded as the journal's
+    /// </summary>
+    public static YKHorizontal PickRow(this YKLayout parent, PlayerRowInfo info, bool picked, Action onPick)
+    {
+        var row = parent.PlayerRow(info, []);
+        var shade = row.gameObject.AddComponent<Image>();
+        shade.color = picked ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
+        var button = row.gameObject.AddComponent<Button>();
+        button.targetGraphic = shade;
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(() => {
+            SE.ClickGeneral();
+            onPick();
+        });
+        return row;
+    }
+
     // ---------------------------------------------------------------- (g) KeyValue
 
     /// <summary>

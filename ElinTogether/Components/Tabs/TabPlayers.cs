@@ -35,16 +35,42 @@ internal class TabPlayers : TabEmpBase
         SubTabs("players", pages);
     }
 
+    // the player whose page is open on the right (by account), kept over reopenings
+    private static ulong _picked;
+
+    /// <summary>
+    ///     The journal's two pages: the players on the left, the picked one's facts and actions on the right
+    /// </summary>
     private static void BuildPlayerList(YKVertical page)
     {
-        var players = NetSession.Instance.CurrentPlayers.ToList();
-        var card = page.Card("emp_ui_players_title".Loc(players.Count));
-        for (var i = 0; i < players.Count; i++) {
-            if (i > 0) {
-                card.Divider();
-            }
+        var (left, right) = page.Book();
+        FillBook(left, right);
+    }
 
-            BuildPlayerLine(card, players[i]);
+    private static void FillBook(YKVertical left, YKVertical right)
+    {
+        foreach (Transform child in left.transform) {
+            child.gameObject.SetActive(false);
+            Destroy(child.gameObject);
+        }
+        foreach (Transform child in right.transform) {
+            child.gameObject.SetActive(false);
+            Destroy(child.gameObject);
+        }
+
+        var players = NetSession.Instance.CurrentPlayers.ToList();
+        var picked = players.FirstOrDefault(p => (ulong)p.User == _picked) ?? players.FirstOrDefault(p => p.User.IsMe) ?? players.FirstOrDefault();
+        var card = left.Card("emp_ui_players_title".Loc(players.Count));
+        foreach (var player in players) {
+            var target = player;
+            BuildPlayerLine(card, player, player == picked, () => {
+                _picked = target.User;
+                FillBook(left, right);
+            });
+        }
+
+        if (picked is not null) {
+            BuildPlayerPage(right, picked);
         }
 
         // nobody else: say so, and the one click that helps (invite when in a game, else the Play page)
@@ -57,6 +83,64 @@ internal class TabPlayers : TabEmpBase
                     () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
             }
         }
+
+        UIHelper.WrapTexts(left);
+        UIHelper.WrapTexts(right);
+        left.GetComponentInParent<TabEmpBase>()?.Relayout();
+    }
+
+    /// <summary>
+    ///     The right page: the player's name, the facts of the character sheet (character, level, team, ping, role),
+    ///     then what can be done, one button each (the entries the "..." menu had)
+    /// </summary>
+    private static void BuildPlayerPage(YKVertical page, NetPeerState player)
+    {
+        var chara = player.FindChara();
+        var name = string.IsNullOrWhiteSpace(player.User.Name) ? chara?.Name ?? "?" : player.User.Name;
+        var facts = page.Card(name);
+        if (chara is null) {
+            facts.TextSmall("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid), FontColor.Gray);
+            return;
+        }
+
+        var head = facts.Row();
+        head.PlayerRow(new("", "", chara), []).LayoutElement().flexibleWidth = 0f;
+        var lines = head.Vertical();
+        lines.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        lines.LayoutElement().flexibleWidth = 1f;
+        lines.KeyValue("emp_ui_kv_character".lang(), chara.Name);
+        lines.KeyValue("emp_ui_kv_level".lang(), chara.LV.ToString());
+        if (NetSession.Instance.Rules.UseTeams) {
+            lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(Teams.TeamOf(chara.uid)));
+        }
+        var ms = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
+        lines.KeyValue("emp_ui_kv_ping".lang(), player.Index == 0 || ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
+        lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
+
+        var actions = ActionsFor(player, chara);
+        if (actions.Count == 0) {
+            return;
+        }
+
+        var buttons = page.Card("emp_ui_pl_actions".lang());
+        foreach (var (label, act) in actions) {
+            var action = act;
+            buttons.ButtonRow().RowButton(label, () => action());
+        }
+    }
+
+    private static string RoleOf(NetPeerState player)
+    {
+        var role = player.Index == 0 ? "emp_ui_player_host".lang()
+            : ModerationDelta.AdminIds.Contains(player.User) ? "emp_ui_role_admin".lang()
+            : ModerationDelta.ModeratorIds.Contains(player.User) ? "emp_ui_role_mod".lang() : "emp_ui_role_player".lang();
+        if (ModerationDelta.FrozenIds.Contains(player.User)) {
+            role += ", " + "emp_ui_role_frozen".lang();
+        }
+        if (player.Idle) {
+            role += ", " + "emp_ui_role_idle".lang();
+        }
+        return role;
     }
 
     /// <summary>
@@ -116,7 +200,7 @@ internal class TabPlayers : TabEmpBase
     ///     One row per player (council 2026-10-26): portrait, name, character and level, team, ping, badges, and the
     ///     "..." menu
     /// </summary>
-    private static void BuildPlayerLine(YKLayout parent, NetPeerState player)
+    private static void BuildPlayerLine(YKLayout parent, NetPeerState player, bool picked, Action onPick)
     {
         var chara = player.FindChara();
         if (chara is null) {
@@ -152,7 +236,7 @@ internal class TabPlayers : TabEmpBase
         // (the host's own line has no ping: index 0)
         var ping = player.Index == 0 ? -1 : EmpUi.PingBarsFor(player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs);
         var team = NetSession.Instance.Rules.UseTeams ? Teams.NameOf(Teams.TeamOf(chara.uid)) : null;
-        parent.PlayerRow(new(name, detail, chara, team, ping, badges), ActionsFor(player, chara));
+        parent.PickRow(new(name, detail, chara, team, ping, badges), picked, onPick);
     }
 
     /// <summary>
