@@ -169,7 +169,24 @@ internal static class Teams
     /// </summary>
     internal static bool IsOnline(int charaUid)
     {
-        return NetSession.Instance.CurrentPlayers.Any(p => p.CharaUid == charaUid);
+        return NetSession.Instance.CurrentPlayers.Any(p => p.CharaUid == charaUid) || MapPlayerChara(charaUid) != null;
+    }
+
+    /// <summary>
+    ///     The player character on this map (a guest's globalCharas hold only its own party, but the map has the others)
+    /// </summary>
+    private static Chara? MapPlayerChara(int charaUid)
+    {
+        return EClass._map?.charas?.Find(c => c != null && c.uid == charaUid);
+    }
+
+    /// <summary>
+    ///     The character of a player uid from what this game knows: the global list, then the map, then the party
+    /// </summary>
+    internal static Chara? FindChara(int charaUid)
+    {
+        return EClass.game.cards.globalCharas.Find(charaUid) ?? MapPlayerChara(charaUid)
+            ?? EClass.pc?.party?.members.Find(c => c?.uid == charaUid);
     }
 
     private static IEnumerable<int> MembersOf(int[] team) => team.Skip(2);
@@ -225,7 +242,13 @@ internal static class Teams
 
     internal static string PlayerName(int charaUid)
     {
-        return EClass.game.cards.globalCharas.Find(charaUid)?.NameSimple ?? "?";
+        if (FindChara(charaUid) is { } chara) {
+            return chara.NameSimple;
+        }
+
+        // (not on this map: the name the session player list carries)
+        var user = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == charaUid)?.User.Name;
+        return string.IsNullOrWhiteSpace(user) ? "?" : user!;
     }
 
     internal static int TeamOfZone(Zone? zone)

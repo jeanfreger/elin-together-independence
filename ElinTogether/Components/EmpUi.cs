@@ -678,7 +678,7 @@ internal static class EmpUi
     ///     With a reference value, a changed value shows the dot and the revert arrow
     /// </summary>
     public static UIButton ToggleRow(this YKLayout parent, string title, string? description, bool value,
-        Action<bool> onChange, bool? reference = null, bool readOnly = false, string setByHostText = "")
+        Action<bool> onChange, bool? reference = null, bool readOnly = false, string setByHostText = "", bool ownLines = false)
     {
         var row = Line(parent, TextAnchor.UpperLeft, 6f);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
@@ -700,7 +700,14 @@ internal static class EmpUi
         element.flexibleWidth = 0f;
         toggle.AsRow();
 
-        SettingWords(WordsColumn(row), title, description, readOnly, setByHostText);
+        var words = WordsColumn(row);
+        if (ownLines) {
+            // (the grey hint reports no preferred height in a narrow page: the column keeps each line's own height and
+            // the fitter gives the row the sum, so the hint no longer runs over the next row)
+            words.Layout.childControlHeight = false;
+            words.Layout.childForceExpandHeight = false;
+        }
+        SettingWords(words, title, description, readOnly, setByHostText);
         marks = AddMarks(row);
         Lock(toggle, readOnly);
         marks.SetRevert(() => {

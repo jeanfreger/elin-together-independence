@@ -70,7 +70,7 @@ internal class TabTeam : TabEmpBase
     // the member whose page is open on the right, kept over reopenings
     private static int _picked;
 
-    private static Chara? CharaOf(int uid) => EClass.game.cards.globalCharas.Find(uid);
+    private static Chara? CharaOf(int uid) => Teams.FindChara(uid);
 
     /// <summary>
     ///     A line with a text and the two answers of a request or an invitation
@@ -246,7 +246,7 @@ internal class TabTeam : TabEmpBase
         }));
 
         card.ToggleRow("emp_ui_team_joining".lang(), "emp_ui_team_joining_desc".lang(), Teams.IsOpen(mine),
-            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !manages, setByHostText: "emp_ui_team_leader_only_chip".lang());
+            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !manages, setByHostText: "emp_ui_team_leader_only_chip".lang(), ownLines: true);
 
         if (manages) {
             foreach (var invited in Teams.InvitedBy(mine)) {
