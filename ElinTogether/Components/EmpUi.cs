@@ -187,7 +187,17 @@ internal static class EmpUi
     public static YKVertical Card(this YKLayout parent, string title, Sprite? icon = null)
     {
         var card = parent.MakeCard();
-        card.HeaderCard(title, icon);
+        var header = card.HeaderCard(title, icon);
+        // the header prefab carries a small placeholder picture of its own: a card without a real sprite must draw
+        // nothing there (never the placeholder), and one with a sprite draws only that one
+        foreach (var image in header.GetComponentsInChildren<Image>(true)) {
+            if (image.gameObject != header.gameObject && image != header.image1) {
+                image.gameObject.SetActive(false);
+            }
+        }
+        if (header.image1 != null && header.image1.sprite == null) {
+            header.image1.gameObject.SetActive(false);
+        }
         return card;
     }
 
