@@ -55,9 +55,7 @@ internal partial class ElinNetHost
         Session.Self = selfState;
         Session.CurrentPlayers.Clear();
         Session.CurrentPlayers.Add(selfState);
-        Session.SharedSpeed = Session.Rules.UseSharedSpeed
-            ? SharedSpeed
-            : -1;
+        RefreshSharedSpeed();
 
         CardCache.CacheCurrentZone();
 

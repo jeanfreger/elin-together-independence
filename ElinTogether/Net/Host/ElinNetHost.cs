@@ -102,12 +102,13 @@ internal partial class ElinNetHost : ElinNetBase
         };
 
         // setup session states
+        // (rules and player list of an earlier session do not carry over)
+        Session.Rules = NetSessionRules.Default;
         Session.Player = pc;
         Session.Self = selfState;
+        Session.CurrentPlayers.Clear();
         Session.CurrentPlayers.Add(selfState);
-        Session.SharedSpeed = NetSession.Instance.Rules.UseSharedSpeed
-            ? SharedSpeed
-            : -1;
+        RefreshSharedSpeed();
 
         if (quiet) {
             EmpLog.Information("Server started by itself");
@@ -307,9 +308,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         Broadcast(SessionPlayersSnapshot.Create());
 
-        // keep ticking but no update
-        if (States.Count == 0) {
-            PauseWorldStateUpdate();
+        if (_handshakes.Count == 0) {
             StopDebugGui();
         }
 
