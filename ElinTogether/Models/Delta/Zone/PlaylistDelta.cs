@@ -54,6 +54,11 @@ public class PlaylistDelta : ElinDelta
             return $"the music of zone {ZoneUid}, not where the sender is";
         }
 
+        // a forged message can leave them out (MessagePack writes nil): nothing to play
+        if (Day is null || Night is null) {
+            return "a playlist without its day or night list";
+        }
+
         if (Day.Count > MaxTracks || Night.Count > MaxTracks) {
             return $"a playlist of {Day.Count} + {Night.Count} tracks";
         }
@@ -70,6 +75,10 @@ public class PlaylistDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
+        if (Day is null || Night is null) {
+            return;
+        }
+
         if (net is ElinNetHost host) {
             host.SendDeltaToAllExcept(OriginPeer, this);
         }
