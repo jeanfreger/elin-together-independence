@@ -90,12 +90,22 @@ internal static class EmpAutoHost
             return;
         }
 
-        try {
-            NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer(local, true);
-        } catch (Exception ex) {
-            EmpLog.Warning(ex, "The session could not be opened by itself");
-            // StartServer may throw half way (Steam away): no host component left behind
-            NetSession.Instance.ResetSession();
+        // (with the box "hidden server", a hidden game hosts it and this one joins)
+        if (!local && HiddenServer.TryStart(Open)) {
+            return;
+        }
+
+        Open();
+
+        void Open()
+        {
+            try {
+                NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer(local, true);
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "The session could not be opened by itself");
+                // StartServer may throw half way (Steam away): no host component left behind
+                NetSession.Instance.ResetSession();
+            }
         }
     }
 

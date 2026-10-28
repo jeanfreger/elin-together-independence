@@ -30,6 +30,7 @@ internal static class NetShutdown
         IsQuitting = true;
 
         Helper.SaveDepot.OnQuit();
+        Helper.HiddenServer.OnQuit();
         Helper.ModFetch.OnQuit();
 
         try {

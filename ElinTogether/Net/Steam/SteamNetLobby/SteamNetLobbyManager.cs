@@ -190,8 +190,9 @@ public class SteamNetLobbyManager : EClass
     /// </summary>
     public void InviteSteamOverlay()
     {
-        // already friends
-        SteamFriends.ActivateGameOverlayInviteDialog(Current);
+        // (the game that plays on a hidden server is in no lobby: the server's is the one that invites)
+        var hidden = HiddenServer.Playing ? HiddenServer.ServerLobby() : 0UL;
+        SteamFriends.ActivateGameOverlayInviteDialog(hidden != 0 ? new CSteamID(hidden) : (CSteamID)Current);
     }
 
     /// <summary>
@@ -300,6 +301,11 @@ public class SteamNetLobbyManager : EClass
 
         Current = created.m_ulSteamIDLobby;
         Current.SetGameServer(SteamUser.GetSteamID());
+
+        // a hidden server tells its lobby to the game that started it, which invites with it
+        if (EmpServer.Hidden) {
+            HiddenServer.WriteServerLobby(created.m_ulSteamIDLobby);
+        }
 
         // first: the lobby can be found as soon as its version is written
         if (_invisible) {

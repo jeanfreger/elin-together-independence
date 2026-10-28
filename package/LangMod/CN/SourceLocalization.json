@@ -763,5 +763,16 @@
     "LangGeneral.emp_sibling_ask.text": "这一格已有土地。要在同一格再开辟一块地吗？你会走进新地块，再次使用证书来认领。",
     "LangGeneral.emp_sibling_pick.text": "进入哪块土地",
     "LangGeneral.emp_ui_sv_cfg_server_avatar.text": "服务器不扮演角色",
-    "LangGeneral.emp_ui_sv_desc_server_avatar.text": "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身。关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效。"
+    "LangGeneral.emp_ui_sv_desc_server_avatar.text": "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身。关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效。",
+    "LangGeneral.emp_ui_sv_cfg_hidden_server.text": "作为隐藏服务器的访客游玩（测试版）",
+    "LangGeneral.emp_ui_sv_desc_hidden_server.text": "“启动服务器”会在本机另开一个隐藏的 Elin 来运行你的世界，你自己的游戏像其他玩家一样加入：不再有主机角色，体验与好友完全相同。需要约 2 GB 空闲内存；隐藏游戏 2 分钟内未启动时，像以前一样直接开放世界。仅限 Windows。",
+    "LangGeneral.emp_hidden_starting.text": "正在启动你的世界……",
+    "LangGeneral.emp_hidden_fallback.text": "无法使用隐藏服务器（{0}）：世界将按常规方式开放。",
+    "LangGeneral.emp_hidden_why_save.text": "此处无法保存游戏",
+    "LangGeneral.emp_hidden_why_mutex.text": "游戏无法解除单实例限制",
+    "LangGeneral.emp_hidden_why_launch.text": "无法启动隐藏游戏",
+    "LangGeneral.emp_hidden_why_exit.text": "隐藏游戏中途自行停止",
+    "LangGeneral.emp_hidden_why_timeout.text": "2 分钟内未能启动",
+    "LangGeneral.emp_hidden_why_cancel.text": "已取消启动",
+    "LangGeneral.emp_travel_hidden_owner.text": "在隐藏服务器上游玩时无法独自持有地图：请与他人一同行动。"
 }
