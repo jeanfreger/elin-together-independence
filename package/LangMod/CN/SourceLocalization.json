@@ -781,5 +781,12 @@
     "LangGeneral.emp_box_team_bank.text": "团队银行：{0}",
     "LangGeneral.emp_box_world_bank.text": "共享银行（旧世界）",
     "LangGeneral.emp_box_own_delivery.text": "个人配送箱",
-    "LangGeneral.emp_box_world_delivery.text": "共享配送箱（旧世界）"
+    "LangGeneral.emp_box_world_delivery.text": "共享配送箱（旧世界）",
+    "LangGeneral.LayerElinTogether.text": "多人游戏",
+    "LangGeneral.emp_tip_tab_session.text": "当前游戏与玩家",
+    "LangGeneral.emp_tip_tab_team.text": "队伍：成员与队长权限",
+    "LangGeneral.emp_tip_tab_server.text": "房主设定的世界规则",
+    "LangGeneral.emp_tip_tab_info.text": "服务器公告与规则",
+    "LangGeneral.emp_tip_tab_lobby.text": "创建或加入游戏",
+    "LangGeneral.emp_tip_tab_client.text": "个人设置"
 }

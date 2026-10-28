@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using UnityEngine;
 using YKF;
 
@@ -15,7 +16,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     private readonly List<TabEmpBase> _tabs = [];
 
     public override string Title => "emp_ui_title".lang();
-    public override Rect Bound => FitWindow();
+    public override Rect Bound => FixedWindow();
 
     public static LayerElinTogether? Instance { get; private set; }
 
@@ -25,26 +26,35 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Resources.Load<UIButton>("UI/Element/Button/ButtonNote");
 
+        // the two putits, as on the HUD button
+        Window.setting.spriteCaption = MultiplayerHubPatch.Icon;
+
         if (_resetHyp) {
             Lang.setting.hyphenation = false;
         }
 
         if (NetSession.Instance.HasActiveConnection) {
             _tabs.Add(CreateTab<TabSessionInfo>("emp_ui_session", "emp_tab_session"));
+            DecorateLastTab("icon_LayerTravel", "emp_tip_tab_session");
         }
 
         // the teams (council 2026-10-28): who is in which, and what a leader may do
         if (NetSession.Instance.HasActiveConnection && NetSession.Instance.Rules.UseTeams) {
             _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
+            DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
         }
 
         if (NetSession.Instance.Transport is ElinNetHost) {
             _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
+            DecorateLastTab("icon_LayerJournal", "emp_tip_tab_server");
         }
 
         _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
+        DecorateLastTab("icon_LayerHelp", "emp_tip_tab_info");
         _tabs.Add(CreateTab<TabLobbyBrowser>("emp_ui_tab_lobby", "emp_tab_lobby"));
+        DecorateLastTab("icon_Inspect", "emp_tip_tab_lobby");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
+        DecorateLastTab("icon_m_system", "emp_tip_tab_client");
 
         foreach (var tab in _tabs) {
             UIHelper.WrapTexts(tab);
@@ -99,10 +109,19 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(targetTab));
     }
 
-    private static Rect FitWindow()
+    /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>
+    private void DecorateLastTab(string spriteId, string tipId)
+    {
+        var tab = Window.setting.tabs[^1];
+        tab.sprite = SpriteSheet.Get(spriteId);
+        tab.langTooltip = tipId;
+    }
+
+    /// <summary>A vanilla-like fixed window (the character sheet's footprint), shrunk only on a small screen.</summary>
+    private static Rect FixedWindow()
     {
         var scaler = ui.canvasScaler.scaleFactor;
-        var size = new Vector2(Screen.width / 1.5f, Screen.height / 1.5f) / scaler;
-        return new(Vector2.zero, size);
+        var screen = new Vector2(Screen.width, Screen.height) / scaler;
+        return new(Vector2.zero, new(Mathf.Min(860f, screen.x * 0.9f), Mathf.Min(620f, screen.y * 0.85f)));
     }
 }
