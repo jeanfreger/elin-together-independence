@@ -200,6 +200,8 @@ namespace ElinTogether.Models;
 [Union(1030, typeof(AdventurerBoutDelta))]
 // Affinity per player (2026-10-28)
 [Union(1170, typeof(PlayerAffinitiesDelta))]
+// Closed lands: a player is moved out (council 2026-10-28)
+[Union(1200, typeof(TeamEvictDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

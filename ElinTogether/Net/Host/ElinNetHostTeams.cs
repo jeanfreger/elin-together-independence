@@ -272,6 +272,80 @@ internal partial class ElinNetHost
     /// </summary>
     internal static Dictionary<int, int> TeamInvites { get; } = [];
 
+    // closed lands: a player standing on a land that closed on it (the rule changed, it left or was put out of the team,
+    // it arrived some way the entry checks do not see) has this long to leave, then is moved out
+    private const float LandGraceSeconds = 30f;
+    private readonly Dictionary<int, float> _landGrace = [];
+    private readonly Dictionary<int, int> _lastOpenZone = [];
+    private float _landSweepAt;
+
+    /// <summary>
+    ///     Once a second, on the game that keeps the book: each player on a land closed to it is told, and after the
+    ///     grace moved out by the normal way a player leaves (the game travels, a zone it holds is handed back first)
+    /// </summary>
+    private void UpdateLandRules()
+    {
+        if (IsZoneSession || !Teams.LandRulesOn || _zone is null) {
+            _landGrace.Clear();
+            return;
+        }
+
+        var now = UnityEngine.Time.unscaledTime;
+        if (now < _landSweepAt) {
+            return;
+        }
+
+        _landSweepAt = now + 1f;
+        SweepLand(pc, pc.currentZone, -1, now);
+        foreach (var peer in Socket.Peers.ToArray()) {
+            // (on the host's map, or alone on the land it holds)
+            var where = IsAway(peer)
+                ? _leases.TryGetValue(peer.Id, out var held) ? held.Keys.Select(uid => game.spatials.Find(uid) as Zone).FirstOrDefault(z => z is { IsRegion: false }) : null
+                : _settled.Contains(peer.Id) ? _zone : null;
+            if (PlayerChara(peer.Id) is { } chara) {
+                SweepLand(chara, where, peer.Id, now);
+            }
+        }
+    }
+
+    private void SweepLand(Chara chara, Zone? where, int peerId, float now)
+    {
+        if (where is null || Teams.EntryDenied(chara, where) is null) {
+            _landGrace.Remove(chara.uid);
+            if (where is not null) {
+                _lastOpenZone[chara.uid] = where.uid;
+            }
+
+            return;
+        }
+
+        if (!_landGrace.TryGetValue(chara.uid, out var until)) {
+            _landGrace[chara.uid] = now + LandGraceSeconds;
+            Teams.Say(chara.uid, "emp_land_leave_notice", where.Name, (int)LandGraceSeconds);
+            return;
+        }
+
+        if (now < until) {
+            return;
+        }
+
+        _landGrace.Remove(chara.uid);
+        // the last land it was welcome on, the spawn zone, the host's map, the start meadow, the world map
+        var target = new[] { game.spatials.Find(_lastOpenZone.GetValueOrDefault(chara.uid)) as Zone, Teams.SpawnZone(), _zone, game.StartZone, EClass.world.region }
+            .FirstOrDefault(z => z is not null && z != where && Teams.EntryDenied(chara, z) is null);
+        if (target is null) {
+            return;
+        }
+
+        EmpLog.Information("Player {CharaUid} is moved out of {ZoneFullName} to {Target}: the land is closed to it", chara.uid, where.ZoneFullName,
+            target.ZoneFullName);
+        if (peerId < 0) {
+            chara.MoveZone(target, ZoneTransition.EnterState.Auto);
+        } else {
+            SendDeltaTo(peerId, new TeamEvictDelta { ZoneUid = where.uid, Target = target.uid });
+        }
+    }
+
     /// <summary>
     ///     The teams changed, or a player joins: everyone is told the whole book
     /// </summary>

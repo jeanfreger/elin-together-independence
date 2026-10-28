@@ -140,7 +140,7 @@ internal static class Teams
     /// <summary>
     ///     A line in the log of that player, wherever it plays (the host's own, or a guest told by the host)
     /// </summary>
-    private static void Say(int charaUid, string key, params object[] args)
+    internal static void Say(int charaUid, string key, params object[] args)
     {
         var line = key.Loc(args);
         if (charaUid == EClass.pc.uid) {
@@ -363,6 +363,15 @@ internal static class Teams
     internal static bool Allowed(Chara chara, Zone? zone, int need)
     {
         return LevelOn(chara, zone) >= need;
+    }
+
+    /// <summary>
+    ///     The reason (a text id) that character may not enter this land, none when it may. Only a land closed to it
+    ///     refuses: a player never stays out of the world map, nor out of a land of no team
+    /// </summary>
+    internal static string? EntryDenied(Chara? chara, Zone? zone)
+    {
+        return chara is null || zone is not { IsRegion: false } || Allowed(chara, zone, Visit) ? null : "emp_land_closed";
     }
 
     /// <summary>
