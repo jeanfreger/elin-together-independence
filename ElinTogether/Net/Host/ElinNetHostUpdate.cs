@@ -208,6 +208,14 @@ internal partial class ElinNetHost
     /// </summary>
     private bool OwnGrowth(ElinDelta delta, ISteamNetPeer peer)
     {
+        // and the food its world-map auto-eat spent from its own bag or a companion's (AutoEatPatch): the host's
+        // copy of the stack is the one that counts, whichever map the host is on
+        if (delta is CardModNumDelta num) {
+            return num.Card.Find()?.GetRootCard() is Chara holder &&
+                   (ActiveRemoteCharas.GetValueOrDefault(peer.Id) ?? KeptChara(peer)) is { } self &&
+                   ElinDelta.OwnsOrCompanion(self, holder);
+        }
+
         var owner = delta switch {
             ElementChangeDelta element => element.Owner,
             CharaLevelDelta level => level.Owner,

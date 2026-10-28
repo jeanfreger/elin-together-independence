@@ -14,6 +14,9 @@ internal static class CardModNumEvent
             return true;
         }
 
+        // the food a world-map auto-eat eats: sent by AutoEatPatch once the game is done with it
+        AutoEatPatch.NoteSpent(__instance, a);
+
         // a dialog's payment (a recruit cost): the host takes it if a recruit follows, see CharaMakeAllyRequestDelta
         if (a < 0 && !ElinDelta.IsApplying && LayerDrama.IsActive()) {
             CharaMakeAllyRequestDelta.NotePayment(__instance, -a);

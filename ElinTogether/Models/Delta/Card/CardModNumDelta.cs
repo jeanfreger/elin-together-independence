@@ -17,6 +17,19 @@ public class CardModNumDelta : ElinDelta
     // TODO could fix this by swapping Elin internal code
     public static bool IsOverwriting { get; private set; }
 
+    /// <summary>
+    ///     A count this copy sets itself and tells the host (a stack the host owns refuses the game's own ModNum)
+    /// </summary>
+    internal static void SetNumHere(Card card, int num)
+    {
+        IsOverwriting = true;
+        try {
+            card.SetNum(num);
+        } finally {
+            IsOverwriting = false;
+        }
+    }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         // a thing in the bag of another player's companion (the host's own pets too) is that player's to spend; a
