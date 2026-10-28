@@ -91,7 +91,7 @@ internal static class MultiplayerHubPatch
         var src = Read(putit);
         var box = AlphaBox(src.Pixels, src.W, src.H);
         // one putit, centred (user, 2026-10-28: "just a putit")
-        var small = Mathf.RoundToInt(size * 0.85f);
+        var small = Mathf.RoundToInt(size * 0.6f);  // about the footprint of the game's own icons (0.85 looked too big next to them)
         var scale = (float)small / Mathf.Max(box.width, box.height);
         var w = Mathf.Max(1, Mathf.RoundToInt(box.width * scale));
         var h = Mathf.Max(1, Mathf.RoundToInt(box.height * scale));
