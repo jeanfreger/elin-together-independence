@@ -120,12 +120,14 @@ internal partial class ElinNetHost
 
     /// <summary>
     ///     [the ledger's schema version, 1 once every team was given the world's story, the world team (whose story
-    ///     the save keeps), 1 while Ash and Fiama wait for every team before they leave for Lothria]
+    ///     the save keeps), 1 while Ash and Fiama wait for every team before they leave for Lothria, 1 while the
+    ///     stories hold each owner's guilds]
     /// </summary>
     [ElinGameIOProperty("team_story_bundle_state")]
     internal static int[] TeamStoryBundleState
     {
-        get => field is { Length: 4 } ? field : field = new int[4];
+        // (a save of four: written before the guilds)
+        get => field is { Length: 5 } ? field : field = field is { Length: 4 } ? [..field, 0] : new int[5];
         set;
     }
 

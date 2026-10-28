@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 131, the next free one is 132. Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 135 (133-134 reserved for a worker), the next free one is 136. Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
@@ -396,6 +396,13 @@ public class NetSessionRules
     public int LivingWorldMinutes { get; set; }
 
     /// <summary>
+    ///     With TeamOwnStory: each player, or each team, has its own place in the four guilds (membership, rank, exp,
+    ///     guild quests), see TeamOwnStory.Guilds. An older host sends none: the guilds are the world's, as they were
+    /// </summary>
+    [Key(132)]
+    public bool TeamOwnGuilds { get; set; }
+
+    /// <summary>
     ///     Each player has its own affinity with each resident, see AffinityPerPlayer. An older host sends none: one
     ///     value for the group, as it was
     /// </summary>
@@ -425,6 +432,7 @@ public class NetSessionRules
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,
+        TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,

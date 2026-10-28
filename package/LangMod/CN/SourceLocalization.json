@@ -607,7 +607,7 @@
     "LangGeneral.emp_ui_chara_export_arrived.text": "#1 从合作世界来到这里，替换了该存档的角色（原存档保存在备份中）。",
     "LangGeneral.emp_ui_chara_export_load_fail.text": "无法把来自合作世界的角色放入该存档。存档保持原样，角色在 ElinMP/Incoming 中等待。",
     "LangGeneral.emp_ui_sv_cfg_team_own_story.text": "每个玩家或队伍各自经历剧情（实验性）",
-    "LangGeneral.emp_ui_sv_desc_team_own_story.text": "实验性。每个玩家按自己的节奏经历主线剧情（阿什的任务、尼米尔的探索及其对话），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法莉斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭：所有玩家如前共享一条剧情进度。",
+    "LangGeneral.emp_ui_sv_desc_team_own_story.text": "实验性。每个玩家按自己的节奏经历剧情（阿什的任务、尼梅尔的探索、所有对话选择、关键物品、欠洛伊特的债务和额外税金），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它（关键物品：任何人获得的全部）。关闭：所有玩家如前共享一条剧情进度。",
     "LangGeneral.emp_team_story_moved.text": "你的日志现在跟随你的剧情：队伍的剧情，没有队伍时则是你自己的。",
     "LangGeneral.emp_team_story_caught_up_farris.text": "法莉斯已经和别人离开了这里：你的剧情从那里继续。",
     "LangGeneral.emp_team_story_caught_up_boss.text": "别人已经击败了尼米尔的守护者：你的剧情从那里继续。",
@@ -624,5 +624,8 @@
     "LangGeneral.emp_ui_sv_cfg_server_rests.text": "无人时专用服务器休眠",
     "LangGeneral.emp_ui_sv_desc_server_rests.text": "无人连接时，专用服务器（-empserver）以每秒 5 帧运行并停止声音，有玩家连接时立即恢复全速。关闭：始终以游戏自身的帧率运行。",
     "LangGeneral.emp_ui_sv_cfg_affinity_per_player.text": "每位玩家各自的好感度",
-    "LangGeneral.emp_ui_sv_desc_affinity_per_player.text": "每位居民对每位玩家各自拥有好感度：礼物、交谈和任务只计入做出它们的玩家，对话选项（邀请、结婚、同床）取决于正在交谈的玩家。关闭：每位居民对整个队伍只有一个好感度，如以前一样。"
+    "LangGeneral.emp_ui_sv_desc_affinity_per_player.text": "每位居民对每位玩家各自拥有好感度：礼物、交谈和任务只计入做出它们的玩家，对话选项（邀请、结婚、同床）取决于正在交谈的玩家。关闭：每位居民对整个队伍只有一个好感度，如以前一样。",
+    "LangGeneral.emp_team_story_caught_up_debt.text": "洛伊特已经住在别人的据点。你的剧情也欠他一笔自己的债，向他偿还。",
+    "LangGeneral.emp_ui_sv_cfg_team_own_guilds.text": "公会也按玩家和队伍分开",
+    "LangGeneral.emp_ui_sv_desc_team_own_guilds.text": "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭：整个团体共用一个成员身份，如前。"
 }

@@ -142,10 +142,12 @@ internal static class TeamBills
 
         PaySalary(__instance);
 
-        // the extra tax a player chose to give is the world's: on the first bill only
+        // the extra tax a player chose to give is the world's: on the first bill only (each story its own: on its
+        // team's bill, see TeamOwnStory)
         var extra = EClass.player.extraTax;
         foreach (var lands in branches.GroupBy(b => Teams.TeamOfZone(b.owner)).OrderBy(g => g.Key).ToArray()) {
             var team = lands.Key;
+            extra = TeamOwnStory.ExtraTaxOf(team) ?? extra;
             var evasion = lands.Sum(b => b.Evalue(2119));
             var tax = Evade(__instance.GetBaseTax(false), evasion) + Evade(FameTax(TeamFame(team)), evasion) + extra;
             var bill = ThingGen.CreateBill(tax, true);

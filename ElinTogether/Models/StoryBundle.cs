@@ -30,7 +30,8 @@ public class StoryBundle
     public List<string> Completed { get; set; } = [];
 
     /// <summary>
-    ///     Dialog choices of the story (Player.dialogFlags) told to Ash and Fiama
+    ///     Dialog choices of the story (Player.dialogFlags): every one (<see cref="AllDialog" />), or only those told to
+    ///     Ash and Fiama in a story written before
     /// </summary>
     [Key(3)]
     public Dictionary<string, int> Dialog { get; set; } = [];
@@ -46,4 +47,44 @@ public class StoryBundle
     /// </summary>
     [Key(5)]
     public int Exploration { get; set; } = -1;
+
+    /// <summary>
+    ///     The key items (Player.keyItems: the licenses, the lucky coins, the well's wishes, the story's potions), id
+    ///     -> count. None in a story written before they were part of it
+    /// </summary>
+    [Key(6)]
+    public Dictionary<int, int>? KeyItems { get; set; }
+
+    /// <summary>
+    ///     What is left of the debt to Loytel (Player.debt); none in a story written before
+    /// </summary>
+    [Key(7)]
+    public int? Debt { get; set; }
+
+    /// <summary>
+    ///     The extra tax that owner chose to pay each month (Player.extraTax); none in a story written before
+    /// </summary>
+    [Key(8)]
+    public int? ExtraTax { get; set; }
+
+    /// <summary>
+    ///     What the story set in Player.flags (Loytel's mart), by name; none in a story written before
+    /// </summary>
+    [Key(9)]
+    public Dictionary<string, int>? Flags { get; set; }
+
+    /// <summary>
+    ///     <see cref="Dialog" /> holds every dialog flag (what any drama remembers was said or chosen), not only Ash's
+    ///     and Fiama's: false in a story written before
+    /// </summary>
+    [Key(10)]
+    public bool AllDialog { get; set; }
+
+    /// <summary>
+    ///     Host option "Guilds per player or team" (TeamOwnStory.Guilds): that owner's place in the Fighters', Mages',
+    ///     Thieves' and Merchants' guilds, guild id -> [relation type, rank, exp]; its guild quests (QuestGuild) are
+    ///     in <see cref="Quests" /> then. None while the guilds are the world's
+    /// </summary>
+    [Key(11)]
+    public Dictionary<string, int[]>? Guilds { get; set; }
 }
