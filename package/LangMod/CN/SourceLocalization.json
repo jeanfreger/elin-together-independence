@@ -628,7 +628,7 @@
     "LangGeneral.emp_ui_sv_desc_affinity_per_player.text": "每位居民对每位玩家各自拥有好感度：礼物、交谈和任务只计入做出它们的玩家，对话选项（邀请、结婚、同床）取决于正在交谈的玩家。关闭：每位居民对整个队伍只有一个好感度，如以前一样。",
     "LangGeneral.emp_team_story_caught_up_debt.text": "洛伊特已经住在别人的据点。你的剧情也欠他一笔自己的债，向他偿还。",
     "LangGeneral.emp_ui_sv_cfg_team_own_guilds.text": "公会也按玩家和队伍分开",
-    "LangGeneral.emp_ui_sv_desc_team_own_guilds.text": "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭：整个团体共用一个成员身份，如前。",
+    "LangGeneral.emp_ui_sv_desc_team_own_guilds.text": "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上为开启。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭：整个团体共用一个成员身份，如前。",
     "LangGeneral.emp_ui_sv_cfg_team_boxes.text": "各队伍拥有自己的银行和快递箱",
     "LangGeneral.emp_ui_sv_desc_team_boxes.text": "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧共享箱子里的东西仍然共享，所有人都能取。需要开启队伍。取消勾选时，各队的箱子并回共享箱子。",
     "LangGeneral.emp_parcel_for.text": "寄给{0}",
