@@ -19,7 +19,7 @@ internal class FovCalculateFOVPatch
         chara.fov ??= chara.CreateFov();
         chara.fov.isPC = true;
 
-        FovCellLightOffsetPatch.PlayerFovs.Add(chara.fov);
+        FovCellLightOffsetPatch.Register(chara, chara.fov);
 
         __state = true;
     }
