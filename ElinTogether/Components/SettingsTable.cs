@@ -371,7 +371,8 @@ internal static class SettingsTable
 
     /// <summary>
     ///     Every stored host rule the table shows: what a preset, the reset and the undo touch. Not the client's
-    ///     own options, the depot, SoftRecallSwitchedOn or the keys only in the file
+    ///     own options, the depot, SoftRecallSwitchedOn or the keys only in the file: TravelCheckpointSeconds and
+    ///     StrictValidationMode are file-only on purpose (a tuning value and a hardening switch, not a choice for the page)
     /// </summary>
     internal static ConfigEntryBase[] HostRules() => [
         ..Rows().Where(r => r.Entry is not null).Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
