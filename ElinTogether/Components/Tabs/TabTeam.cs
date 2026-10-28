@@ -48,7 +48,8 @@ internal class TabTeam : TabEmpBase
         var rule = Teams.RuleOf(land);
         var (mine, others) = (Teams.MineLevel(rule), Teams.OthersLevel(rule));
         if (!leads) {
-            card.Text("emp_ui_team_land_line".Loc(Teams.ZoneName(land), Level(mine), Level(others)));
+            card.Text("emp_ui_team_land_line".Loc(Teams.ZoneName(land), Level(mine), Level(others)) +
+                      (Teams.OfflineClosed(rule) ? " " + "emp_ui_team_rule_offline_tag".lang() : ""));
             return;
         }
 
@@ -60,6 +61,9 @@ internal class TabTeam : TabEmpBase
         var all = new List<string> { Level(Teams.Closed), Level(Teams.Visit), Level(Teams.Use), Level(Teams.Build) };
         card.DropdownRow("emp_ui_team_rule_others".lang(), all,
             i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mine, i, Teams.OfflineClosed(rule)), land), others);
+        // offline protection: while nobody of the team is in the game, the land is closed to everyone else
+        card.Toggle("emp_ui_team_rule_offline", Teams.OfflineClosed(rule),
+            on => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mine, others, on), land)).AsRow();
     }
 
     /// <summary>
