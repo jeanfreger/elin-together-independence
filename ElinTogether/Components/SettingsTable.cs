@@ -435,6 +435,7 @@ internal static class SettingsTable
         yield return new("soft_recall", "repair", true, EmpConfig.Server.SoftRecall);
         yield return new("auto_save", "repair", true, EmpConfig.Server.AutoSave);
         yield return new("server_rests", "repair", true, EmpConfig.Server.ServerRestsWhenEmpty);
+        yield return new("fast_joins", "repair", true, EmpConfig.Server.FastJoinsAndSaves);
         yield return new("server_avatar", "repair", true, EmpConfig.Server.ServerAvatar, Apply: "restart");
         yield return new("enforce_ownership", "repair", true, EmpConfig.Server.EnforceOwnership);
         yield return new("bills", "repair", true);
@@ -578,6 +579,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.SoftRecall, true);
         yield return (EmpConfig.Server.AutoSave, true);
         yield return (EmpConfig.Server.EnforceOwnership, true);
+        // stage 2 of PLAN_100_players: a public server has the big world and the joins in a row
+        yield return (EmpConfig.Server.FastJoinsAndSaves, true);
     }
 
     /// <summary>

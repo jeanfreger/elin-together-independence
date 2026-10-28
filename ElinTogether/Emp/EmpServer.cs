@@ -289,7 +289,10 @@ internal static class EmpServer
 
     private static void SaveNow()
     {
-        if (EClass.game.Save(true, true)) {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var saved = EClass.game.Save(true, true);
+        EmpLog.Information("Server: save made in {Main} ms main thread", watch.ElapsedMilliseconds);
+        if (saved) {
             _saved = DateTime.Now.ToString("HH:mm");
         } else {
             _saved = "FAILED " + DateTime.Now.ToString("HH:mm");

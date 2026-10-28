@@ -520,6 +520,9 @@ internal partial class ElinNetHost
             return;
         }
 
+        // the bench reads this line: what the join cost everyone on the server (stage 2 of PLAN_100_players)
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
         // what is already done is in the copies below: told to everyone before them, these players would
         // otherwise replay it on top of a world that has it
         Delta.RefreshBuffer();
@@ -560,6 +563,9 @@ internal partial class ElinNetHost
         foreach (var join in joins) {
             join.After?.Invoke();
         }
+
+        EmpLog.Information("Join prepared in {Main} ms main thread, {Worker} ms worker ({Count} player(s))",
+            watch.ElapsedMilliseconds, 0, joins.Count);
 
         // counted from the end of the copies: joins held back by their freeze share the next one
         _lastJoinCopy = Time.realtimeSinceStartup;

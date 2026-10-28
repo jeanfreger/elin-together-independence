@@ -946,5 +946,7 @@
     "LangGeneral.emp_ui_pl_pick.text": "请在左页选择一名玩家。",
     "LangGeneral.emp_ui_pl_actions.text": "操作",
     "LangGeneral.emp_ui_team_pick.text": "请在左页选择一名成员。",
-    "LangGeneral.emp_ui_play_joining.text": "正在接收世界..."
+    "LangGeneral.emp_ui_play_joining.text": "正在接收世界...",
+    "LangGeneral.emp_ui_sv_cfg_fast_joins.text": "大型世界的快速加入与保存",
+    "LangGeneral.emp_ui_sv_desc_fast_joins.text": "适用于大型世界：玩家加入和定期保存时，所有人的游戏卡顿时间更短。世界和地图的副本仍在游戏中制作，其压缩、发送以及存档文件的写入在旁边完成。关闭：全部在游戏中完成。"
 }
