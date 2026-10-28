@@ -71,14 +71,16 @@ internal static class DramaInvestPatch
             return;
         }
 
+        // what the game took from the purse is its price, which the host checks (a merchant's was sent as 1)
+        var price = System.Math.Max(0, __state.Money - EClass.pc.GetCurrency());
         if (EClass._zone.investment > __state.Investment) {
             client.Delta.AddRemote(new ZoneInvestDelta {
-                Cost = EClass._zone.investment - __state.Investment,
+                Cost = System.Math.Max(price, EClass._zone.investment - __state.Investment),
             });
         } else if (DramaManager.TG is { } merchant && merchant.c_invest > __state.MerchantInvest) {
             // the merchant of the dialog (Build(tg.chara)): its own count went up, it is the one invested in
             client.Delta.AddRemote(new ZoneInvestDelta {
-                Cost = 1,
+                Cost = System.Math.Max(price, 1),
                 Merchant = merchant,
             });
         }

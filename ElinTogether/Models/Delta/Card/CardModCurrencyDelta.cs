@@ -12,6 +12,13 @@ public class CardModCurrencyDelta : ElinDelta
     [Key(1)]
     public required string CurrencyId { get; init; }
 
+    /// <summary>
+    ///     What the gold was spent on when the game says so: a shop's goods, a build's tiles (null for the rest). Gold
+    ///     paid for goods does not pay a debt, a plot or an investment as well (<see cref="TakeSpent" />)
+    /// </summary>
+    [Key(2)]
+    public string? Purpose { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         // client -> host intent only
@@ -19,7 +26,7 @@ public class CardModCurrencyDelta : ElinDelta
             return;
         }
 
-        if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var chara)) {
+        if (host.PlayerChara(OriginPeer) is not { } chara) {
             return;
         }
 
@@ -28,8 +35,13 @@ public class CardModCurrencyDelta : ElinDelta
         }
 
         if (Amount < 0) {
-            Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount, CurrencyId));
+            Spent.Add((OriginPeer, UnityEngine.Time.realtimeSinceStartup, -Amount, CurrencyId, Purpose ?? ""));
             Spent.RemoveAll(s => UnityEngine.Time.realtimeSinceStartup - s.At > SpentWindow);
+        }
+
+        // away from the host map the purse travels with the character, its game already paid: only the record is kept
+        if (host.IsAwayPeer(OriginPeer)) {
+            return;
         }
 
         EmpLog.Debug("Mod currency {CurrencyId} by {CurrencyAmount} on chara {Uid}",
@@ -50,25 +62,27 @@ public class CardModCurrencyDelta : ElinDelta
     // what each player paid lately: what it says it paid elsewhere (its debt in gold, land in gold bars) must have
     // left its purse
     private const float SpentWindow = 120f;
-    private static readonly System.Collections.Generic.List<(int Peer, float At, long Amount, string Id)> Spent = [];
+    private static readonly System.Collections.Generic.List<(int Peer, float At, long Amount, string Id, string Purpose)> Spent = [];
 
     /// <summary>
     ///     Gold this player paid in the last two minutes, and forgets it (one payment pays one thing)
     /// </summary>
     /// <param name="since">only what it paid from then on (a duel's stake: after the yes)</param>
     /// <param name="currency">gold unless said (gold bars for land)</param>
-    internal static long TakeSpent(int peer, long wanted, float since = 0f, string currency = "money")
+    /// <param name="purpose">only what was paid for that (a build's tiles); none for the payments of no particular kind,
+    ///     never a shop's goods</param>
+    internal static long TakeSpent(int peer, long wanted, float since = 0f, string currency = "money", string purpose = "")
     {
         var now = UnityEngine.Time.realtimeSinceStartup;
         long found = 0;
         for (var i = 0; i < Spent.Count && found < wanted; i++) {
-            if (Spent[i].Peer != peer || Spent[i].Id != currency || now - Spent[i].At > SpentWindow || Spent[i].At < since) {
+            if (Spent[i].Peer != peer || Spent[i].Id != currency || Spent[i].Purpose != purpose || now - Spent[i].At > SpentWindow || Spent[i].At < since) {
                 continue;
             }
 
             var take = System.Math.Min(Spent[i].Amount, wanted - found);
             found += take;
-            Spent[i] = (Spent[i].Peer, Spent[i].At, Spent[i].Amount - take, Spent[i].Id);
+            Spent[i] = Spent[i] with { Amount = Spent[i].Amount - take };
         }
 
         Spent.RemoveAll(s => s.Amount <= 0);
