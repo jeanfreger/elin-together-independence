@@ -141,7 +141,7 @@ public class BaseRelocateDelta : ElinDelta
 
         var map = world.region.elomap;
         if (world.region.GetZoneAt(X, Y) is { } there && there != found && (there is not Zone_Field || there.IsPCFaction) ||
-            map.w > 0 && map.GetCell(X, Y) is null) {
+            SiblingLands.LandsAt(X, Y).Any(land => land != found) || map.w > 0 && map.GetCell(X, Y) is null) {
             return $"the place {X},{Y} of the world map is taken";
         }
 
@@ -191,8 +191,11 @@ public class BaseRelocateDelta : ElinDelta
             map.SetZone(zone.x, zone.y, null);
         }
 
+        var (fromX, fromY) = (zone.x, zone.y);
         zone.x = x;
         zone.y = y;
+        // (several lands per tile: the land that stays there is the tile's icon again)
+        SiblingLands.Refresh(fromX, fromY);
         if (map.w > 0) {
             map.SetZone(x, y, zone, updateMesh: _zone.IsRegion);
         }

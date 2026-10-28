@@ -143,6 +143,29 @@ internal static class SiblingLands
         return false;
     }
 
+    /// <summary>
+    ///     The map cell holds one zone and one icon: the first land set there keeps it, a sibling claimed or loaded after
+    ///     it does not take the tile's icon (Region.OnLoad and Zone.ClaimZone both set the cell of their zone)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(EloMap), nameof(EloMap.SetZone))]
+    private static bool OnSetZone(EloMap __instance, int gx, int gy, Zone? z)
+    {
+        return z is null || !On || __instance.GetCell(gx, gy) is not { zone: { } there } || there == z || there.destryoed ||
+               there.x != gx || there.y != gy;
+    }
+
+    /// <summary>
+    ///     A land left a tile (relocation clears the cell it left): the land that still stands there gets its icon back
+    /// </summary>
+    internal static void Refresh(int x, int y)
+    {
+        var map = EClass.scene.elomap;
+        if (On && map.w > 0 && LandsAt(x, y).FirstOrDefault() is { } first) {
+            map.SetZone(x, y, first, EClass._zone.IsRegion);
+        }
+    }
+
     private static string Label(Zone zone)
     {
         return $"{Teams.NameOf(Teams.TeamOfZone(zone))} - {zone.Name} ({$"emp_ui_team_rule_{Teams.LevelOn(EClass.pc, zone)}".lang()})";
