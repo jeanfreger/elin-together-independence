@@ -127,6 +127,7 @@ internal static class TeamOwnStory
 
         if (On && Seeded && _owner is not null) {
             ForgetGoneTeams();
+            LookAtLothria();
         }
     }
 
@@ -293,6 +294,11 @@ internal static class TeamOwnStory
             Put(world);
         }
 
+        // (Ash and Fiama waited for the other stories: the world's alone counts now)
+        if (State[3] != 0 && EClass.game.quests.GetPhase<QuestMain>() >= QuestMain.AfterAshLeaveHome) {
+            LeaveForLothria();
+        }
+
         _owner = null;
         ElinNetHost.TeamStoryBundles.Clear();
         ElinNetHost.TeamStoryBundleState = [Schema, 0, 0, 0];
@@ -450,6 +456,124 @@ internal static class TeamOwnStory
     private static void AfterDie(ScopeExit? __state)
     {
         __state?.Dispose();
+    }
+
+    // ---- who each game shows: Ash, Fiama, Farris
+
+    /// <summary>
+    ///     The three actors of the story are single characters of the world, where the story that moved them last put
+    ///     them. Each game shows one where its own story says it is, and hides it elsewhere (not drawn, not talked to):
+    ///     Farris in Nymelle until met, at home or in a base after; Fiama by the crystal between the guardian and her
+    ///     talk; Ash and Fiama in Lothria once the main quest left home. In a world of one story everything is where the
+    ///     story says: nothing is ever hidden
+    /// </summary>
+    internal static bool Shown(Chara chara)
+    {
+        if (chara.id is not ("ashland" or "fiama" or "farris") || !On || chara.IsPCParty || EClass.game?.quests is not { } quests ||
+            EClass.game.IsSurvival) {
+            return true;
+        }
+
+        var exploration = quests.GetPhase<QuestExploration>();
+        var main = quests.GetPhase<QuestMain>();
+        var zone = chara.currentZone;
+        return chara.id switch {
+            "farris" => zone is Zone_Nymelle ? exploration <= QuestExploration.Started : exploration >= QuestExploration.AfterMeetFarris,
+            "fiama" => zone is Zone_Nymelle
+                ? exploration is >= QuestExploration.AfterDefeatNymelleBoss and < QuestExploration.AfterCrystalTalk
+                : zone?.id != "lothria" || main >= QuestMain.AfterAshLeaveHome,
+            _ => zone?.id != "lothria" || main >= QuestMain.AfterAshLeaveHome,
+        };
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Player), nameof(Player.CanSee))]
+    private static void HideOutOfStory(Chara c, ref bool __result)
+    {
+        if (__result && !Shown(c)) {
+            __result = false;
+        }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.ShowDialog), new System.Type[0])]
+    private static bool NoTalkOutOfStory(Chara __instance)
+    {
+        return Shown(__instance);
+    }
+
+    // ---- Ash and Fiama leave for Lothria once every story is there
+
+    private static float _nextLothria;
+
+    /// <summary>
+    ///     The end of the exploration moves Ash and Fiama to Lothria for good, for every story: while another story is
+    ///     not that far (below 700), they stay home, the story itself moves on. The move is made once no story waits
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DramaOutcome), nameof(DramaOutcome.QuestExploration_AfterComplete))]
+    private static bool AfterExplorationComplete()
+    {
+        // (a guest's game: the host moves them, when it can)
+        if (!On || (KeepsBook && !AnyBehind())) {
+            return true;
+        }
+
+        var quests = EClass.game.quests;
+        if (quests.Main is null) {
+            quests.Start("main");
+        }
+
+        quests.Main!.ChangePhase(QuestMain.AfterAshLeaveHome);
+        if (KeepsBook) {
+            State[3] = 1;
+            EmpLog.Information("The main quest left home in story {Owner}: Ash and Fiama wait for the other stories", CurrentOwner);
+        }
+
+        return false;
+    }
+
+    // another story is below 700 (the seed entry is no story anyone plays)
+    private static bool AnyBehind()
+    {
+        if (!Seeded) {
+            return false;
+        }
+
+        var current = CurrentOwner;
+        return ElinNetHost.TeamStoryBundles.Keys.Where(owner => owner != SeedOwner && owner != current)
+            .Select(Stored).Any(bundle => bundle is { Main: < QuestMain.AfterAshLeaveHome });
+    }
+
+    private static void LookAtLothria()
+    {
+        if (State[3] == 0 || UnityEngine.Time.unscaledTime < _nextLothria) {
+            return;
+        }
+
+        _nextLothria = UnityEngine.Time.unscaledTime + 5f;
+        if (EClass.game.quests.GetPhase<QuestMain>() < QuestMain.AfterAshLeaveHome || AnyBehind()) {
+            return;
+        }
+
+        LeaveForLothria();
+    }
+
+    // DramaOutcome.QuestExploration_AfterComplete, the part about the world
+    private static void LeaveForLothria()
+    {
+        State[3] = 0;
+        if (EClass.game.cards.globalCharas.Find("ashland") is { } ash) {
+            ash.MoveHome("lothria", 40, 49);
+            EClass.game.quests.RemoveAll(ash);
+        }
+
+        if (EClass.game.cards.globalCharas.Find("fiama") is { } fiama) {
+            fiama.MoveHome("lothria", 46, 56);
+            EClass.game.quests.RemoveAll(fiama);
+        }
+
+        EmpLog.Information("Every story is past the exploration: Ash and Fiama leave for Lothria");
     }
 
     // ---- the save: the world owner's story, then the local team's again
