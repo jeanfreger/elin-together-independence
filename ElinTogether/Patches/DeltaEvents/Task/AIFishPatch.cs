@@ -162,6 +162,23 @@ internal static class AIFishPatch
         __instance.hit = TaskProduct.WasProduced(nameof(AI_Fish.Makefish)) ? 100 : 0;
     }
 
+    /// <summary>
+    ///     The thief's roll (one in a thousand: the fish is destroyed, "ehe") is made by the player's own game and
+    ///     its result travels. The copies replaying that fishing for others do not roll again: they destroyed a fish
+    ///     the player kept, or kept one it lost
+    /// </summary>
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(AI_Fish.ProgressFish), nameof(AI_Fish.ProgressFish.OnProgressComplete))]
+    internal static IEnumerable<CodeInstruction> OnProgressCompleteStolen(IEnumerable<CodeInstruction> instructions)
+    {
+        return new CodeMatcher(instructions)
+            .MatchStartForward(new CodeMatch(OpCodes.Ldc_I4, 1000))
+            .MatchEndForward(new CodeMatch(OpCodes.Call, AccessTools.Method(typeof(EClass), nameof(EClass.rnd))))
+            .Advance(1)
+            .InsertAndAdvance(Transpilers.EmitDelegate((int roll) => CharaProgressCompleteDelta.IsReplaying ? 1 : roll))
+            .InstructionEnumeration();
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(AI_Fish.ProgressFish), nameof(AI_Fish.ProgressFish.OnProgress))]
     internal static bool OnProgress(AI_Fish.ProgressFish __instance)
