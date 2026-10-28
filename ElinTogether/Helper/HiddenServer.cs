@@ -135,6 +135,13 @@ internal static class HiddenServer
             start.EnvironmentVariables["SteamAppId"] = AppId;
             start.EnvironmentVariables["SteamGameId"] = AppId;
             start.EnvironmentVariables["SteamNoOverlayUIDrawing"] = "1";
+            // (Unity Doorstop, which loads BepInEx and so the mods, marks the process it started in DOORSTOP_INITIALIZED
+            // and does nothing in a child that inherits it: the hidden server started as a bare Elin without this mod,
+            // sat on the title screen and was dropped after 2 minutes, bench 2026-10-28)
+            foreach (var name in start.EnvironmentVariables.Keys.Cast<string>()
+                         .Where(k => k.StartsWith("DOORSTOP_", StringComparison.OrdinalIgnoreCase)).ToList()) {
+                start.EnvironmentVariables.Remove(name);
+            }
 
             _process = Process.Start(start);
             if (_process is null) {
