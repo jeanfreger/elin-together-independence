@@ -144,6 +144,9 @@ public class CharaReviveDelta : ElinDelta
                         }
                     }
                 }
+
+                // then to where it picked on the death screen, as the host goes
+                (net as ElinNetClient)?.OnRevived();
             }
         }
 
