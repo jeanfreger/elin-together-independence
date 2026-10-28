@@ -167,6 +167,11 @@ public static class InputInject
                 EInput.hotkey = step.Hotkey;
                 break;
             case Kind.Action:
+                // a key is taken when the player can act, like a click (AM_Adv ignores AutoCombat during a turn being played)
+                if (!EClass.player.CanAcceptInput()) {
+                    return;
+                }
+
                 EInput.action = step.Action;
                 break;
         }

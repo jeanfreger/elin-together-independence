@@ -61,7 +61,12 @@ public class BranchResourceModDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         // host only
-        if (net is not ElinNetHost) {
+        if (net is not ElinNetHost host) {
+            return;
+        }
+
+        // another team's land keeps its resources, with trust enforced or not (the permit only logs when it is off)
+        if (host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) && !Teams.CanTouch(sender, _zone)) {
             return;
         }
 
