@@ -97,6 +97,34 @@ internal static class OwnerPartyPatch
         return codes.InstructionEnumeration();
     }
 
+    /// <summary>
+    ///     The journey block of Player.MoveZone, for the arrival that does not call it: the first scene of a new world
+    ///     copy (ElinNetClientZone, player.zone is still null there). Same conditions and reward, this player's side
+    /// </summary>
+    internal static void PayTravel(Zone zone)
+    {
+        var player = EClass.player;
+        if (EClass.pc.currentZone != zone || zone.IsRegion || player.LastTravelZone == zone) {
+            return;
+        }
+
+        if (player.LastTravelZone != null && player.distanceTravel > 2) {
+            var hours = EClass.world.date.GetElapsedHour(player.dateTravel);
+            Msg.Say("travel", player.LastTravelZone.Name, Date.GetText(player.dateTravel, Date.TextFormat.Travel),
+                (hours / 24).ToString(), (hours % 24).ToString());
+            Msg.Say("travel2", player.distanceTravel.ToString(),
+                (EClass.pc.party.members.Count == 1 ? "you" : "youAndCompanion").lang());
+            foreach (var member in Side(EClass.pc)) {
+                member.AddExp(player.distanceTravel / 3);
+                member.elements.ModExp(240, 30 + player.distanceTravel * 5);
+            }
+        }
+
+        player.distanceTravel = 0;
+        player.dateTravel = EClass.world.date.GetRaw();
+        player.uidLastTravelZone = zone.uid;
+    }
+
     internal static Chara PlayerOf(ElementContainerCard elements)
     {
         return NetSession.Instance.Connection is not null && elements.owner is Chara chara &&

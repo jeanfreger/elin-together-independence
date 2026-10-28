@@ -233,6 +233,34 @@ internal static class TeamBoxes
         return !On || OwnerOf(thing.GetRootCard(), out _) is not { } owner || owner == StoryOwner.Of(taker.uid);
     }
 
+    /// <summary>
+    ///     A change to what an owner's box holds (a thing added, removed, a count changed) goes to that owner's players
+    ///     only: the others have no such box to apply it to (they logged "cannot be resolved") and would read the gold in
+    ///     it. True when it was sent here
+    /// </summary>
+    internal static bool Divert(ElinDeltaManager manager, ElinDelta delta)
+    {
+        var card = delta switch {
+            CardAddThingDelta add => add.Parent.Find(),
+            CardRemoveThingDelta remove => remove.Thing.Find()?.parent as Card ?? remove.Thing.Find(),
+            CardModNumDelta num => num.Card.Find(),
+            CardTryStackToDelta stack => stack.To.Find(),
+            _ => null,
+        };
+        if (card is null || !On || NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host ||
+            !ReferenceEquals(host.Delta, manager) || OwnerOf(card.GetRootCard(), out _) is not { } owner) {
+            return false;
+        }
+
+        foreach (var (peer, uid) in host.PeerCharas()) {
+            if (StoryOwner.Of(uid) == owner) {
+                host.SendDeltaTo(peer, delta);
+            }
+        }
+
+        return true;
+    }
+
     // ---- every frame, in the game that keeps the book
 
     // a save just read: the parked boxes are the ledger's (before any box is asked for)
@@ -481,6 +509,28 @@ internal static class TeamBoxes
             } finally {
                 _opening = false;
             }
+        }
+    }
+
+    /// <summary>
+    ///     The character sheet's "bank" is the world's box in the game: with the box on it adds this player's own bank
+    ///     (the host's real one, a guest's copy), the world's being the shared one beside it
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(WindowChara), nameof(WindowChara.RefreshProfile))]
+    private static void OnSheet(WindowChara __instance)
+    {
+        if (!On || !__instance.chara.IsPC || EClass.game?.cards is not { } cards) {
+            return;
+        }
+
+        var own = NetSession.Instance.Transport switch {
+            ElinNetHost { IsZoneSession: false } => Box(StoryOwner.Of(EClass.pc.uid), Bank),
+            ElinNetClient { IsZoneSession: false } when NetSession.Instance.Connection is not null => Replica(Bank),
+            _ => null,
+        };
+        if (own is not null) {
+            __instance.textDeposit.text = Lang._currency(cards.container_deposit.GetCurrency() + own.GetCurrency(), showUnit: true);
         }
     }
 
