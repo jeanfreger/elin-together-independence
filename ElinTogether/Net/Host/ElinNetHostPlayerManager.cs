@@ -716,8 +716,17 @@ internal partial class ElinNetHost
             return;
         }
 
-        var chara = response.Chara.Decompress<Chara>();
-        AdoptNewPlayerChara(chara);
+        Chara chara;
+        try {
+            chara = response.Chara.Decompress<Chara>();
+            AdoptNewPlayerChara(chara);
+        } catch (Exception ex) {
+            // back to its choice screen with a notice: left as it was, the player waited for ever (a character the
+            // host could not read, 100-player bench 2026-10-28)
+            EmpLog.Error(ex, "Player {@Peer} sent a new character this world cannot take", peer);
+            PreparePlayerJoin(peer, "emp_ui_chara_import_fail");
+            return;
+        }
 
         SavedRemoteCharas[peer.User] = chara.uid;
         // adds the character now played to the roster
