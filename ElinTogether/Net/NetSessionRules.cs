@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 143 (141 unused), the next free one is 144 (145 reserved for the server avatar). Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 144 (141 unused), the next free one is 146 (145 reserved for the server avatar). Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
