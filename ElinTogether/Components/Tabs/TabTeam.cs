@@ -130,6 +130,9 @@ internal class TabTeam : TabEmpBase
         if (TeamStory.On) {
             card.Text("emp_ui_team_story".Loc(TeamStory.ChapterOf(mine)));
         }
+        if (TeamBoxes.TeamBankGold() is { } bank) {
+            card.Text("emp_ui_team_bank".Loc(bank));
+        }
 
         // the leader answers who asks (the choices of the player list moved here)
         if (leader == me) {

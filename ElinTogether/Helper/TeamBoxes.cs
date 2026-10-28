@@ -365,7 +365,8 @@ internal static class TeamBoxes
         }
 
         if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } host && Time.unscaledTime >= _nextPoll) {
-            _nextPoll = Time.unscaledTime + 1f;
+            // (a player who joins a team and opens the bank at once must already hold its team's copy)
+            _nextPoll = Time.unscaledTime + 0.2f;
             Tell(host);
         }
     }
@@ -528,6 +529,15 @@ internal static class TeamBoxes
 
         _replica = null;
         _replicaGame = null;
+    }
+
+    /// <summary>
+    ///     The gold in the team bank of this game's own player (the host's real box, a guest's copy), none when the box is
+    ///     off or the player has no team (yet)
+    /// </summary>
+    internal static int? TeamBankGold()
+    {
+        return On && EClass.pc is { } pc ? MyWindows(Bank).Team?.GetCurrency() : null;
     }
 
     // ---- windows

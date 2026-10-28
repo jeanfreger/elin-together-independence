@@ -582,6 +582,7 @@
     "LangGeneral.emp_ui_sv_cfg_team_story.text": "队伍各自保留剧情日志",
     "LangGeneral.emp_ui_sv_desc_team_story.text": "每个队伍记录其玩家参与过的主线任务最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上。剧情本身仍属于整个世界。关闭：没有队伍日志。",
     "LangGeneral.emp_ui_team_story.text": "剧情：{0}",
+    "LangGeneral.emp_ui_team_bank.text": "队伍银行：{0} 金币",
     "LangGeneral.emp_team_chapter_none.text": "尚无",
     "LangGeneral.emp_team_chapter_0.text": "旅途开始",
     "LangGeneral.emp_team_chapter_100.text": "遇见了阿什",
