@@ -77,6 +77,46 @@ public class ZoneDataResponse
         return response;
     }
 
+    /// <summary>
+    ///     What <see cref="Create" /> reads in the game, without the compression: <see cref="Captured.Pack" /> may
+    ///     run beside the game (host setting FastJoinsAndSaves)
+    /// </summary>
+    public static Captured Capture(Zone zone)
+    {
+        var start = Stopwatch.GetTimestamp();
+        ZoneLeaseState.CommitStaged(zone.uid);
+        zone.map?.Save(zone.pathSave);
+        NetMetrics.MapSave.Add(0, start);
+
+        return new(zone.ZoneFullName, zone.uid, LZ4Bytes.ToJson(zone),
+            Directory
+                .GetFiles(zone.pathSave, "*.*", SearchOption.TopDirectoryOnly)
+                .ToDictionary(ZoneLeaseState.MapFileKey, File.ReadAllBytes),
+            ZoneLeaseState.GetState(zone), zone.idCurrentSubset);
+    }
+
+    // plain text and bytes only: nothing of the game is touched off its thread
+    public sealed record Captured(
+        string ZoneFullName,
+        int ZoneUid,
+        string Zone,
+        Dictionary<string, byte[]> Files,
+        int[]? ZoneState,
+        string? IdCurrentSubset)
+    {
+        public ZoneDataResponse Pack()
+        {
+            return new() {
+                ZoneFullName = ZoneFullName,
+                ZoneUid = ZoneUid,
+                Zone = LZ4Bytes.CreateFromBytes(System.Text.Encoding.UTF8.GetBytes(Zone)),
+                Map = Files.ToDictionary(f => f.Key, f => LZ4Bytes.CreateFromBytes(f.Value)),
+                ZoneState = ZoneState,
+                IdCurrentSubset = IdCurrentSubset,
+            };
+        }
+    }
+
     public Zone? FindZone()
     {
         return EClass.game?.spatials.Find(ZoneUid) ??

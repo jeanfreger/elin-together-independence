@@ -73,7 +73,8 @@ internal sealed class SteamNetPeerBroadcast(ISteamNetSerializer serializer)
 
             var success = true;
             foreach (var peer in _targets) {
-                if (!peer.IsConnected) {
+                // (held: its copy of the world is not sent yet, see SteamNetPeer.Hold)
+                if (!peer.IsConnected || peer.IsHeld) {
                     continue;
                 }
 
