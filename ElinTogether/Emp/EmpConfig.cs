@@ -627,6 +627,14 @@ internal partial class EmpConfig
             "Wedding, divorce and the lost ring deed work for that character only. Otherwise, as before, a guest's marriage stays in its own game\n" +
             "每位玩家都可以结婚：居民是与之结婚的角色的配偶，先求婚者优先，主机在存档中记录；婚礼、离婚和遗失戒指证书只对该角色有效。关闭时如以前一样，客人的婚姻只存在于其自己的游戏中");
 
+        Server.AffinityPerPlayer = config.Bind(
+            "Server",
+            "AffinityPerPlayer",
+            false,
+            "Each player has its own affinity with each resident: gifts, talks and quests count for the player who made them, and the talk options follow the one who talks\n" +
+            "Otherwise one affinity per resident for the whole group, as before\n" +
+            "每位玩家与每位居民各自拥有好感度：礼物、交谈和任务只计入做出它们的玩家，对话选项取决于正在交谈的玩家；关闭时如以前一样，每位居民对整个队伍只有一个好感度");
+
         Server.Teams = config.Bind(
             "Server",
             "Teams",
@@ -920,6 +928,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> GuestLandingPortal { get; set; } = null!;
         internal static ConfigEntry<bool> GuestSkyHelm { get; set; } = null!;
         internal static ConfigEntry<bool> SharedMarriages { get; set; } = null!;
+        internal static ConfigEntry<bool> AffinityPerPlayer { get; set; } = null!;
         internal static ConfigEntry<bool> Teams { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBases { get; set; } = null!;
         internal static ConfigEntry<bool> TeamApproval { get; set; } = null!;
