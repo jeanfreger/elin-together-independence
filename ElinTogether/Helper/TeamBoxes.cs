@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper.Extensions;
@@ -35,6 +35,9 @@ internal static class TeamBoxes
     private const int Bank = 0;
     private const int Delivery = 1;
 
+    // (the guest's copies only: its team's bank, beside its personal one)
+    private const int TeamBank = 2;
+
     // the game that keeps the boxes: the host of the world, or a game playing alone
     private static bool KeepsBook => NetSession.Instance.Transport is not ElinNetClient;
 
@@ -57,7 +60,8 @@ internal static class TeamBoxes
     // owner -> [bank, delivery box]: the real boxes, parked (no parent), in the game that keeps the book
     private static readonly Dictionary<int, Thing?[]> _live = [];
 
-    // a guest on the host's map: copies of its owner's two boxes, with the host's uids
+    // a guest on the host's map: copies of its personal bank, its owner's delivery box and its team's bank (none when
+    // it has no team), with the host's uids
     private static Thing?[]? _replica;
     private static Game? _replicaGame;
 
@@ -125,7 +129,7 @@ internal static class TeamBoxes
             return slot == Bank ? ShippingHelper.BoxBank : ShippingHelper.BoxDelivery;
         }
 
-        return ReferenceEquals(_replica?[Bank], card) ? ShippingHelper.BoxBank :
+        return ReferenceEquals(_replica?[Bank], card) || ReferenceEquals(_replica?[TeamBank], card) ? ShippingHelper.BoxBank :
             ReferenceEquals(_replica?[Delivery], card) ? ShippingHelper.BoxDelivery : 0;
     }
 
@@ -159,11 +163,57 @@ internal static class TeamBoxes
     }
 
     /// <summary>
-    ///     The bank of that player's owner when the box is on, the world's bank otherwise
+    ///     The personal bank of that player when the box is on, the world's bank otherwise. Its key is the one of the
+    ///     player alone (<see cref="StoryOwner.Of(int,int)" /> of no team): a lone player's bank of the first version of
+    ///     the box is already this one
     /// </summary>
     internal static Thing? BankOf(Chara? who)
     {
-        return On && KeepsBook && who is not null ? Box(StoryOwner.Of(who.uid), Bank) : EClass.game?.cards?.container_deposit;
+        return On && KeepsBook && who is not null ? Personal(who.uid) : EClass.game?.cards?.container_deposit;
+    }
+
+    /// <summary>
+    ///     The personal bank of a player (made when it has none yet)
+    /// </summary>
+    internal static Thing Personal(int charaUid)
+    {
+        return Box(StoryOwner.Of(Teams.Wanderers, charaUid), Bank);
+    }
+
+    /// <summary>
+    ///     The team a player is in (0: none), whose bank it also has
+    /// </summary>
+    private static int TeamOf(int charaUid)
+    {
+        return Teams.TeamOf(charaUid) is var team && team != Teams.Wanderers && team > 0 ? team : 0;
+    }
+
+    /// <summary>
+    ///     Is this owner's box one of that player's: its personal bank, or its team's
+    /// </summary>
+    private static bool Owns(int charaUid, int owner)
+    {
+        return owner == StoryOwner.Of(Teams.Wanderers, charaUid) || owner > 0 && owner == TeamOf(charaUid);
+    }
+
+    /// <summary>
+    ///     Where a player's own thing goes in place of a box of the world: the personal bank, the owner's delivery box
+    /// </summary>
+    internal static Thing Own(int charaUid, int slot)
+    {
+        return slot == Bank ? Personal(charaUid) : Box(StoryOwner.Of(charaUid), Delivery);
+    }
+
+    /// <summary>
+    ///     The boxes a player may see and take from in that kind of box: the personal bank and the team's, or the
+    ///     owner's delivery box
+    /// </summary>
+    internal static IEnumerable<Thing> Mine(int charaUid, int slot)
+    {
+        yield return Own(charaUid, slot);
+        if (slot == Bank && TeamOf(charaUid) is > 0 and var team) {
+            yield return Box(team, Bank);
+        }
     }
 
     /// <summary>
@@ -217,12 +267,11 @@ internal static class TeamBoxes
             return parent;
         }
 
-        var own = StoryOwner.Of(sender.uid);
         if (OwnerOf(parent.GetRootCard(), out _) is { } owner) {
-            return owner == own ? parent : null;
+            return Owns(sender.uid, owner) ? parent : null;
         }
 
-        return IsWorldBox(parent, out var slot) ? Box(own, slot) : parent;
+        return IsWorldBox(parent, out var slot) ? Own(sender.uid, slot) : parent;
     }
 
     /// <summary>
@@ -230,7 +279,7 @@ internal static class TeamBoxes
     /// </summary>
     internal static bool CanTake(Chara taker, Thing thing)
     {
-        return !On || OwnerOf(thing.GetRootCard(), out _) is not { } owner || owner == StoryOwner.Of(taker.uid);
+        return !On || OwnerOf(thing.GetRootCard(), out _) is not { } owner || Owns(taker.uid, owner);
     }
 
     /// <summary>
@@ -253,7 +302,7 @@ internal static class TeamBoxes
         }
 
         foreach (var (peer, uid) in host.PeerCharas()) {
-            if (StoryOwner.Of(uid) == owner) {
+            if (Owns(uid, owner)) {
                 host.SendDeltaTo(peer, delta);
             }
         }
@@ -338,8 +387,9 @@ internal static class TeamBoxes
 
             _told[peer] = owner;
             host.SendDeltaTo(peer, new TeamBoxDelta {
-                Bank = LZ4Bytes.Create(Box(owner, Bank)),
+                Bank = LZ4Bytes.Create(Personal(chara.uid)),
                 Delivery = LZ4Bytes.Create(Box(owner, Delivery)),
+                TeamBank = TeamOf(chara.uid) is > 0 and var team ? LZ4Bytes.Create(Box(team, Bank)) : null,
             });
         }
     }
@@ -435,9 +485,10 @@ internal static class TeamBoxes
     }
 
     /// <summary>
-    ///     The host says what this player's owner has in its two boxes (none: it has no boxes of its own any more)
+    ///     The host says what this player has in its boxes: its personal bank, its owner's delivery box and its team's
+    ///     bank, if any (none: it has no boxes of its own any more)
     /// </summary>
-    internal static void Receive(LZ4Bytes? bank, LZ4Bytes? delivery)
+    internal static void Receive(LZ4Bytes? bank, LZ4Bytes? delivery, LZ4Bytes? teamBank)
     {
         if (KeepsBook) {
             return;
@@ -448,10 +499,11 @@ internal static class TeamBoxes
             return;
         }
 
-        _replica = [Register(bank.Decompress<Thing>()), Register(delivery.Decompress<Thing>())];
+        _replica = [Register(bank.Decompress<Thing>()), Register(delivery.Decompress<Thing>()),
+            teamBank is null ? null : Register(teamBank.Decompress<Thing>())];
         _replicaGame = EClass.game;
-        EmpLog.Information("The host sent this player's team's bank ({Gold} gold) and delivery box ({Count} things)",
-            _replica[Bank]!.GetCurrency(), _replica[Delivery]!.things.Count);
+        EmpLog.Information("The host sent this player's bank ({Gold} gold), team bank ({Team} gold) and delivery box ({Count} things)",
+            _replica[Bank]!.GetCurrency(), _replica[TeamBank]?.GetCurrency() ?? -1, _replica[Delivery]!.things.Count);
     }
 
     private static void ForgetReplica()
@@ -476,8 +528,8 @@ internal static class TeamBoxes
 
     /// <summary>
     ///     The host's own player, or a guest on the host's map, opens the bank or a delivery box: it opens its own
-    ///     (the guests' windows show the copies, the host's the real ones). What the world's box still holds is shown
-    ///     in a window of its own beside it, so that nothing already in the world is out of reach
+    ///     (the guests' windows show the copies, the host's the real ones). The team's bank, and what the world's box
+    ///     still holds, are shown in windows of their own beside it, so that nothing is out of reach
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(LayerInventory), nameof(LayerInventory.CreateContainer), typeof(Card), typeof(Card))]
@@ -487,11 +539,7 @@ internal static class TeamBoxes
             return;
         }
 
-        var own = NetSession.Instance.Transport switch {
-            ElinNetHost { IsZoneSession: false } => Box(StoryOwner.Of(EClass.pc.uid), slot),
-            ElinNetClient { IsZoneSession: false } when NetSession.Instance.Connection is not null => Replica(slot),
-            _ => null,
-        };
+        var (own, team) = MyWindows(slot);
         if (own is null) {
             return;
         }
@@ -502,19 +550,36 @@ internal static class TeamBoxes
         }
 
         container = own;
-        if (world.things.Count > 0) {
-            _opening = true;
-            try {
-                LayerInventory.CreateContainer(world, world);
-            } finally {
-                _opening = false;
+        _opening = true;
+        try {
+            // (the team's bank and what the world's box still holds: windows of their own beside it)
+            if (team is not null) {
+                LayerInventory.CreateContainer(team, team);
             }
+
+            if (world.things.Count > 0) {
+                LayerInventory.CreateContainer(world, world);
+            }
+        } finally {
+            _opening = false;
         }
     }
 
+    // this game's own player: its boxes of that kind (the host's real ones, a guest's copies), the team's bank second
+    private static (Thing? Own, Thing? Team) MyWindows(int slot)
+    {
+        return NetSession.Instance.Transport switch {
+            ElinNetHost { IsZoneSession: false } => (Own(EClass.pc.uid, slot),
+                slot == Bank && TeamOf(EClass.pc.uid) is > 0 and var team ? Box(team, Bank) : null),
+            ElinNetClient { IsZoneSession: false } when NetSession.Instance.Connection is not null =>
+                (Replica(slot), slot == Bank ? Replica(TeamBank) : null),
+            _ => (null, null),
+        };
+    }
+
     /// <summary>
-    ///     The character sheet's "bank" is the world's box in the game: with the box on it adds this player's own bank
-    ///     (the host's real one, a guest's copy), the world's being the shared one beside it
+    ///     The character sheet's "bank" is the world's box in the game: with the box on it adds this player's personal
+    ///     bank and its team's (the host's real ones, a guest's copies), the world's being the shared one beside them
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(WindowChara), nameof(WindowChara.RefreshProfile))]
@@ -524,13 +589,10 @@ internal static class TeamBoxes
             return;
         }
 
-        var own = NetSession.Instance.Transport switch {
-            ElinNetHost { IsZoneSession: false } => Box(StoryOwner.Of(EClass.pc.uid), Bank),
-            ElinNetClient { IsZoneSession: false } when NetSession.Instance.Connection is not null => Replica(Bank),
-            _ => null,
-        };
+        var (own, team) = MyWindows(Bank);
         if (own is not null) {
-            __instance.textDeposit.text = Lang._currency(cards.container_deposit.GetCurrency() + own.GetCurrency(), showUnit: true);
+            __instance.textDeposit.text = Lang._currency(
+                cards.container_deposit.GetCurrency() + own.GetCurrency() + (team?.GetCurrency() ?? 0), showUnit: true);
         }
     }
 
