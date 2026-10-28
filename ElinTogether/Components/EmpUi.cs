@@ -244,6 +244,21 @@ internal static class EmpUi
         }
     }
 
+    // ---------------------------------------------------------------- (g) KeyValue
+
+    /// <summary>
+    ///     A line of the character sheet's facts ("Faction  Noyel"): the game's TopicDefault, its small brown label
+    ///     right-aligned in its column, then the value ("-" when there is none, as the sheet shows it)
+    /// </summary>
+    public static UIItem KeyValue(this YKLayout parent, string label, string? value)
+    {
+        var item = parent.Topic(label, string.IsNullOrEmpty(value) ? "-" : value);
+        if (item.text1 != null) {
+            item.text1.alignment = TextAnchor.MiddleRight;
+        }
+        return item;
+    }
+
     // ---------------------------------------------------------------- (e) Chip
 
     /// <summary>

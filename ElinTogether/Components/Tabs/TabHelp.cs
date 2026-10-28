@@ -31,7 +31,8 @@ internal class TabHelp : TabEmpBase
     private static void BuildAbout(YKVertical page)
     {
         var card = page.Card("emp_help_about".lang());
-        card.Text("emp_help_version".Loc(ModInfo.BuildVersion));
+        card.Text("emp_help_version".Loc(""));
+        card.KeyValue("emp_ui_kv_version".lang(), ModInfo.BuildVersion);
         card.TextSmall("emp_help_about_desc".lang(), FontColor.Gray);
         card.ButtonRow().RowButton("emp_help_github".lang(), () => Application.OpenURL(Repo));
     }

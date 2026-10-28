@@ -57,16 +57,12 @@ internal class TabPlay : TabEmpBase
         var title = isHost || string.IsNullOrEmpty(host) ? "emp_ui_play_connected".lang() : "emp_ui_play_world".Loc(host!);
         var card = page.Card(title);
 
-        var status = card.Row();
-        StatusDot(status, net.IsAway ? new(0.85f, 0.62f, 0.2f) : new(0.45f, 0.68f, 0.32f));
-        // (the title already says "Connected": the status line gives the head count, or the reconnecting state)
-        status.Text(net.IsAway ? "emp_ui_play_reconnecting".lang() : "emp_ui_play_players_line".Loc(players.Count));
-
-        if (!string.IsNullOrEmpty(host)) {
-            card.TextSmall("emp_ui_play_host_line".Loc(host!), FontColor.Gray);
-        }
+        // the facts as the character sheet lists them: a small label, the value
+        card.KeyValue("emp_ui_kv_state".lang(), (net.IsAway ? "emp_ui_play_reconnecting" : "emp_ui_state_connected").lang());
+        card.KeyValue("emp_ui_kv_players".lang(), players.Count.ToString());
+        card.KeyValue("emp_ui_kv_host".lang(), host);
         if (EClass._zone is { } zone) {
-            card.TextSmall("emp_ui_play_where".Loc(zone.NameWithLevel), FontColor.Gray);
+            card.KeyValue("emp_ui_kv_where".lang(), zone.NameWithLevel);
         }
 
         var buttons = card.ButtonRow();
