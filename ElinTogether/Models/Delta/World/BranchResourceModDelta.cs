@@ -1,4 +1,5 @@
 using System;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -31,6 +32,11 @@ public class BranchResourceModDelta : ElinDelta
 
         if (host.IsAwayPeer(OriginPeer) || sender!.currentZone?.uid != ZoneUid) {
             return $"base resources of zone {ZoneUid} moved from elsewhere";
+        }
+
+        // another team's land keeps its own resources
+        if (!Teams.CanTouch(sender, _zone)) {
+            return $"base resource {ResourceType} of zone {ZoneUid} moved on another team's land";
         }
 
         if (System.Math.Abs(Amount) > MaxAmount) {

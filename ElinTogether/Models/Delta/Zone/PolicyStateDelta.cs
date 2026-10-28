@@ -1,4 +1,5 @@
 using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -57,7 +58,13 @@ public class PolicyStateDelta : ElinDelta
 
         if (net is ElinNetHost host) {
             // a player standing on this base, not one travelling
-            if (!host.ActiveRemoteCharas.ContainsKey(OriginPeer) || host.IsAwayPeer(OriginPeer)) {
+            if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) || host.IsAwayPeer(OriginPeer)) {
+                return;
+            }
+
+            // another team's land: its laws stay, the sender gets them back (independence audit, base management 1)
+            if (!Teams.CanTouch(sender, _zone)) {
+                host.SendDeltaTo(OriginPeer, new PolicyStateDelta { Active = Read(branch) });
                 return;
             }
 

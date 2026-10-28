@@ -466,6 +466,34 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     The core of another team's land: no rename, spawn, home nor abandon, the click says whose land it is
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitCoreZone), nameof(TraitCoreZone.TrySetAct))]
+    private static bool OnCoreZoneAct(TraitCoreZone __instance, ActPlan p)
+    {
+        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone)) {
+            return true;
+        }
+
+        p.TrySetAct("actNameZone", () => {
+            SayBelongs();
+            return false;
+        }, __instance.owner);
+        return false;
+    }
+
+    /// <summary>
+    ///     ...and no other way to abandon it (a late act, the console)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.AbandonZone))]
+    private static bool OnAbandonZone(Zone __instance)
+    {
+        return !EClass.pc.IsPC || !BasesOwned || __instance != EClass._zone || CanTouch(EClass.pc, __instance);
+    }
+
+    /// <summary>
     ///     What the bench and the console read: every team, its leader and members, and the teams of the lands
     /// </summary>
     internal static string Describe()
