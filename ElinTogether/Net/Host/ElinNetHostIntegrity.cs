@@ -16,7 +16,7 @@ internal partial class ElinNetHost
     {
         _handshakes[peer.Id] = new() {
             Phase = NetHandshakePhase.AwaitingVersion,
-            Timeout = Time.time + 5f,
+            Timeout = Time.time + EmpConfig.Policy.Timeout.Value,
         };
 
         EmpLog.Debug("Handshake started for {@Peer}, awaiting version report",

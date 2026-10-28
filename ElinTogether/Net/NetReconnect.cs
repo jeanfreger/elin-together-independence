@@ -154,6 +154,8 @@ internal static class NetReconnect
 
                 tried = Time.realtimeSinceStartup;
                 Attempt(rejoin, byLobby);
+                // Attempt can freeze for 20-34 s (plugin patching); count the wait from its end, not its start
+                tried = Time.realtimeSinceStartup;
             }
         } finally {
             Clear();

@@ -23,6 +23,21 @@ internal partial class ElinNetClient : ElinNetBase
     public ISteamNetPeer Host => Socket.FirstPeer;
     public bool IsJoiningLobby { get; private set; }
 
+    // realtime of the lobby join request while Steam has not answered with LobbyEnter (0: none pending). A slow PC
+    // gets that answer 15-40 s late, so this wait has its own, longer limit than the no-answer timer
+    private float _lobbyJoinRequestedAt;
+    private const float LobbyJoinLimit = 60f;
+
+    internal void MarkLobbyJoinRequested()
+    {
+        _lobbyJoinRequestedAt = UnityEngine.Time.realtimeSinceStartup;
+    }
+
+    internal void ClearLobbyJoinRequested()
+    {
+        _lobbyJoinRequestedAt = 0f;
+    }
+
     /// <summary>
     ///     Connected through the local udp port instead of a steam lobby, for debugging
     /// </summary>
@@ -72,7 +87,13 @@ internal partial class ElinNetClient : ElinNetBase
         }
 #endif
         var elapsed = DateTime.Now - _lastTimeout;
-        if (elapsed.TotalSeconds > EmpConfig.Policy.Timeout.Value) {
+        var limit = (double)EmpConfig.Policy.Timeout.Value;
+        if (_lobbyJoinRequestedAt > 0f) {
+            elapsed = TimeSpan.FromSeconds(UnityEngine.Time.realtimeSinceStartup - _lobbyJoinRequestedAt);
+            limit = LobbyJoinLimit;
+        }
+
+        if (elapsed.TotalSeconds > limit) {
             NetReconnect.Begin();
             // coming back by itself says so on its own
             if (!NetReconnect.Active) {

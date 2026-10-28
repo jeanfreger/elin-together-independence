@@ -496,6 +496,8 @@ internal partial class ElinNetClient
             lobby);
 
         _lastTimeout = DateTime.Now;
+        // the lobby is entered: the normal no-answer timer takes over
+        ClearLobbyJoinRequested();
         IsJoiningLobby = true;
     }
 }

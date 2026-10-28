@@ -172,6 +172,7 @@ public class SteamNetLobbyManager : EClass
             NetSession.Instance.InitializeComponent<ElinNetClient>();
         }
 
+        (NetSession.Instance.Transport as ElinNetClient)?.MarkLobbyJoinRequested();
         SteamMatchmaking.JoinLobby(lobby);
     }
 
@@ -387,6 +388,15 @@ public class SteamNetLobbyManager : EClass
         if (me.IsOwner) {
             me.IsReady = true;
         } else {
+            // a late answer after the client already gave up: nothing would ever join this game, do not stay in
+            // the lobby as a silent member
+            if (NetSession.Instance.Transport is not ElinNetClient) {
+                EmpLog.Warning("Lobby {LobbyId} entered after the join was abandoned: leaving it", Current);
+                NetSession.Instance.SessionId = 0;
+                LeaveLobby();
+                return;
+            }
+
             foreach (var member in Current.Members) {
                 Friends.Client.RequestUserInformation(member.user, true);
             }
@@ -508,7 +518,10 @@ public class SteamNetLobbyManager : EClass
         }
 
         if (data.lobby.KickListContains(UserData.Me)) {
+            // the host's friend/invited filter or a ban kicked us: say so instead of resetting silently
+            EmpLog.Information("Kicked out of lobby {LobbyId} by the host", data.lobby);
             NetSession.Instance.ResetSession();
+            EmpPop.Block("emp_lobby_not_allowed".lang());
         }
     }
 

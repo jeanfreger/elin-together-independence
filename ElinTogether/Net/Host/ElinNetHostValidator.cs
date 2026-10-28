@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
@@ -121,6 +122,8 @@ internal partial class ElinNetHost
 
         if (_handshakes.TryGetValue(peer.Id, out var asked)) {
             asked.MayContinue = true;
+            // the guest reads a dialog before answering: do not cut it at the short handshake timeout
+            asked.Timeout = Time.time + 300f;
         }
 
         peer.Send(new SourceValidationFailed {
