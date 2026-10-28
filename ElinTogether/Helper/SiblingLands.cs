@@ -153,14 +153,16 @@ internal static class SiblingLands
 
     /// <summary>
     ///     The map cell holds one zone and one icon: the first land set there keeps it, a sibling claimed or loaded after
-    ///     it does not take the tile's icon (Region.OnLoad and Zone.ClaimZone both set the cell of their zone)
+    ///     it (a higher uid) does not take the tile's icon (Region.OnLoad and Zone.ClaimZone both set the cell of their zone)
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(EloMap), nameof(EloMap.SetZone))]
     private static bool OnSetZone(EloMap __instance, int gx, int gy, Zone? z)
     {
+        // (the older land keeps it even when a game sets the younger one first: a guest in the plot is told of it
+        // before its world map loads Red's land, bench 2026-10-28 ICON check)
         return z is null || !On || __instance.GetCell(gx, gy) is not { zone: { } there } || there == z || there.destryoed ||
-               there.x != gx || there.y != gy;
+               there.x != gx || there.y != gy || z.uid < there.uid;
     }
 
     /// <summary>
