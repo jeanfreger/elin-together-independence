@@ -197,13 +197,19 @@ internal static class TeamBills
 
         // one share per team, paid to its members (their own accounts) instead of the world's mailbox: what a team's
         // lands earn is not the host's. The guilds' salary (what the lands do not explain) goes with the first team
-        // that has players, like the extra tax
+        // that has players, like the extra tax; with the teams' boxes on it is each owner's own (see GuildSalaries)
+        // or the world's (the left-over below)
         var shares = branches.GroupBy(b => Teams.TeamOfZone(b.owner)).OrderBy(g => g.Key)
             .Select(g => (Members: Teams.MembersOf(g.Key).ToArray(),
                 Share: g.Sum(b => b.GetResidentTax() + EClass.game.spatials.ranks.GetIncome(b.owner)))).ToList();
         var salary = Math.Max(0, num - shares.Sum(s => s.Share));
         var host = NetSession.Instance.Transport as ElinNetHost;
         var left = num;
+        if (TeamBoxes.On) {
+            left -= GuildSalaries(host, bankPays);
+            salary = 0;
+        }
+
         foreach (var (members, own) in shares) {
             var share = own;
             if (members.Length > 0) {
@@ -233,6 +239,43 @@ internal static class TeamBills
         } else if (left > 0) {
             EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(left)));
         }
+    }
+
+    // Guilds per owner: each owner is paid the salary of its own guild ranks (the game: rank * 100 in a guild it is a
+    // member of). The local owner's ranks are the live ones, the others' their stored story. Box off for the guilds:
+    // the salary stays in the sum, and what the lands do not explain goes to the world's bank or mailbox. Returns what
+    // the live game's own ranks already counted in the month's sum (so the world's left-over does not pay it twice)
+    private static int GuildSalaries(ElinNetHost? host, bool bankPays)
+    {
+        if (!TeamOwnStory.Guilds || host is null) {
+            return 0;
+        }
+
+        var paidLive = 0;
+        foreach (var owner in StoryOwner.All().ToArray()) {
+            var pay = (TeamOwnStory.Of(owner).Guilds ?? []).Values
+                .Where(g => g.Length == 3 && g[0] == (int)FactionRelation.RelationType.Member).Sum(g => g[1] * 100);
+            if (pay <= 0) {
+                continue;
+            }
+
+            if (owner == TeamOwnStory.LocalOwner) {
+                paidLive = pay;
+            }
+
+            var members = (owner > 0 ? Teams.MembersOf(owner) : [-owner]).ToArray();
+            if (bankPays) {
+                TeamBoxes.Box(owner, 0).ModCurrency(pay);
+            } else if (members.Length > 0) {
+                foreach (var uid in members) {
+                    host.PayPlayer(uid, pay / members.Length + (uid == members[0] ? pay % members.Length : 0));
+                }
+            }
+
+            EmpLog.Information("{Owner}: {Pay} guild salary", StoryOwner.Name(owner), pay);
+        }
+
+        return paidLive;
     }
 
     // as Faction.EvadeTax, with the evasion of one team's lands
