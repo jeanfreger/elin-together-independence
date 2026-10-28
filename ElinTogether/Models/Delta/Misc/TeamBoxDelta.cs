@@ -6,7 +6,7 @@ namespace ElinTogether.Models;
 
 /// <summary>
 ///     From the host to one player on its map (host option "Teams keep their own bank and delivery box",
-///     <see cref="TeamBoxes" />): copies of the two boxes of the player's owner, with the uids of the real ones, so that
+///     <see cref="TeamBoxes" />): copies of the player's personal bank, its owner's delivery box and its team's bank, with the uids of the real ones, so that
 ///     what the player puts in and takes out is told to the host as it is for any card. Sent when the player comes to
 ///     the map and when its owner changes. Empty: its owner has no boxes of its own any more (the box was unticked)
 /// </summary>
@@ -18,6 +18,10 @@ public class TeamBoxDelta : ElinDelta
 
     [Key(1)]
     public LZ4Bytes? Delivery { get; init; }
+
+    // the player's team's bank, beside its personal one (Bank); none for a player alone
+    [Key(2)]
+    public LZ4Bytes? TeamBank { get; init; }
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
@@ -31,6 +35,6 @@ public class TeamBoxDelta : ElinDelta
             return;
         }
 
-        TeamBoxes.Receive(Bank, Delivery);
+        TeamBoxes.Receive(Bank, Delivery, TeamBank);
     }
 }

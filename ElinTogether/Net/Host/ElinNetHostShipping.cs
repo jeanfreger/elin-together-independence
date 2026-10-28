@@ -133,7 +133,7 @@ internal partial class ElinNetHost
         // beside it (a take finds the stack in either)
         var boxes = new List<Thing>(2);
         if (ask.Box != 0 && BoxOwner(peer) is { } owner) {
-            boxes.Add(TeamBoxes.Box(owner, ask.Box == ShippingHelper.BoxBank ? 0 : 1));
+            boxes.AddRange(TeamBoxes.Mine(owner, ask.Box == ShippingHelper.BoxBank ? 0 : 1));
         }
 
         boxes.Add(container);
@@ -181,12 +181,12 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
-    ///     The owner whose boxes a player away uses (Teams keep their own bank and delivery box): read from the
+    ///     The player whose boxes a player away uses (Teams keep their own bank and delivery box): read from the
     ///     character the host keeps for it, never from what the player says. None: the world's
     /// </summary>
     private int? BoxOwner(ISteamNetPeer peer)
     {
-        return TeamBoxes.On && SavedRemoteCharas.TryGetValue(peer.User, out var uid) ? StoryOwner.Of(uid) : null;
+        return TeamBoxes.On && SavedRemoteCharas.TryGetValue(peer.User, out var uid) ? uid : null;
     }
 
     /// <summary>
@@ -323,7 +323,7 @@ internal partial class ElinNetHost
     ///     Put a thing (as bytes, from another world) in a box of this world
     /// </summary>
     /// <param name="depositor">name of the player depositing: gold in the bank is told to everyone</param>
-    /// <param name="owner">the owner whose box it goes to when each has its own (<see cref="TeamBoxes" />); none: the world's</param>
+    /// <param name="owner">the player whose own box it goes to (its personal bank, its owner's delivery box, see <see cref="TeamBoxes" />); none: the world's</param>
     private Thing PutInWorldBox(LZ4Bytes bytes, int box, int shipper, string? depositor = null, int? owner = null)
     {
         var thing = bytes.Decompress<Thing>();
@@ -341,10 +341,10 @@ internal partial class ElinNetHost
 
         switch (box) {
             case ShippingHelper.BoxDelivery:
-                (owner is { } deliverTo ? TeamBoxes.Box(deliverTo, 1) : game.cards.container_deliver).AddThing(thing);
+                (owner is { } deliverTo ? TeamBoxes.Own(deliverTo, 1) : game.cards.container_deliver).AddThing(thing);
                 break;
             case ShippingHelper.BoxBank:
-                (owner is { } bankTo ? TeamBoxes.Box(bankTo, 0) : game.cards.container_deposit).AddThing(thing);
+                (owner is { } bankTo ? TeamBoxes.Own(bankTo, 0) : game.cards.container_deposit).AddThing(thing);
                 break;
             default:
                 ShippingHelper.ShipperOverride = shipper;
