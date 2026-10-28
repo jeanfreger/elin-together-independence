@@ -76,6 +76,44 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         Window.SwitchContent(_lastOpenedTab);
 
         Window.transform.localPosition = _browsedPosition;
+        Decorate();
+    }
+
+    /// <summary>
+    ///     The character sheet's window art on this window: the ornament at the top right and the faint drawing in the
+    ///     bottom right corner, copied from its prefab (behind the pages, over the parchment)
+    /// </summary>
+    private void Decorate()
+    {
+        try {
+            var bg = Window.transform.Find("BG") ?? Window.transform;
+            if (EmpUiParts.CharaBackground("Image") is { } art) {
+                // (anchored to the bottom right corner in the sheet already)
+                var copy = Instantiate(art, bg, false);
+                copy.name = "EmpArt";
+                if (bg == Window.transform) {
+                    copy.SetAsFirstSibling();
+                }
+            }
+
+            if (EmpUiParts.CharaBackground("Image (3)") is { } ornament) {
+                // in the sheet it is placed from the left edge of its 920 wide window: here from the right edge
+                var width = ornament.parent is RectTransform parent && parent.rect.width > 1f ? parent.rect.width : 962f;
+                var copy = (RectTransform)Instantiate(ornament, bg, false);
+                copy.name = "EmpOrnament";
+                var x = ornament.anchoredPosition.x + ornament.anchorMin.x * width - width;
+                copy.anchorMin = copy.anchorMax = Vector2.one;
+                copy.anchoredPosition = new(x, ornament.anchoredPosition.y);
+            }
+        }
+        catch (System.Exception e) {
+            EmpLog.Debug(e, "The window art of the character sheet could not be copied");
+        }
+
+        // (the two putits keep their shape in the caption's square)
+        if (Window.iconCaption != null) {
+            Window.iconCaption.preserveAspect = true;
+        }
     }
 
     public override void OnKill()
