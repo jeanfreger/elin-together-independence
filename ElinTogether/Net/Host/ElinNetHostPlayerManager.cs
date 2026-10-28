@@ -624,11 +624,27 @@ internal partial class ElinNetHost
         }
 
         var task = System.Threading.Tasks.Task.Run(() => PackJoin(world, map));
+        // (set first: a join step that throws must not leave these players held for ever)
+        _joinJob = new(joins, own, world, map, watch.ElapsedMilliseconds, task);
 
         // held: these go right behind the copies
         TellJoined(joins);
+    }
 
-        _joinJob = new(joins, own, world, map, watch.ElapsedMilliseconds, task);
+    private static List<byte[]> JoinCopies(Chara chara, TeamLore? lore, StoryBundle? story,
+        (LZ4Bytes World, byte[]? Map, long Ms) packed, ISteamNetPeer peer)
+    {
+        List<byte[]> first = [
+            JoinSerializer.Serialize(NetSession.Instance.Rules),
+            JoinSerializer.Serialize(new SaveDataProbe { Game = packed.World, RemoteCharaUid = chara.uid, Lore = lore, Story = story }),
+        ];
+        if (packed.Map is { } map) {
+            first.Add(map);
+        } else {
+            EmpLog.Warning("No active map to send with the world to player {@Peer}", peer);
+        }
+
+        return first;
     }
 
     private void FinishJoinCopies()
@@ -652,14 +668,13 @@ internal partial class ElinNetHost
         for (var i = 0; i < job.Joins.Count; i++) {
             var (chara, peer, _) = job.Joins[i];
             var (lore, story) = job.Own[i];
-            List<byte[]> first = [
-                JoinSerializer.Serialize(NetSession.Instance.Rules),
-                JoinSerializer.Serialize(new SaveDataProbe { Game = packed.World, RemoteCharaUid = chara.uid, Lore = lore, Story = story }),
-            ];
-            if (packed.Map is { } map) {
-                first.Add(map);
-            } else {
-                EmpLog.Warning("No active map to send with the world to player {@Peer}", peer);
+            List<byte[]> first;
+            try {
+                first = JoinCopies(chara, lore, story, packed, peer);
+            } catch (Exception ex) {
+                // released all the same: what was held behind the copies is not kept for ever
+                EmpLog.Error(ex, "Join copies for player {@Peer} could not be made", peer);
+                first = [];
             }
 
             if (peer is SteamNetPeer steam) {

@@ -160,6 +160,9 @@ internal static class ZoneLeaseState
 
     private static void Commit(int zoneUid, string folder)
     {
+        // (a save still being written beside the game would write its older map over this one)
+        Helper.SaveWriter.Wait();
+
         // staged for another save (the host loaded another game since): not this one's
         if (!folder.StartsWith(GameIO.pathCurrentSave) || !Directory.Exists(folder)) {
             return;

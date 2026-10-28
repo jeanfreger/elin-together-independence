@@ -26,6 +26,10 @@ internal static class SaveWriter
 
     private static STask _pending = STask.CompletedTask;
 
+    // a file of the last save beside the game could not be written: the next save is made in the game's frame again,
+    // where a failure is told as the game tells it ("error_save")
+    private static volatile bool _failed;
+
     /// <summary>
     ///     Game.Save(true, true), its files written beside the game when the host setting allows it. Not for a Steam
     ///     Cloud save (the game copies it to the cloud folder right after) nor while the save depot holds the world
@@ -33,6 +37,12 @@ internal static class SaveWriter
     /// </summary>
     internal static bool Save(Game game)
     {
+        if (_failed) {
+            Wait();
+            _failed = false;
+            return game.Save(true, true);
+        }
+
         if (!EmpConfig.Server.FastJoinsAndSaves.Value || game.isCloud || SaveDepot.Holding || _deferred is not null) {
             return game.Save(true, true);
         }
@@ -57,7 +67,8 @@ internal static class SaveWriter
                     try {
                         write();
                     } catch (Exception ex) {
-                        EmpLog.Warning(ex, "Save: a file could not be written beside the game");
+                        _failed = true;
+                        EmpLog.Error(ex, "Save: a file could not be written beside the game");
                     }
                 }
 
@@ -136,6 +147,25 @@ internal static class SaveWriter
     {
         if (_deferred is { } writes) {
             writes.Add(() => WriteText(path, text));
+            return false;
+        }
+
+        Wait();
+        return true;
+    }
+
+    // the map deletes the files of its other cell widths right after writing the new one (Map.WriteCellIds): put off
+    // behind that write, or a game stopped meanwhile has neither
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(IO), nameof(IO.DeleteFile), typeof(string))]
+    private static bool OnDeleteFile(string path)
+    {
+        if (_deferred is { } writes) {
+            writes.Add(() => {
+                if (File.Exists(path)) {
+                    File.Delete(path);
+                }
+            });
             return false;
         }
 
