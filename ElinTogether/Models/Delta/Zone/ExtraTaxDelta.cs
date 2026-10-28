@@ -22,6 +22,19 @@ public class ExtraTaxDelta : ElinDelta
         }
     }
 
+    /// <summary>
+    ///     Within the game's range (security audit 2026-10-27, item 10: any number came, the world's bill has it)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return Value is < 0 or > DialogFlagDelta.MaxExtraTax ? $"an extra tax of {Value}" : null;
+    }
+
+    internal override void OnHostRefused(ElinNetHost host)
+    {
+        host.SendDeltaTo(OriginPeer, new ExtraTaxDelta { Value = player.extraTax });
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host) {

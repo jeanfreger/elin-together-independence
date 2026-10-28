@@ -256,6 +256,9 @@ internal partial class ElinNetHost
     /// </summary>
     internal static void AdminLog(string line)
     {
+        // one line: a reason or a name with line breaks wrote lines of its own, an order that never was (security
+        // audit 2026-10-27, item 13)
+        line = new string(line.Select(c => char.IsControl(c) ? ' ' : c).ToArray());
         try {
             var folder = Path.Combine(Application.persistentDataPath, "ElinMP", "Logs");
             Directory.CreateDirectory(folder);
@@ -306,7 +309,18 @@ internal partial class ElinNetHost
         }
 
         var reason = words.Length > 2 ? words[2] : null;
-        var peer = Socket.Peers.FirstOrDefault(p => ((ulong)p.User).ToString() == words[1] || p.User.Name == words[1]);
+        // the Steam id first, a name only when no id matches and one player alone has it (security audit 2026-10-27,
+        // item 13: a player named as another's id, or as another player, took the order in its place)
+        var peer = Socket.Peers.FirstOrDefault(p => ((ulong)p.User).ToString() == words[1]);
+        if (peer is null && !ulong.TryParse(words[1], out _)) {
+            var named = Socket.Peers.Where(p => p.User.Name == words[1]).ToList();
+            if (named.Count > 1) {
+                return $"error: {named.Count} players are named {words[1]}, give the Steam id";
+            }
+
+            peer = named.FirstOrDefault();
+        }
+
         ulong user = peer is not null ? peer.User : ulong.TryParse(words[1], out var id) ? id : 0UL;
         if (user == 0UL) {
             return "error: no player " + words[1];

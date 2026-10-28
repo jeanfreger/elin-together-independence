@@ -18,6 +18,14 @@ public class PingPointDelta : ElinDelta
     [Key(2)]
     public required int Type { get; init; }
 
+    /// <summary>
+    ///     A ping in the sender's own colour and name (security audit 2026-10-27, item 9: any player's)
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return host.States.TryGetValue(OriginPeer, out var state) && state.Index == SenderIndex ? null : $"a ping as player {SenderIndex}";
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (NetSession.Instance.Self is null) {

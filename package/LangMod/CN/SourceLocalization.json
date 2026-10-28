@@ -619,5 +619,6 @@
     "LangGeneral.emp_ui_sv_opt_living_world_20.text": "一天 = 20 分钟",
     "LangGeneral.emp_ui_sv_opt_living_world_40.text": "一天 = 40 分钟",
     "LangGeneral.emp_ui_sv_opt_living_world_60.text": "一天 = 1 小时",
-    "LangGeneral.emp_ui_sv_opt_living_world_120.text": "一天 = 2 小时"
+    "LangGeneral.emp_ui_sv_opt_living_world_120.text": "一天 = 2 小时",
+    "LangGeneral.emp_travel_stranger_map.text": "另一名玩家正在这张地图上游戏。在公开服务器上，只有同队的队友才能共享地图。"
 }

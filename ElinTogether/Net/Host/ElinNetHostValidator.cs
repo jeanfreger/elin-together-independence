@@ -23,6 +23,18 @@ internal partial class ElinNetHost
             return;
         }
 
+        // only after its own report, of differences one may play with: sent at once, it skipped every check, the
+        // acts' too (security audit 2026-10-27, item 14)
+        if (!_handshakes.TryGetValue(peer.Id, out var state) || !state.MayContinue) {
+            if (ElinDelta.TrustEnforced) {
+                EmpLog.Warning("Refused {@Peer}: it went on without reporting its game's data", peer);
+                RejectHandshake(peer, NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch);
+                return;
+            }
+
+            EmpLog.Warning("Would have refused {@Peer}: it went on without reporting its game's data", peer);
+        }
+
         EmpLog.Information("Client {@Peer} chose to continue with mismatches.",
             peer);
 
@@ -105,6 +117,10 @@ internal partial class ElinNetHost
                 .Select(m => m.Entry);
             RejectHandshake(peer, NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch, entries);
             return;
+        }
+
+        if (_handshakes.TryGetValue(peer.Id, out var asked)) {
+            asked.MayContinue = true;
         }
 
         peer.Send(new SourceValidationFailed {

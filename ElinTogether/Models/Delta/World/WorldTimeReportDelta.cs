@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -21,6 +22,30 @@ public class WorldTimeReportDelta : ElinDelta
     /// </summary>
     [Key(1)]
     public bool Travel { get; init; }
+
+    /// <summary>
+    ///     Only a game that simulates a map of its own has a clock of its own, and a trip is made on the world map
+    ///     (security audit 2026-10-27, item 10: any player made days pass at the express travel's rate). On its own
+    ///     map, hours pass at the rate of a rest, see WorldTravelClock.StayFits
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        if (!NetSession.Instance.Rules.UseSharedWorldTime || PlayerIdle.IsIdle(OriginPeer)) {
+            return null;
+        }
+
+        var held = host.LeasedZones(OriginPeer).ToList();
+        if (!host.IsAwayPeer(OriginPeer) || held.Count == 0) {
+            return "the time of a player who simulates no map of its own";
+        }
+
+        if (Travel) {
+            return held.Any(zone => zone is { IsRegion: true }) ? null : "travel time from a player off the world map";
+        }
+
+        var ahead = WorldDateAdvanceEvent.Minutes([..GameDate]) - WorldDateAdvanceEvent.AfterPending(0);
+        return WorldTravelClock.StayFits(OriginPeer, ahead) ? null : $"{ahead} minute(s) passed at once on its own map";
+    }
 
     protected override void OnApply(ElinNetBase net)
     {
