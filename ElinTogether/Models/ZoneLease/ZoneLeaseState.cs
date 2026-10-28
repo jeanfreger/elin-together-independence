@@ -128,8 +128,17 @@ internal static class ZoneLeaseState
     /// </summary>
     internal static void CommitStaged(int zoneUid)
     {
-        if (_staged.Remove(zoneUid, out var folder)) {
+        if (!_staged.TryGetValue(zoneUid, out var folder)) {
+            return;
+        }
+
+        // forgotten only once it is in: a failing swap leaves a half-written map, and the staged one is the whole
+        // map to try again with. Never throws: the callers are the game's own Zone.Activate and a map being sent
+        try {
             Commit(zoneUid, folder);
+            _staged.Remove(zoneUid);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "The map of zone {ZoneUid} a player handed back could not be put in the save, kept for the next try", zoneUid);
         }
     }
 
@@ -139,16 +148,12 @@ internal static class ZoneLeaseState
     /// </summary>
     internal static void CommitAllStaged()
     {
-        foreach (var (zoneUid, folder) in _staged.ToList()) {
-            try {
-                Commit(zoneUid, folder);
-            } catch (Exception ex) {
-                EmpLog.Warning(ex, "The map of zone {ZoneUid} a player handed back could not be put in the save", zoneUid);
-            }
+        foreach (var zoneUid in _staged.Keys.ToList()) {
+            CommitStaged(zoneUid);
         }
 
-        _staged.Clear();
-        if (Directory.Exists(StageRoot)) {
+        // a map that failed keeps its folder and its entry for the next save
+        if (_staged.Count == 0 && Directory.Exists(StageRoot)) {
             Directory.Delete(StageRoot, true);
         }
     }
