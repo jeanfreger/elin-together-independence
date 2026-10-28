@@ -495,14 +495,18 @@ internal partial class ElinNetHost
         RegisterPlayer(chara, peer);
         _joinQueue.Add((chara, peer, after));
 
-        if (Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
+        if (_joinJob is null && Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
             SendJoinCopies();
         }
     }
 
     private void UpdateJoinCopies()
     {
-        if (_joinQueue.Count > 0 && Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
+        if (_joinJob is { Task.IsCompleted: true }) {
+            FinishJoinCopies();
+        }
+
+        if (_joinJob is null && _joinQueue.Count > 0 && Time.realtimeSinceStartup - _lastJoinCopy >= JoinBatchSeconds) {
             SendJoinCopies();
         }
     }
@@ -520,6 +524,9 @@ internal partial class ElinNetHost
             return;
         }
 
+        // the bench reads this line: what the join cost everyone on the server (stage 2 of PLAN_100_players)
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
         // what is already done is in the copies below: told to everyone before them, these players would
         // otherwise replay it on top of a world that has it
         Delta.RefreshBuffer();
@@ -529,6 +536,11 @@ internal partial class ElinNetHost
         // nothing happens between the two copies, and what happens after both is kept there until the map is
         // loaded (ElinDeltaManager.HoldForIncomingMap). The characters of the players are in the world only:
         // what they picked up or put on between the two copies never reached this player
+        if (EmpConfig.Server.FastJoinsAndSaves.Value) {
+            StartJoinCopies(joins, watch);
+            return;
+        }
+
         var world = SaveDataProbe.PackWorld();
         var map = _zone is { } zone ? ZoneDataResponse.Create(zone) : null;
         EmpLog.Information("World and map {ZoneFullName} sent together to {Count} player(s)",
@@ -545,6 +557,18 @@ internal partial class ElinNetHost
             }
         }
 
+        TellJoined(joins);
+
+        EmpLog.Information("Join prepared in {Main} ms main thread, {Worker} ms worker ({Count} player(s))",
+            watch.ElapsedMilliseconds, 0, joins.Count);
+
+        // counted from the end of the copies: joins held back by their freeze share the next one
+        _lastJoinCopy = Time.realtimeSinceStartup;
+    }
+
+    // what goes to the players who joined right behind their copies
+    private void TellJoined(List<(Chara Chara, ISteamNetPeer Peer, Action? After)> joins)
+    {
         if (_zone is { } here) {
             Session.Lobby.Current[EmpLobbyData.CurrentZone] = here.NameWithLevel;
         }
@@ -560,8 +584,100 @@ internal partial class ElinNetHost
         foreach (var join in joins) {
             join.After?.Invoke();
         }
+    }
 
-        // counted from the end of the copies: joins held back by their freeze share the next one
+    // FastJoinsAndSaves (stage 2 of PLAN_100_players): on a real-size world most of a join's freeze was the
+    // compression of the copies (and a MessagePack copy of the map per player). The game is still read in its own
+    // frame, as text and bytes; their compression runs beside it, and what is sent to these players meanwhile
+    // is held behind their copies (SteamNetPeer.Hold), so they get everything in the order they did in one frame
+    private static readonly SteamNetSerializer JoinSerializer = new();
+
+    private sealed record JoinJob(
+        List<(Chara Chara, ISteamNetPeer Peer, Action? After)> Joins,
+        List<(TeamLore? Lore, StoryBundle? Story)> Own,
+        string World,
+        ZoneDataResponse.Captured? Map,
+        long MainMs,
+        System.Threading.Tasks.Task<(LZ4Bytes World, byte[]? Map, long Ms)> Task);
+
+    private JoinJob? _joinJob;
+
+    private static (LZ4Bytes World, byte[]? Map, long Ms) PackJoin(string world, ZoneDataResponse.Captured? map)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var game = LZ4Bytes.CreateFromBytes(System.Text.Encoding.UTF8.GetBytes(world));
+        // one MessagePack copy of the map for all who joined together, not one per player
+        var bytes = map is null ? null : JoinSerializer.Serialize(map.Pack());
+        return (game, bytes, watch.ElapsedMilliseconds);
+    }
+
+    private void StartJoinCopies(List<(Chara Chara, ISteamNetPeer Peer, Action? After)> joins, System.Diagnostics.Stopwatch watch)
+    {
+        // read in this frame, as SendJoinCopies does: the game is only touched here
+        var world = LZ4Bytes.ToJson(EClass.game);
+        var map = _zone is { } zone ? ZoneDataResponse.Capture(zone) : null;
+        var own = joins.Select(j => IsZoneSession ? ((TeamLore?)null, (StoryBundle?)null) : (TeamKnowledge.For(j.Chara), TeamOwnStory.For(j.Chara)))
+            .ToList();
+
+        foreach (var (_, peer, _) in joins) {
+            (peer as SteamNetPeer)?.Hold();
+        }
+
+        var task = System.Threading.Tasks.Task.Run(() => PackJoin(world, map));
+
+        // held: these go right behind the copies
+        TellJoined(joins);
+
+        _joinJob = new(joins, own, world, map, watch.ElapsedMilliseconds, task);
+    }
+
+    private void FinishJoinCopies()
+    {
+        if (_joinJob is not { } job) {
+            return;
+        }
+
+        _joinJob = null;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        (LZ4Bytes World, byte[]? Map, long Ms) packed;
+        try {
+            packed = job.Task.Result;
+        } catch (Exception ex) {
+            // the same copies, packed here: the held messages are about this very world
+            EmpLog.Warning(ex, "Join copies could not be packed beside the game, packed in it");
+            packed = PackJoin(job.World, job.Map);
+        }
+
+        for (var i = 0; i < job.Joins.Count; i++) {
+            var (chara, peer, _) = job.Joins[i];
+            var (lore, story) = job.Own[i];
+            List<byte[]> first = [
+                JoinSerializer.Serialize(NetSession.Instance.Rules),
+                JoinSerializer.Serialize(new SaveDataProbe { Game = packed.World, RemoteCharaUid = chara.uid, Lore = lore, Story = story }),
+            ];
+            if (packed.Map is { } map) {
+                first.Add(map);
+            } else {
+                EmpLog.Warning("No active map to send with the world to player {@Peer}", peer);
+            }
+
+            if (peer is SteamNetPeer steam) {
+                steam.Release(first);
+            } else {
+                foreach (var bytes in first) {
+                    peer.Send(bytes);
+                }
+            }
+        }
+
+        // (the same line as SendJoinCopies: the bench waits for it)
+        EmpLog.Information("World and map {ZoneFullName} sent together to {Count} player(s), packed beside the game",
+            job.Map?.ZoneFullName, job.Joins.Count);
+        EmpLog.Information("Join prepared in {Main} ms main thread, {Worker} ms worker ({Count} player(s))",
+            job.MainMs + watch.ElapsedMilliseconds, packed.Ms, job.Joins.Count);
+
+        // counted from the end of the copies, as SendJoinCopies does
         _lastJoinCopy = Time.realtimeSinceStartup;
     }
 

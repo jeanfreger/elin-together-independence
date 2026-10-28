@@ -87,6 +87,8 @@ internal partial class ElinNetHost
 
         STask.Run(() => {
             try {
+                // (FastJoinsAndSaves: the files of this save may still be on their way to the disk)
+                Helper.SaveWriter.Wait();
                 var watch = Stopwatch.StartNew();
                 if (WorldSnapshot.Read(dir, manifest, last) is not { } snapshot) {
                     EmpLog.Information("World copy: the save changed while it was read, the next one is taken");

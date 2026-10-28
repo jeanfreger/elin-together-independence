@@ -112,6 +112,18 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
         }
 
         var size = bytes.Length;
+
+        lock (ArenaLock) {
+            if (_held is { } held) {
+                // unreliable: late is as good as lost, and of no use before the world it is about
+                if ((sendFlags & SteamNetSendFlag.Reliable) != 0) {
+                    held.Add((bytes, sendFlags));
+                }
+
+                return true;
+            }
+        }
+
         NetMetrics.Sent(Id, bytes);
 
         lock (ArenaLock) {
@@ -161,6 +173,41 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
         Flush();
 
         return true;
+    }
+
+    // what was sent to this peer while its copy of the world was still being packed beside the game (host setting
+    // FastJoinsAndSaves): it goes behind the copy, in order, as it did when the copy was sent in the same frame
+    private List<(byte[] bytes, SteamNetSendFlag flags)>? _held;
+
+    internal bool IsHeld => _held is not null;
+
+    /// <summary>
+    ///     What is sent to this peer from now on waits for <see cref="Release" />
+    /// </summary>
+    internal void Hold()
+    {
+        lock (ArenaLock) {
+            _held ??= [];
+        }
+    }
+
+    /// <summary>
+    ///     Sends <paramref name="first" />, then what was held since <see cref="Hold" />, and lets the rest through again
+    /// </summary>
+    internal void Release(IEnumerable<byte[]> first)
+    {
+        // (ArenaLock is reentrant: Send takes it again; nothing gets in between)
+        lock (ArenaLock) {
+            var held = _held ?? [];
+            _held = null;
+            foreach (var bytes in first) {
+                Send(bytes);
+            }
+
+            foreach (var (bytes, flags) in held) {
+                Send(bytes, flags);
+            }
+        }
     }
 
     private readonly Queue<(byte[] bytes, SteamNetSendFlag flags)> _backlog = new();

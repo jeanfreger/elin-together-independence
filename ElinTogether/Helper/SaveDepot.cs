@@ -159,7 +159,7 @@ internal static class SaveDepot
     /// </summary>
     internal static bool Taken { get; private set; }
 
-    private static bool Holding => Enabled && EClass.core.IsGameStarted && Game.id == WorldId &&
+    internal static bool Holding => Enabled && EClass.core.IsGameStarted && Game.id == WorldId &&
                                    NetSession.Instance.Transport is not ElinNetClient;
 
     /// <summary>

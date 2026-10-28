@@ -275,7 +275,7 @@ internal static class EmpAutoHost
         }
 
         var watch = Stopwatch.StartNew();
-        var saved = game.Save(true, true);
+        var saved = SaveWriter.Save(game);
         watch.Stop();
         if (saved) {
             EmpLog.Information("Autosave: saved in {Ms} ms", watch.ElapsedMilliseconds);

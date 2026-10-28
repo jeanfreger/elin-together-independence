@@ -925,6 +925,13 @@ internal partial class EmpConfig
             "A dedicated server (-empserver) with nobody connected runs at 5 frames a second and with its sound stopped, the full rate again as soon as a player connects. Otherwise it runs at the game's own frame rate all the time\n" +
             "无人连接时，专用服务器（-empserver）以每秒 5 帧运行并停止声音，有玩家连接时立即恢复正常帧率；关闭时始终以游戏自身的帧率运行");
 
+        Server.FastJoinsAndSaves = config.Bind(
+            "Server",
+            "FastJoinsAndSaves",
+            false,
+            "For big worlds: a player joining and the periodic save freeze the game less. The world and the map are still copied in the game; their compression and sending, and the writing of the save files, are done beside it\n" +
+            "适用于大型世界：玩家加入和定期保存时游戏卡顿更少。世界和地图仍在游戏中复制，其压缩、发送以及存档文件的写入在旁边完成");
+
         Server.ServerAvatar = config.Bind(
             "Server",
             "ServerAvatar",
@@ -1104,6 +1111,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> ActivitiesFromActor { get; set; } = null!;
         internal static ConfigEntry<int> TravelCheckpointSeconds { get; set; } = null!;
         internal static ConfigEntry<bool> ServerRestsWhenEmpty { get; set; } = null!;
+        internal static ConfigEntry<bool> FastJoinsAndSaves { get; set; } = null!;
         internal static ConfigEntry<bool> ServerAvatar { get; set; } = null!;
         internal static ConfigEntry<bool> HiddenServer { get; set; } = null!;
     }
