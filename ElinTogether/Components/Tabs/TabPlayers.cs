@@ -98,17 +98,10 @@ internal class TabPlayers : TabEmpBase
         body.TextSmall("emp_ui_saved_chars_desc".lang(), FontColor.Gray);
         foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
             var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
-            var row = body.Horizontal();
-            row.Layout.childForceExpandWidth = false;
-            row.Layout.childAlignment = TextAnchor.MiddleLeft;
-            row.Layout.spacing = 10f;
-            var col = row.Vertical();
-            col.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-            col.Layout.spacing = 0f;
-            col.LayoutElement().flexibleWidth = 1f;
-            col.Text("emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV) + (chara.isDead ? " †" : ""));
+            var row = body.Row();
+            row.TextColumn("emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV) + (chara.isDead ? " †" : ""),
+                playing ? "emp_ui_saved_chars_playing".lang() : null);
             if (playing) {
-                col.TextSmall("emp_ui_saved_chars_playing".lang(), FontColor.Gray);
                 continue;
             }
 
@@ -133,10 +126,7 @@ internal class TabPlayers : TabEmpBase
 
         Fold("banned", "emp_ui_banned_title".lang(), out var body);
         foreach (var (user, why) in ElinNetHost.Bans.ToList()) {
-            var row = body.Horizontal();
-            row.Layout.childForceExpandWidth = false;
-            row.Layout.childAlignment = TextAnchor.MiddleLeft;
-            row.Layout.spacing = 10f;
+            var row = body.Row();
             row.Text(why.Length > 0 ? $"{user}  ({why})" : user.ToString()).LayoutElement().flexibleWidth = 1f;
             row.RowButton("emp_ui_unban".lang(), () => {
                 ElinNetHost.Unban(user);

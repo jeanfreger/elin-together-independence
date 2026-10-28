@@ -124,6 +124,46 @@ internal static class EmpUi
     }
 
     /// <summary>
+    ///     A row of a card: the one height, spacing and alignment every page uses, so the controls line up
+    /// </summary>
+    public static YKHorizontal Row(this YKLayout parent)
+    {
+        var row = Line(parent);
+        row.LayoutElement().minHeight = UIHelper.RowHeight;
+        return row;
+    }
+
+    /// <summary>
+    ///     The left part of a row: a title and, under it, a grey line; it takes the width the controls leave
+    /// </summary>
+    public static YKVertical TextColumn(this YKHorizontal row, string title, string? description = null)
+    {
+        var col = row.Vertical();
+        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        col.Layout.spacing = 0f;
+        col.LayoutElement().flexibleWidth = 1f;
+        col.Text(title).SetSize(UIHelper.LabelSize);
+        if (!string.IsNullOrEmpty(description)) {
+            GreyLine(col, description!);
+        }
+        return col;
+    }
+
+    /// <summary>
+    ///     A setting that is a button rather than a box: title, grey line, the button on the right
+    /// </summary>
+    public static void ButtonSetting(this YKLayout parent, string title, string? description, string buttonText,
+        Action act, string? tooltip = null)
+    {
+        var row = parent.Row();
+        row.TextColumn(title, description);
+        var button = row.Button(buttonText, act).FixedWidth();
+        if (tooltip != null) {
+            button.SetTooltipLang(tooltip);
+        }
+    }
+
+    /// <summary>
     ///     A thin line between rows of a card, in the card's own ink
     /// </summary>
     public static void Divider(this YKLayout parent)

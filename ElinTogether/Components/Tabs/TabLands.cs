@@ -27,7 +27,8 @@ internal class TabLands : TabEmpBase
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
         if (mine == Teams.Wanderers) {
-            this.Card("emp_ui_tab_lands".lang()).EmptyText("emp_ui_land_noteam".lang());
+            this.Card("emp_ui_tab_lands".lang()).EmptyState("emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
+                () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
             BuildBoxes(mine);
             return;
         }
@@ -118,16 +119,8 @@ internal class TabLands : TabEmpBase
 
     private static void BoxRow(YKLayout card, Thing box, string title, string detail)
     {
-        var row = card.Horizontal();
-        row.Layout.childForceExpandWidth = false;
-        row.Layout.childAlignment = TextAnchor.MiddleLeft;
-        row.Layout.spacing = 12f;
+        var row = card.Row();
         row.CardIcon(box);
-        var col = row.Vertical();
-        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        col.Layout.spacing = 0f;
-        col.LayoutElement().flexibleWidth = 1f;
-        col.Text(title).SetSize(UIHelper.LabelSize);
-        col.TextSmall(detail, FontColor.Gray);
+        row.TextColumn(title, detail);
     }
 }

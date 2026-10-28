@@ -31,7 +31,8 @@ internal class TabTeam : TabEmpBase
     {
         var card = page.Card(titleId.lang());
         if (!NetSession.Instance.HasActiveConnection) {
-            card.EmptyText("emp_ui_team_unplugged".lang());
+            card.EmptyState("emp_ui_team_unplugged".lang(), "emp_ui_players_go_play".lang(),
+                () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
         } else if (NetSession.Instance.Transport is ElinNetHost) {
             card.EmptyState("emp_ui_team_off".lang(), "emp_ui_team_turn_on".lang(), () => {
                 LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server");
@@ -69,11 +70,7 @@ internal class TabTeam : TabEmpBase
     /// </summary>
     private static void AnswerRow(YKLayout card, string text, System.Action accept, System.Action refuse)
     {
-        var row = card.Horizontal();
-        row.Layout.childForceExpandWidth = false;
-        row.Layout.childAlignment = TextAnchor.MiddleLeft;
-        row.Layout.spacing = 10f;
-        row.LayoutElement().minHeight = UIHelper.RowHeight;
+        var row = card.Row();
         row.Text(text).LayoutElement().flexibleWidth = 1f;
         foreach (var (label, act) in new[] { ("emp_ui_team_invite_accept".lang(), accept), ("emp_ui_team_invite_refuse".lang(), refuse) }) {
             var element = row.Button(label, act).LayoutElement();
@@ -118,10 +115,7 @@ internal class TabTeam : TabEmpBase
 
         // the header: the team's name, who leads it and whether anyone may join
         var card = this.Card(Teams.NameOf(mine), EmpUi.Icon("icon_factions"));
-        var head = card.Horizontal();
-        head.Layout.childForceExpandWidth = false;
-        head.Layout.childAlignment = TextAnchor.MiddleLeft;
-        head.Layout.spacing = 10f;
+        var head = card.Row();
         head.TextSmall("emp_ui_team_leader_line".Loc(Teams.PlayerName(leader), members.Count), FontColor.Gray).LayoutElement().flexibleWidth = 1f;
         head.Chip((Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
 
@@ -143,9 +137,7 @@ internal class TabTeam : TabEmpBase
         }
 
         card.Divider();
-        var footer = card.Horizontal();
-        footer.Layout.childForceExpandWidth = false;
-        footer.Layout.spacing = 10f;
+        var footer = card.Row();
         if (TeamBoxes.TeamBankGold() is { } bank) {
             footer.Text("emp_ui_team_bank".Loc(bank)).LayoutElement().flexibleWidth = 1f;
         } else {
@@ -257,17 +249,9 @@ internal class TabTeam : TabEmpBase
 
         var card = this.Card("emp_ui_team_others".lang());
         foreach (var team in others) {
-            var row = card.Horizontal();
-            row.Layout.childForceExpandWidth = false;
-            row.Layout.childAlignment = TextAnchor.MiddleLeft;
-            row.Layout.spacing = 10f;
-            row.LayoutElement().minHeight = UIHelper.RowHeight;
-            var col = row.Vertical();
-            col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            col.Layout.spacing = 0f;
-            col.LayoutElement().flexibleWidth = 1f;
-            col.Text(Teams.NameOf(team)).SetSize(UIHelper.LabelSize);
-            col.TextSmall("emp_ui_team_leader_line".Loc(Teams.PlayerName(Teams.LeaderOf(team)), Teams.MembersOfTeam(team).Count()), FontColor.Gray);
+            var row = card.Row();
+            row.TextColumn(Teams.NameOf(team),
+                "emp_ui_team_leader_line".Loc(Teams.PlayerName(Teams.LeaderOf(team)), Teams.MembersOfTeam(team).Count()));
             row.Chip((Teams.IsOpen(team) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
             var join = row.Button("emp_team_join".Loc(Teams.NameOf(team)), () => Teams.Ask(TeamAsk.Join, team)).LayoutElement();
             join.preferredWidth = 200f;

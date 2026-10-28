@@ -25,33 +25,6 @@ internal class TabClientConfiguration : TabEmpBase
         BuildIgnored();
     }
 
-    /// <summary>
-    ///     A setting that is a button rather than a box: title, grey line, the button on the right
-    /// </summary>
-    private static void ButtonSetting(YKVertical card, string title, string? description, string buttonText, Action act,
-        string? tooltip = null)
-    {
-        var row = card.Horizontal();
-        row.Layout.childForceExpandWidth = false;
-        row.Layout.childAlignment = TextAnchor.MiddleLeft;
-        row.Layout.spacing = 10f;
-        row.LayoutElement().minHeight = UIHelper.RowHeight;
-
-        var col = row.Vertical();
-        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        col.Layout.spacing = 0f;
-        col.LayoutElement().flexibleWidth = 1f;
-        col.Text(title).SetSize(UIHelper.LabelSize);
-        if (!string.IsNullOrEmpty(description)) {
-            col.TextSmall(description!, FontColor.Gray);
-        }
-
-        var button = row.Button(buttonText, act).FixedWidth();
-        if (tooltip != null) {
-            button.SetTooltipLang(tooltip);
-        }
-    }
-
     private void BuildControls()
     {
         var card = this.Card("emp_ui_cl_sec_controls".lang(), EmpUi.Icon("icon_m_system"));
@@ -60,7 +33,7 @@ internal class TabClientConfiguration : TabEmpBase
             key = KeyCode.P,
             required = true,
         };
-        ButtonSetting(card, "emp_ui_ping_action".lang(), "emp_ui_cl_desc_ping".lang(),
+        card.ButtonSetting("emp_ui_ping_action".lang(), "emp_ui_cl_desc_ping".lang(),
             EmpConfig.Client.PingKeybind.Value.ToString(), () => {
                 var l = global::Layer.Create<Dialog>("DialogKeymap");
                 l.textDetail.SetText("dialog_keymap".lang("emp_ui_ping_action".lang()));
@@ -99,7 +72,7 @@ internal class TabClientConfiguration : TabEmpBase
         card.TextSmall("emp_ui_cl_desc_depot".lang(), FontColor.Gray);
 
         var depot = EmpConfig.Client.DepotPath;
-        ButtonSetting(card, "emp_ui_depot_folder".lang(), depot.Value.Length > 0 ? depot.Value : "-",
+        card.ButtonSetting("emp_ui_depot_folder".lang(), depot.Value.Length > 0 ? depot.Value : "-",
             "emp_hub_change".lang(), () => {
                 Dialog.InputName("emp_ui_depot_folder_ask", depot.Value, (cancel, text) => {
                     if (!cancel) {
@@ -111,7 +84,7 @@ internal class TabClientConfiguration : TabEmpBase
 
         card.Divider();
         var password = EmpConfig.Client.DepotPassword;
-        ButtonSetting(card, "emp_ui_depot_password".lang(), password.Value.Length > 0 ? "***" : "-",
+        card.ButtonSetting("emp_ui_depot_password".lang(), password.Value.Length > 0 ? "***" : "-",
             "emp_hub_change".lang(), () => {
                 // a password or an access key is never shown again: the box opens empty. Left empty, a GitHub key is
                 // kept (a depot of Elin Together Server may have no password: there, empty removes it)
@@ -137,7 +110,7 @@ internal class TabClientConfiguration : TabEmpBase
         foreach (var player in online) {
             var user = (ulong)player.User;
             var name = player.User.Name;
-            ButtonSetting(card, name, "emp_hub_online".Loc(player.FindChara()?.Name ?? "?"), "emp_ui_unfriend".lang(), () => {
+            card.ButtonSetting(name, "emp_hub_online".Loc(player.FindChara()?.Name ?? "?"), "emp_ui_unfriend".lang(), () => {
                 PlayerSocial.SetFriend(user, name, false);
                 LayerElinTogether.Instance?.Reopen();
             });
@@ -145,7 +118,7 @@ internal class TabClientConfiguration : TabEmpBase
 
         // the others are known by the name they had when they were added
         foreach (var (user, name) in PlayerSocial.FriendList.Where(f => online.All(p => (ulong)p.User != f.Key)).ToList()) {
-            ButtonSetting(card, name.IsEmpty(user.ToString()), "emp_hub_offline".lang(), "emp_ui_unfriend".lang(), () => {
+            card.ButtonSetting(name.IsEmpty(user.ToString()), "emp_hub_offline".lang(), "emp_ui_unfriend".lang(), () => {
                 PlayerSocial.SetFriend(user, name, false);
                 LayerElinTogether.Instance?.Reopen();
             });
@@ -161,7 +134,7 @@ internal class TabClientConfiguration : TabEmpBase
         var card = this.Card("emp_info_ignored".lang(), EmpUi.Icon("icon_visible"));
         card.TextSmall("emp_info_ignored_note".lang(), FontColor.Gray);
         foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
-            ButtonSetting(card, name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {
+            card.ButtonSetting(name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {
                 PlayerSocial.SetIgnored(user, name, false);
                 LayerElinTogether.Instance?.Reopen();
             });

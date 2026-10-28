@@ -48,10 +48,7 @@ internal class TabPlay : TabEmpBase
         var title = isHost || string.IsNullOrEmpty(host) ? "emp_ui_play_connected".lang() : "emp_ui_play_world".Loc(host!);
         var card = this.Card(title, EmpUi.Icon("icon_LayerTravel"));
 
-        var status = card.Horizontal();
-        status.Layout.childForceExpandWidth = false;
-        status.Layout.childAlignment = TextAnchor.MiddleLeft;
-        status.Layout.spacing = 8f;
+        var status = card.Row();
         StatusDot(status, net.IsAway ? new(0.85f, 0.62f, 0.2f) : new(0.45f, 0.68f, 0.32f));
         status.Text((net.IsAway ? "emp_ui_play_reconnecting" : "emp_ui_play_connected").lang());
 
@@ -251,6 +248,10 @@ internal class TabPlay : TabEmpBase
                 .OrderByDescending(l => l.Official).ToArray();
             var total = sorted.Sum(l => l.Lobby.MemberCount);
             status.text = sorted.Length == 0 ? "emp_ui_play_none".lang() : "emp_ui_lobby_tally".Loc(total);
+            if (sorted.Length == 0) {
+                // (a next step, as on every empty page)
+                list.ButtonRow().RowButton("emp_ui_play_refresh".lang(), () => LayerElinTogether.Instance?.Reopen());
+            }
 
             // on the title screen the official server always has its place, even closed: a quiet line, never a dialog
             if (!EClass.core.IsGameStarted && !sorted.Any(l => l.Official)) {

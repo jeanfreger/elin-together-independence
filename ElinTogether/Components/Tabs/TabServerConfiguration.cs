@@ -166,7 +166,8 @@ internal class TabServerConfiguration : TabEmpBase
         var card = Vertical(this, true);
         var host = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.Index == 0)?.User.Name ?? "";
         card.HeaderSmall(_guest ? "emp_ui_sv_banner_guest".Loc(host) : "emp_ui_sv_banner_host".lang());
-        card.TextSmall(_guest ? "emp_ui_rules_note".lang() : "emp_ui_sv_note_live".lang(), FontColor.Gray);
+        card.TextSmall(_guest ? "emp_ui_rules_note".lang()
+            : (NetSession.Instance.HasActiveConnection ? "emp_ui_sv_note_live" : "emp_ui_sv_note_title").lang(), FontColor.Gray);
         if (_guest && SettingsTable.LastNotice is { } notice) {
             card.TextSmall(notice);
         }
