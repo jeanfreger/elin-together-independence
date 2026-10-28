@@ -284,7 +284,11 @@ internal static class TeamOwnStory
             return;
         }
 
-        if (StoryOwner.TakesMovers(to, Stored(to) is not null || to == LocalOwner)) {
+        var hasOwn = Stored(to) is not null || to == LocalOwner;
+        if (to < 0 && hasOwn) {
+            // (leaving or kicked, with a solo story of its own: the better of both, never in place)
+            Store(to, Leaving(Of(to), Of(from)));
+        } else if (StoryOwner.TakesMovers(to, hasOwn)) {
             Store(to, Of(from));
         }
 
@@ -293,6 +297,56 @@ internal static class TeamOwnStory
             host.ActiveRemoteCharas.FirstOrDefault(p => p.Value == chara) is { Value: not null } player) {
             host.SendDeltaTo(player.Key, new StoryBundleDelta { Bundle = Of(to), Line = true });
         }
+    }
+
+    /// <summary>
+    ///     What a player keeps when it leaves a team it had a solo story before: the quest log, the offers, the phases,
+    ///     the finished quests, the dialog and the flags whole from the more advanced of the two (the team's on a tie),
+    ///     the key items of both (the most of each), the greater debt and extra tax, per guild the higher place. A new
+    ///     bundle: neither argument is changed
+    /// </summary>
+    internal static StoryBundle Leaving(StoryBundle solo, StoryBundle team)
+    {
+        var ahead = solo.Main > team.Main || (solo.Main == team.Main && solo.Exploration > team.Exploration) ? solo : team;
+        var merged = new StoryBundle {
+            Quests = [..ahead.Quests],
+            Offers = [..ahead.Offers],
+            Completed = [..ahead.Completed],
+            Dialog = new(ahead.Dialog),
+            AllDialog = ahead.AllDialog,
+            Main = ahead.Main,
+            Exploration = ahead.Exploration,
+            Flags = ahead.Flags is null ? null : new(ahead.Flags),
+        };
+        if (solo.KeyItems is not null || team.KeyItems is not null) {
+            merged.KeyItems = [];
+            foreach (var items in new[] { solo.KeyItems, team.KeyItems }) {
+                foreach (var (item, count) in items ?? []) {
+                    merged.KeyItems[item] = System.Math.Max(merged.KeyItems.GetValueOrDefault(item), count);
+                }
+            }
+        }
+
+        merged.Debt = MaxOf(solo.Debt, team.Debt);
+        merged.ExtraTax = MaxOf(solo.ExtraTax, team.ExtraTax);
+        if (solo.Guilds is not null || team.Guilds is not null) {
+            merged.Guilds = [];
+            foreach (var guilds in new[] { team.Guilds, solo.Guilds }) {
+                foreach (var (id, place) in guilds ?? []) {
+                    if (!merged.Guilds.TryGetValue(id, out var have) || have.Length < 3 || (place.Length >= 3 &&
+                            (place[1] > have[1] || (place[1] == have[1] && place[2] > have[2])))) {
+                        merged.Guilds[id] = [..place];
+                    }
+                }
+            }
+        }
+
+        return merged;
+    }
+
+    private static int? MaxOf(int? a, int? b)
+    {
+        return a is null ? b : b is null ? a : System.Math.Max(a.Value, b.Value);
     }
 
     /// <summary>

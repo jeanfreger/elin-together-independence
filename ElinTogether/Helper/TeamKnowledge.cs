@@ -231,7 +231,10 @@ internal static class TeamKnowledge
         }
 
         Store(local, Take(EClass.player));
-        if (StoryOwner.TakesMovers(to, ElinNetHost.TeamLoreBook.ContainsKey(to))) {
+        if (to < 0 && ElinNetHost.TeamLoreBook.ContainsKey(to) && Stored(to) is { } solo) {
+            // (leaving or kicked, with a book of its own: both books, as new sets)
+            Store(to, Union([solo, Of(from)]));
+        } else if (StoryOwner.TakesMovers(to, ElinNetHost.TeamLoreBook.ContainsKey(to))) {
             Store(to, Of(from));
         }
 
