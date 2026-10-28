@@ -128,6 +128,7 @@ internal static class TeamOwnStory
         if (On && Seeded && _owner is not null) {
             ForgetGoneTeams();
             LookAtLothria();
+            CatchUp();
         }
     }
 
@@ -574,6 +575,210 @@ internal static class TeamOwnStory
         }
 
         EmpLog.Information("Every story is past the exploration: Ash and Fiama leave for Lothria");
+    }
+
+    // ---- a later story on a floor another story cleared
+
+    private static float _nextCatchUp;
+
+    /// <summary>
+    ///     Nymelle's floors play their story once (the guardian and Fiama only come at the first visit, Farris is
+    ///     recruited into one base): a player whose story is behind, standing on a floor another story already
+    ///     cleared, would be stuck there. Its story takes the step on (no second recruit), with a line, and its players
+    ///     get what the story gave meanwhile (the ledger of story rewards, one parcel each)
+    /// </summary>
+    private static void CatchUp()
+    {
+        if (UnityEngine.Time.unscaledTime < _nextCatchUp || NetSession.Instance.Transport is ElinNetHost { IsZoneSession: true }) {
+            return;
+        }
+
+        _nextCatchUp = UnityEngine.Time.unscaledTime + 2f;
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        var players = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Distinct()
+            .Select(uid => EClass.game.cards.globalCharas.Find(uid)).OfType<Chara>().ToList();
+        foreach (var owner in players.Select(p => (Player: p, Owner: OwnerOf(p.uid))).Where(p => p.Player.currentZone is Zone_Nymelle)
+                     .GroupBy(p => p.Owner)) {
+            var zone = (Zone_Nymelle)owner.First().Player.currentZone;
+            var mine = ExplorationOf(owner.Key);
+            var best = ElinNetHost.TeamStoryBundles.Keys.Append(LocalOwner ?? SeedOwner).Distinct()
+                .Where(o => o != owner.Key && o != SeedOwner).Select(ExplorationOf).DefaultIfEmpty(-1).Max();
+            var what = zone.lv switch {
+                -2 when mine == QuestExploration.Started && best >= QuestExploration.AfterMeetFarris &&
+                        EClass.game.cards.globalCharas.Find("farris") is { } farris && farris.currentZone != zone => "farris",
+                _ when zone.IsBossLv && mine == QuestExploration.AfterMeetFarrisAtHome && best >= QuestExploration.AfterDefeatNymelleBoss => "boss",
+                _ when zone.IsCrystalLv && mine is >= QuestExploration.AfterDefeatNymelleBoss and < QuestExploration.AfterCrystalTalk &&
+                       best >= QuestExploration.AfterCrystalTalk &&
+                       EClass.game.cards.globalCharas.Find("fiama")?.currentZone != zone => "crystal",
+                _ => null,
+            };
+            if (what is not null) {
+                CatchUp(owner.Key, what, owner.Select(p => p.Player).ToList());
+            }
+        }
+    }
+
+    // the exploration's phase in that owner's story (999 done, -1 not started)
+    private static int ExplorationOf(int owner)
+    {
+        return owner == CurrentOwner ? EClass.game.quests.GetPhase<QuestExploration>() : Stored(owner)?.Exploration ?? -1;
+    }
+
+    private static void CatchUp(int owner, string what, List<Chara> players)
+    {
+        string[] steps;
+        using (As(owner)) {
+            var quests = EClass.game.quests;
+            if (quests.Get<QuestExploration>() is not { } exploration) {
+                return;
+            }
+
+            switch (what) {
+                case "farris":
+                    // (QuestExploration_MeetFarris and _MeetFarris2, without moving or recruiting him again)
+                    exploration.ChangePhase(QuestExploration.AfterMeetFarris);
+                    exploration.ChangePhase(QuestExploration.AfterMeetFarrisAtHome);
+                    if (quests.Main is null) {
+                        quests.Start("main");
+                    }
+
+                    if (quests.Main!.phase < QuestMain.AfterMeetFarris) {
+                        quests.Main.ChangePhase(QuestMain.AfterMeetFarris);
+                    }
+
+                    steps = ["exploration:1", "exploration:2", "main:300"];
+                    break;
+                case "boss":
+                    exploration.ChangePhase(QuestExploration.AfterDefeatNymelleBoss);
+                    steps = ["exploration:3"];
+                    break;
+                default:
+                    exploration.ChangePhase(QuestExploration.AfterCrystalTalk);
+                    steps = ["exploration:5"];
+                    break;
+            }
+        }
+
+        EmpLog.Information("Story {Owner} caught up on Nymelle ({What}): another story cleared that floor", StoryOwner.Name(owner), what);
+        var line = $"emp_team_story_caught_up_{what}".lang();
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        foreach (var player in StoryPlayers(owner)) {
+            foreach (var step in steps) {
+                NoteHad(player.uid, step);
+            }
+
+            if (player.IsPC) {
+                Msg.SayRaw(line);
+            } else if (host is not null) {
+                foreach (var (to, _) in host.PeerCharas().Where(p => p.CharaUid == player.uid)) {
+                    host.SendDeltaTo(to, new MsgSayDelta { Text = line, R = 1f, G = 1f, B = 1f, A = 1f });
+                }
+            }
+
+            ElinNetHost.CatchUpStoryShares(player);
+        }
+    }
+
+    // the players of that story this game knows of, connected or here
+    private static IEnumerable<Chara> StoryPlayers(int owner)
+    {
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        return (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Distinct()
+            .Where(uid => OwnerOf(uid) == owner)
+            .Select(uid => EClass.game.cards.globalCharas.Find(uid)).OfType<Chara>();
+    }
+
+    // ---- what the story gives, once per player
+
+    // the step of the story being played now ("quest id:phase"), none outside one
+    private static string? _step;
+
+    /// <summary>
+    ///     The step of a story quest the game plays now, while the box is on: what it gives is had once per player,
+    ///     whatever story that player plays it in (team hopping farms nothing)
+    /// </summary>
+    internal static string? StepKey => KeepsBook && On && Seeded ? _step : null;
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Quest), nameof(Quest.ChangePhase))]
+    private static void BeforeStep(Quest __instance, int a, out string? __state)
+    {
+        __state = _step;
+        if (IsStory(__instance)) {
+            _step = $"{__instance.id}:{a}";
+        }
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(Quest), nameof(Quest.ChangePhase))]
+    private static void AfterStep(string? __state)
+    {
+        _step = __state;
+    }
+
+    // (what a dialog of the exploration gives: its scrolls)
+    [HarmonyPatch]
+    private static class ExplorationOutcomes
+    {
+        private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        {
+            return typeof(DramaOutcome).GetMethods().Where(m => m.DeclaringType == typeof(DramaOutcome) && m.Name.StartsWith("QuestExploration_"));
+        }
+
+        [HarmonyPrefix]
+        private static void Begin(System.Reflection.MethodBase __originalMethod, out string? __state)
+        {
+            __state = _step;
+            _step = $"exploration:{EClass.game.quests.GetPhase<QuestExploration>()}:{__originalMethod.Name}";
+        }
+
+        [HarmonyFinalizer]
+        private static void End(string? __state)
+        {
+            _step = __state;
+        }
+    }
+
+    internal static bool Had(int charaUid, string? step)
+    {
+        return step is not null && ElinNetHost.TeamStoryHad.TryGetValue(charaUid, out var had) && had.Contains(step);
+    }
+
+    internal static void NoteHad(int charaUid, string? step)
+    {
+        if (step is null || Had(charaUid, step)) {
+            return;
+        }
+
+        ElinNetHost.TeamStoryHad[charaUid] = [..ElinNetHost.TeamStoryHad.GetValueOrDefault(charaUid) ?? [], step];
+    }
+
+    private static Thing? _withheld;
+
+    /// <summary>
+    ///     Player.DropReward, in the game that keeps the book: a reward of a story step its earner already had (in
+    ///     another story, or as a share) is not given again. True when withheld
+    /// </summary>
+    internal static bool Withhold(Thing reward, Chara? earner)
+    {
+        if (StepKey is not { } step || !Patches.StoryScope.Gives(reward)) {
+            return false;
+        }
+
+        var uid = (earner ?? EClass.pc).uid;
+        if (!Had(uid, step)) {
+            NoteHad(uid, step);
+            return false;
+        }
+
+        _withheld = reward;
+        EmpLog.Information("Story reward {Id} of step {Step}: player {Uid} had it already", reward.id, step, uid);
+        return true;
+    }
+
+    internal static bool Withheld(Thing? reward)
+    {
+        return reward is not null && ReferenceEquals(reward, _withheld);
     }
 
     // ---- the save: the world owner's story, then the local team's again

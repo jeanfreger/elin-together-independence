@@ -159,7 +159,7 @@ internal static class QuestRewardPatch
     [HarmonyPostfix]
     internal static void OnRewardDropped(Thing __result)
     {
-        if (NetSession.Instance.Connection is ElinNetClient && !ElinDelta.IsApplying) {
+        if ((NetSession.Instance.Connection is ElinNetClient && !ElinDelta.IsApplying) || TeamOwnStory.Withheld(__result)) {
             return;
         }
 
@@ -169,6 +169,13 @@ internal static class QuestRewardPatch
     [HarmonyPrefix]
     internal static bool OnDropReward(Thing t, ref Thing __result)
     {
+        // (each player or team living its own story: a story step's reward its earner had already, from another
+        // story or as a share, is not given again)
+        if (TeamOwnStory.Withhold(t, _nothing ? _earner : _receiver)) {
+            __result = t;
+            return false;
+        }
+
         if (_nothing) {
             __result = t;
             return false;
