@@ -85,6 +85,28 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Host option "Teams keep their own bank and delivery box" (<see cref="TeamBoxes" />): owner
+    ///     (<see cref="StoryOwner" />) -> its two boxes, bank then delivery box, each as the text of
+    ///     <see cref="TeamBoxes.Pack" />. Empty while the box was never on
+    /// </summary>
+    [ElinGameIOProperty("team_boxes")]
+    internal static Dictionary<int, string[]> TeamBoxBook
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
+    ///     [the ledger's schema version, 1 once the box has been on in this world]
+    /// </summary>
+    [ElinGameIOProperty("team_boxes_state")]
+    internal static int[] TeamBoxState
+    {
+        get => field is { Length: 2 } ? field : field = new int[2];
+        set;
+    }
+
+    /// <summary>
     ///     Host option "Teams pay their own land" (<see cref="TeamBills" />): team id -> its unpaid tax bills. The
     ///     world's count (<c>player.taxBills</c>) stays the sum the game knows; what it holds above these is older than
     ///     the box (bills of no team)
