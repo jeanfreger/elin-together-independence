@@ -43,6 +43,19 @@ internal static class EmpServer
     internal static bool Requested => _save is not null;
 
     /// <summary>
+    ///     Asks this server to save and stop, as the operator's stop file does (the restart warning ends there)
+    /// </summary>
+    internal static void StopNow()
+    {
+        try {
+            Directory.CreateDirectory(_folder);
+            File.WriteAllText(Path.Combine(_folder, "server.stop"), "stop");
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            EmpLog.Warning(ex, "Server: the stop file could not be written");
+        }
+    }
+
+    /// <summary>
     ///     The process of the game that started this server (-empparent): a server of a player's own machine, hidden
     ///     (HiddenServer). It listens on the loopback only, and stops by itself when that game is gone
     /// </summary>

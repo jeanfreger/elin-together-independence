@@ -897,5 +897,7 @@
     "LangGeneral.emp_ui_land_go_team.text": "打开“队伍”页面",
     "LangGeneral.emp_ui_sv_desc_preset_custom.text": "你自己的组合：可在下方随意修改每一条规则。",
     "LangGeneral.emp_ui_official_title.text": "官方服务器",
-    "LangGeneral.emp_ui_official_open.text": "开放中，{0}/{1} 名玩家"
+    "LangGeneral.emp_ui_official_open.text": "开放中，{0}/{1} 名玩家",
+    "LangGeneral.emp_ui_sv_opt_preset_official.text": "公共服务器（官方）",
+    "LangGeneral.emp_ui_sv_desc_preset_official.text": "适用于向所有人开放的服务器：每位玩家拥有自己的角色和故事，队伍各自拥有领地，世界不能被带走或隐藏。"
 }
