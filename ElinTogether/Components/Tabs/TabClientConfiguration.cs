@@ -1,134 +1,170 @@
+using System;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
+using ElinTogether.Models;
+using ElinTogether.Net;
 using UnityEngine;
+using UnityEngine.UI;
 using YKF;
 
 namespace ElinTogether.Components;
 
 /// <summary>
-///     This player's own options, by card: Controls, Workshop mods, Shared save folder (optional), Help
-///     (council 2026-10-23)
+///     "My settings" (hub step 7): this player's own options in cards, each a title with a grey line under it, then
+///     the Friends and the Ignored lists (moved here from the Server page: they are the player's own, not the host's)
 /// </summary>
 internal class TabClientConfiguration : TabEmpBase
 {
     public override void OnLayout()
     {
-        // Controls
-        var controls = Card("controls");
+        BuildControls();
+        BuildMods();
+        BuildDepot();
+        BuildFriends();
+        BuildIgnored();
+    }
+
+    /// <summary>
+    ///     A setting that is a button rather than a box: title, grey line, the button on the right
+    /// </summary>
+    private static void ButtonSetting(YKVertical card, string title, string? description, string buttonText, Action act,
+        string? tooltip = null)
+    {
+        var row = card.Horizontal();
+        row.Layout.childForceExpandWidth = false;
+        row.Layout.childAlignment = TextAnchor.MiddleLeft;
+        row.Layout.spacing = 10f;
+        row.LayoutElement().minHeight = UIHelper.RowHeight;
+
+        var col = row.Vertical();
+        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        col.Layout.spacing = 0f;
+        col.LayoutElement().flexibleWidth = 1f;
+        col.Text(title).SetSize(UIHelper.LabelSize);
+        if (!string.IsNullOrEmpty(description)) {
+            col.TextSmall(description!, FontColor.Gray);
+        }
+
+        var button = row.Button(buttonText, act).FixedWidth();
+        if (tooltip != null) {
+            button.SetTooltipLang(tooltip);
+        }
+    }
+
+    private void BuildControls()
+    {
+        var card = this.Card("emp_ui_cl_sec_controls".lang(), EmpUi.Icon("icon_m_system"));
         var pingKey = new EInput.KeyMap {
             action = EAction.None,
             key = KeyCode.P,
             required = true,
         };
-        controls.ButtonRow().RowButton("emp_ui_ping_keymap".Loc(pingKey.key.ToString()), () => {
-            var l = global::Layer.Create<Dialog>("DialogKeymap");
-            l.textDetail.SetText("dialog_keymap".lang("emp_ui_ping_action".lang()));
-            l.keymap = pingKey;
-            l.SetOnKill(() => {
-                EmpConfig.Client.PingKeybind.Value = pingKey.key;
-                LayerElinTogether.Instance?.Reopen();
-            });
-            EMono.ui.AddLayer(l);
-        }).SetTooltipLang(EmpConfig.Client.PingKeybind.Description.Description);
-        controls.TextSmall("emp_ui_cl_desc_ping".lang());
+        ButtonSetting(card, "emp_ui_ping_action".lang(), "emp_ui_cl_desc_ping".lang(),
+            EmpConfig.Client.PingKeybind.Value.ToString(), () => {
+                var l = global::Layer.Create<Dialog>("DialogKeymap");
+                l.textDetail.SetText("dialog_keymap".lang("emp_ui_ping_action".lang()));
+                l.keymap = pingKey;
+                l.SetOnKill(() => {
+                    EmpConfig.Client.PingKeybind.Value = pingKey.key;
+                    LayerElinTogether.Instance?.Reopen();
+                });
+                EMono.ui.AddLayer(l);
+            }, EmpConfig.Client.PingKeybind.Description.Description);
+    }
 
-        // Workshop mods: the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
-        var mods = Card("mods");
+    // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
+    private void BuildMods()
+    {
+        var card = this.Card("emp_ui_cl_sec_mods".lang(), EmpUi.Icon("icon_LayerHelp"));
         var fetch = EmpConfig.Client.FetchMods;
-        var fetchGroup = mods.RowGroup();
-        fetchGroup.Toggle("emp_ui_cl_fetch_mods", fetch.Value, value => fetch.Value = value).AsRow()
-            .SetTooltipLang(fetch.Description.Description);
-        fetchGroup.TextSmall("emp_ui_cl_desc_fetch_mods".lang());
+        var fetchBox = card.ToggleRow("emp_ui_cl_fetch_mods".lang(), "emp_ui_cl_desc_fetch_mods".lang(), fetch.Value,
+            v => fetch.Value = v);
+        fetchBox.SetTooltipLang(fetch.Description.Description);
 
-        // ... and kept: subscribed to, on in the player's own list, so that the next join needs no restart
+        // ... and kept: subscribed to, so that the next join needs no restart
         // (keeping them means nothing without fetching them: greyed out until then)
+        card.Divider();
         var keep = EmpConfig.Client.KeepMods;
-        var keepGroup = mods.RowGroup(true);
-        var keepToggle = keepGroup.Toggle("emp_ui_cl_keep_mods", keep.Value, value => keep.Value = value).AsRow();
-        keepToggle.SetTooltipLang(keep.Description.Description);
-        keepToggle.interactable = fetch.Value;
-        keepGroup.TextSmall("emp_ui_cl_desc_keep_mods".lang());
+        var keepBox = card.ToggleRow("emp_ui_cl_keep_mods".lang(), "emp_ui_cl_desc_keep_mods".lang(), keep.Value,
+            v => keep.Value = v);
+        keepBox.SetTooltipLang(keep.Description.Description);
+        keepBox.interactable = fetch.Value;
+    }
 
-        // Shared save folder (the depot): optional, not needed to play together
-        var folder = Card("depot");
-        folder.TextSmall("emp_ui_cl_desc_depot".lang());
+    // the shared save folder (the depot): optional, not needed to play together
+    private void BuildDepot()
+    {
+        var card = this.Card("emp_ui_cl_sec_depot".lang(), EmpUi.Icon("icon_LayerTravel"));
+        card.TextSmall("emp_ui_cl_desc_depot".lang(), FontColor.Gray);
 
         var depot = EmpConfig.Client.DepotPath;
-        var depotGroup = folder.RowGroup();
-        depotGroup.ButtonRow().RowButton("emp_ui_depot_folder".lang(), () => {
-            Dialog.InputName("emp_ui_depot_folder_ask", depot.Value, (cancel, text) => {
-                if (!cancel) {
-                    depot.Value = text.Trim();
-                    LayerElinTogether.Instance?.Reopen();
-                }
-            }).input.field.characterLimit = 0;
-        }).SetTooltipLang(depot.Description.Description);
-        depotGroup.TextSmall(depot.Value.Length > 0 ? depot.Value : "-");
+        ButtonSetting(card, "emp_ui_depot_folder".lang(), depot.Value.Length > 0 ? depot.Value : "-",
+            "emp_hub_change".lang(), () => {
+                Dialog.InputName("emp_ui_depot_folder_ask", depot.Value, (cancel, text) => {
+                    if (!cancel) {
+                        depot.Value = text.Trim();
+                        LayerElinTogether.Instance?.Reopen();
+                    }
+                }).input.field.characterLimit = 0;
+            }, depot.Description.Description);
 
+        card.Divider();
         var password = EmpConfig.Client.DepotPassword;
-        var passwordGroup = folder.RowGroup();
-        passwordGroup.ButtonRow().RowButton("emp_ui_depot_password".lang(), () => {
-            // a password or an access key is never shown again: the box opens empty. Left empty, a GitHub key is
-            // kept (a depot of Elin Together Server may have no password: there, empty removes it)
-            Dialog.InputName("emp_ui_depot_password_ask", "", (cancel, text) => {
-                if (!cancel && !(SaveDepot.GitHub && text.Trim().Length == 0)) {
-                    password.Value = text.Trim();
-                    LayerElinTogether.Instance?.Reopen();
-                }
-            }).input.field.characterLimit = 0;
-        }).SetTooltipLang(password.Description.Description);
-        passwordGroup.TextSmall(password.Value.Length > 0 ? "***" : "-");
+        ButtonSetting(card, "emp_ui_depot_password".lang(), password.Value.Length > 0 ? "***" : "-",
+            "emp_hub_change".lang(), () => {
+                // a password or an access key is never shown again: the box opens empty. Left empty, a GitHub key is
+                // kept (a depot of Elin Together Server may have no password: there, empty removes it)
+                Dialog.InputName("emp_ui_depot_password_ask", "", (cancel, text) => {
+                    if (!cancel && !(SaveDepot.GitHub && text.Trim().Length == 0)) {
+                        password.Value = text.Trim();
+                        LayerElinTogether.Instance?.Reopen();
+                    }
+                }).input.field.characterLimit = 0;
+            }, password.Description.Description);
 
         // how a private GitHub repository becomes the depot, where it is set
         // (one text per line: a text with line breaks was measured one line high and drew over the rows above it)
         foreach (var line in "emp_ui_depot_gh_help".lang().Split('\n')) {
-            folder.TextSmall(line);
+            card.TextSmall(line, FontColor.Gray);
         }
-
-        // Help: something went wrong, one zip to send, with the game's own log in it
-        var help = Card("help");
-        help.ButtonRow().RowButton("emp_ui_report".lang(), () => {
-            if (BugReport.Make() is { } path) {
-                EmpPop.Information("emp_ui_report_done".Loc(path));
-                Util.ShowExplorer(path);
-            } else {
-                EmpPop.Information("emp_ui_report_failed".lang());
-            }
-        });
-        help.TextSmall("emp_ui_report_desc".lang());
-
-        // the same, sent to the developers as a GitHub issue: the player writes what happened (user, 2026-10-27)
-        help.ButtonRow().RowButton("emp_ui_report_send".lang(), () => {
-            var input = Dialog.InputName("emp_ui_report_what", "", (cancel, text) => {
-                if (cancel || text.Trim().Length < 3) {
-                    return;
-                }
-
-                EmpPop.Information("emp_ui_report_sending".lang());
-                BugReport.Send(text.Trim(), url => {
-                    if (url is null) {
-                        EmpPop.Information("emp_ui_report_page".lang());
-                        return;
-                    }
-
-                    Dialog.YesNo("emp_ui_report_sent".Loc(url), () => Application.OpenURL(url));
-                });
-            }, Dialog.InputType.Chat);
-            input.input.field.characterLimit = 3000;
-            Patches.ReportBoxPatch.Enlarge(input);
-        });
-        help.TextSmall("emp_ui_report_send_desc".lang());
-
-        // the last seconds of the screen sent with the report (ReplayBuffer)
-        var replay = EmpConfig.Client.RecordReplay;
-        help.Toggle("emp_ui_cl_record_replay", replay.Value, value => replay.Value = value).AsRow()
-            .SetTooltipLang(replay.Description.Description);
     }
 
-    private YKVertical Card(string id)
+    private void BuildFriends()
     {
-        var card = this.MakeCard();
-        card.HeaderSmall($"emp_ui_cl_sec_{id}".lang());
-        return card;
+        var card = this.Card("emp_info_friends".lang(), EmpUi.Icon("icon_LayerChara"));
+        var online = NetSession.Instance.CurrentPlayers.Where(p => !p.User.IsMe && PlayerSocial.IsFriend(p.User)).ToList();
+        foreach (var player in online) {
+            var user = (ulong)player.User;
+            var name = player.User.Name;
+            ButtonSetting(card, name, "emp_hub_online".Loc(player.FindChara()?.Name ?? "?"), "emp_ui_unfriend".lang(), () => {
+                PlayerSocial.SetFriend(user, name, false);
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
+
+        // the others are known by the name they had when they were added
+        foreach (var (user, name) in PlayerSocial.FriendList.Where(f => online.All(p => (ulong)p.User != f.Key)).ToList()) {
+            ButtonSetting(card, name.IsEmpty(user.ToString()), "emp_hub_offline".lang(), "emp_ui_unfriend".lang(), () => {
+                PlayerSocial.SetFriend(user, name, false);
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
+
+        if (PlayerSocial.FriendList.Count == 0) {
+            card.TextSmall("emp_info_friends_none".lang(), FontColor.Gray);
+        }
+    }
+
+    private void BuildIgnored()
+    {
+        var card = this.Card("emp_info_ignored".lang(), EmpUi.Icon("icon_LayerJournal"));
+        card.TextSmall("emp_info_ignored_note".lang(), FontColor.Gray);
+        foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
+            ButtonSetting(card, name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {
+                PlayerSocial.SetIgnored(user, name, false);
+                LayerElinTogether.Instance?.Reopen();
+            });
+        }
     }
 }

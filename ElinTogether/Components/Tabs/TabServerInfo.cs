@@ -9,18 +9,20 @@ using YKF;
 namespace ElinTogether.Components;
 
 /// <summary>
-///     The "Server" page (council 2026-10-28, gaps 1, 2 and 10): the host's message of the day and rules, the player's
-///     own friends (online ones first) and ignore lists, and for the host and the admins a line to everyone and a
-///     restart warning. The texts reach every game with the world's rules
+///     The "Server" page (hub step 7): the host's message of the day and rules as two parchment notes (the host
+///     writes in place with the pencil, a guest reads), and for the host and the admins a line to everyone and a
+///     restart warning. The texts reach every game with the world's rules. Friends and Ignored live in My settings
 /// </summary>
 internal class TabServerInfo : TabEmpBase
 {
+    // which note is open for writing (a page rebuild keeps it: the layer is reopened after a change)
+    private static string? _writing;
+
     public override void OnLayout()
     {
-        BuildTexts();
+        BuildNote("motd.txt", "emp_info_motd", ServerInfo.Motd, "icon_LayerHelp");
+        BuildNote("rules.txt", "emp_info_rules", ServerInfo.RulesText, "icon_LayerJournal");
         BuildAnnounce();
-        BuildFriends();
-        BuildIgnored();
     }
 
     private static bool IsHost => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
@@ -28,50 +30,64 @@ internal class TabServerInfo : TabEmpBase
     private static bool IsAdmin => IsHost || (NetSession.Instance.Transport is ElinNetClient &&
                                               ModerationDelta.AdminIds.Contains(NetSession.Instance.Self?.User ?? UserData.Me));
 
-    private void BuildTexts()
+    /// <summary>
+    ///     One parchment note: the text, or for the host an empty-state with "Write one"; the host's pencil opens the
+    ///     game's input field in the note itself
+    /// </summary>
+    private void BuildNote(string file, string titleId, string text, string iconId)
     {
-        var card = this.MakeCard();
-        card.HeaderSmall("emp_info_motd".lang());
-        Show(card, ServerInfo.Motd);
-        var rules = this.MakeCard();
-        rules.HeaderSmall("emp_info_rules".lang());
-        Show(rules, ServerInfo.RulesText);
-
-        if (!IsHost) {
+        var card = this.Card(titleId.lang(), EmpUi.Icon(iconId));
+        if (IsHost && _writing == file) {
+            Write(card, file);
             return;
         }
 
-        var buttons = rules.ButtonRow();
-        buttons.RowButton("emp_info_edit_motd".lang(), () => Edit("motd.txt", "emp_info_edit_motd"));
-        buttons.RowButton("emp_info_edit_rules".lang(), () => Edit("rules.txt", "emp_info_edit_rules"));
-        buttons.RowButton("emp_info_reload".lang(), Publish);
-        rules.TextSmall("emp_info_files".lang());
-    }
-
-    private static void Show(YKVertical card, string text)
-    {
         if (text.Length == 0) {
-            card.TextSmall("emp_info_none".lang());
+            if (IsHost) {
+                card.EmptyState("emp_info_none_host".lang(), "emp_info_write".lang(), () => Open(file));
+            } else {
+                card.TextSmall("emp_info_none".lang(), FontColor.Gray);
+            }
             return;
         }
 
         foreach (var line in ServerInfo.Lines(text)) {
-            card.TextSmall(line);
+            card.Text(line);
+        }
+
+        if (IsHost) {
+            var buttons = card.ButtonRow();
+            buttons.RowButton("emp_info_edit".lang(), () => Open(file));
+            if (file == "rules.txt") {
+                buttons.RowButton("emp_info_reload".lang(), Publish);
+            }
         }
     }
 
-    /// <summary>
-    ///     The game's own input box; a bar in the text is a line break
-    /// </summary>
-    private static void Edit(string file, string lang)
+    private static void Open(string file)
     {
-        Dialog.InputName(lang, ServerInfo.ReadFile(file).Replace("\n", "|"), (cancel, text) => {
-            if (cancel) {
-                return;
-            }
+        _writing = file;
+        LayerElinTogether.Instance?.Reopen();
+    }
 
-            ServerInfo.WriteFile(file, text);
+    private static void Write(YKVertical card, string file)
+    {
+        var input = card.InputText(ServerInfo.ReadFile(file));
+        input.field.characterLimit = ServerInfo.MaxLength;
+        input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
+        input.LayoutElement().minHeight = 150f;
+        input.LayoutElement().preferredHeight = 150f;
+        card.TextSmall("emp_info_files".lang(), FontColor.Gray);
+
+        var buttons = card.ButtonRow();
+        buttons.RowButton("emp_info_save".lang(), () => {
+            _writing = null;
+            ServerInfo.WriteFile(file, input.Text);
             Publish();
+        });
+        buttons.RowButton("emp_info_cancel".lang(), () => {
+            _writing = null;
+            LayerElinTogether.Instance?.Reopen();
         });
     }
 
@@ -118,43 +134,6 @@ internal class TabServerInfo : TabEmpBase
             case ElinNetClient client:
                 client.Delta.AddRemote(new AdminCommandDelta { Verb = verb, Target = 0, Reason = text });
                 break;
-        }
-    }
-
-    private void BuildFriends()
-    {
-        var card = this.MakeCard();
-        card.HeaderSmall("emp_info_friends".lang());
-        var online = NetSession.Instance.CurrentPlayers.Where(p => !p.User.IsMe && PlayerSocial.IsFriend(p.User)).ToList();
-        foreach (var player in online) {
-            card.Text("emp_info_friend_online".Loc(player.User.Name, player.FindChara()?.Name ?? "?"));
-        }
-
-        // the others are known by the name they had when they were added
-        foreach (var (user, name) in PlayerSocial.FriendList.Where(f => online.All(p => (ulong)p.User != f.Key)).ToList()) {
-            card.TextSmall("emp_info_friend_offline".Loc(name.IsEmpty(user.ToString())));
-            card.ButtonRow().RowButton("emp_ui_unfriend".lang(), () => {
-                PlayerSocial.SetFriend(user, name, false);
-                LayerElinTogether.Instance?.Reopen();
-            });
-        }
-
-        if (PlayerSocial.FriendList.Count == 0) {
-            card.TextSmall("emp_info_friends_none".lang());
-        }
-    }
-
-    private void BuildIgnored()
-    {
-        var card = this.MakeCard();
-        card.HeaderSmall("emp_info_ignored".lang());
-        card.TextSmall("emp_info_ignored_note".lang());
-        foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
-            card.Text(name.IsEmpty(user.ToString()));
-            card.ButtonRow().RowButton("emp_ui_unignore".lang(), () => {
-                PlayerSocial.SetIgnored(user, name, false);
-                LayerElinTogether.Instance?.Reopen();
-            });
         }
     }
 }
