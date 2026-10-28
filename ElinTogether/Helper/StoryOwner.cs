@@ -21,17 +21,14 @@ internal static class StoryOwner
     /// </summary>
     internal const int Seed = int.MinValue;
 
-    // the game that keeps the books: the host of the world, or a game playing alone
-    private static bool KeepsBook => NetSession.Instance.Transport is not ElinNetClient;
-
-    private static bool TeamsOn => KeepsBook ? EmpConfig.Server.Teams.Value : NetSession.Instance.Rules.UseTeams;
-
+    // (the Teams box is not asked: ticking or unticking it must not re-assign every owner without a move, a rollback to
+    // the seed. The team list stays what it is, the box only decides whether it changes)
     /// <summary>
     ///     The owner that player plays with
     /// </summary>
     internal static int Of(int charaUid)
     {
-        return Of(TeamsOn ? Teams.TeamOf(charaUid) : Teams.Wanderers, charaUid);
+        return Of(Teams.TeamOf(charaUid), charaUid);
     }
 
     /// <summary>
@@ -47,7 +44,7 @@ internal static class StoryOwner
     /// </summary>
     internal static IEnumerable<int> All()
     {
-        return (TeamsOn ? ElinNetHost.TeamList.Keys : Enumerable.Empty<int>())
+        return ElinNetHost.TeamList.Keys
             .Concat(ElinNetHost.PlayerCharaUids().Select(uid => Of(uid)))
             .Distinct();
     }

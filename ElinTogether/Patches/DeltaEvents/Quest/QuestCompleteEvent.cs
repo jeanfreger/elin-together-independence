@@ -99,6 +99,11 @@ internal static class QuestAwaySync
     {
         if (NetSession.Instance is { IsZoneAuthority: true, Transport: ElinNetClient main }) {
             main.SendWhileAway(delta);
+        } else if (NetSession.Instance is { IsAway: true, IsGuest: true, Transport: ElinNetClient visitor } && TeamOwnStory.On &&
+                   TeamOwnStory.IsStoryDelta(delta)) {
+            // a visitor in another player's zone: the keeper drops its story steps (not its zone's story), the world host
+            // keeps its owner's story
+            visitor.SendWhileAway(delta);
         }
     }
 }

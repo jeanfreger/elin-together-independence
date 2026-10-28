@@ -78,6 +78,9 @@ internal static class TeamOwnStory
     private static Game? _game;
     private static int? _owner;
 
+    // the box as the last frame read it (none: just after a save was read)
+    private static bool? _wasWanted;
+
     /// <summary>
     ///     The owner whose story the local quest log holds, in the game that keeps the book; none while it holds the
     ///     world owner's as the save has it, or the box is off
@@ -103,6 +106,7 @@ internal static class TeamOwnStory
             // (a save just read: its quest log holds the world owner's story)
             _game = EClass.game;
             _owner = null;
+            _wasWanted = null;
             if (State[0] > Schema) {
                 EmpLog.Warning("The teams' story was written by a newer version of the mod ({Schema}): one story for everyone",
                     State[0]);
@@ -113,9 +117,13 @@ internal static class TeamOwnStory
             return;
         }
 
+        // (merged back only when the host unticks the box in this game: a world opened with the box reading off for another
+        // reason, the official server without its switch, keeps its records)
+        var unticked = _wasWanted == true && !Wanted;
+        _wasWanted = Wanted;
         if (On && !Seeded) {
             Seed();
-        } else if (!On && Seeded) {
+        } else if (!On && Seeded && unticked) {
             MergeBack();
             TellEveryone();
         }
@@ -424,6 +432,20 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool Divert(ElinDeltaManager manager, ElinDelta delta)
     {
+        // a zone a player keeps: its own story deltas go to the visitors of its own owner only (the other visitors play
+        // another story, a delta of this one would overwrite it)
+        if (NetSession.Instance.ZoneSession is ElinNetHost { IsZoneSession: true } zone && ReferenceEquals(zone.Delta, manager) &&
+            On && IsStoryDelta(delta)) {
+            var keeper = OwnerOf(EClass.pc.uid);
+            foreach (var (peer, visitor) in zone.PeerPlayers()) {
+                if (OwnerOf(visitor.uid) == keeper) {
+                    zone.SendDeltaTo(peer, delta);
+                }
+            }
+
+            return true;
+        }
+
         if (NetSession.Instance.Transport is not ElinNetHost host || !ReferenceEquals(host.Delta, manager) ||
             RouteOf(host, delta) is not { } owner) {
             return false;
@@ -534,7 +556,8 @@ internal static class TeamOwnStory
         return false;
     }
 
-    // another story is below 700 (the seed entry is no story anyone plays)
+    // another story is below 700: the stories of the players connected now (a visitor gone for good, or the dedicated
+    // server's own never-moving story, wait for nobody). The seed entry is no story anyone plays
     private static bool AnyBehind()
     {
         if (!Seeded) {
@@ -542,7 +565,12 @@ internal static class TeamOwnStory
         }
 
         var current = CurrentOwner;
-        return ElinNetHost.TeamStoryBundles.Keys.Where(owner => owner != SeedOwner && owner != current)
+        var owners = (NetSession.Instance.Transport as ElinNetHost)?.PeerCharas().Select(p => OwnerOf(p.CharaUid)).ToList() ?? [];
+        if (!EmpServer.Requested) {
+            owners.Add(OwnerOf(EClass.pc.uid));
+        }
+
+        return owners.Distinct().Where(owner => owner != SeedOwner && owner != current)
             .Select(Stored).Any(bundle => bundle is { Main: < QuestMain.AfterAshLeaveHome });
     }
 
@@ -553,7 +581,8 @@ internal static class TeamOwnStory
         }
 
         _nextLothria = UnityEngine.Time.unscaledTime + 5f;
-        if (EClass.game.quests.GetPhase<QuestMain>() < QuestMain.AfterAshLeaveHome || AnyBehind()) {
+        // (the dedicated server's own story never moves: only the players' count)
+        if ((!EmpServer.Requested && EClass.game.quests.GetPhase<QuestMain>() < QuestMain.AfterAshLeaveHome) || AnyBehind()) {
             return;
         }
 

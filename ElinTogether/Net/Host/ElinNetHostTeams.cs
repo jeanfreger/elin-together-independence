@@ -153,6 +153,18 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Each connected peer with the chara it plays here (a zone session: its visitors)
+    /// </summary>
+    internal IEnumerable<(int Peer, Chara Chara)> PeerPlayers()
+    {
+        foreach (var peer in Socket.Peers.ToArray()) {
+            if (PlayerChara(peer.Id) is { } chara) {
+                yield return (peer.Id, chara);
+            }
+        }
+    }
+
+    /// <summary>
     ///     The chara uid of every player of this world, the host's own included
     /// </summary>
     internal static IEnumerable<int> PlayerCharaUids()
