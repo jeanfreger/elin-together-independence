@@ -83,13 +83,22 @@ internal static class BasePlayersPatch
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.OnAdvanceDay))]
-    internal static void OnAdvanceDay(FactionBranch __instance)
+    internal static void OnAdvanceDay(FactionBranch __instance, out Dictionary<Chara, int>? __state)
     {
+        __state = null;
         if (!IsMultiplayer || NetSession.Instance.Connection is not ElinNetHost host || EClass.pc is not { } pc) {
             return;
         }
 
         var others = host.ActiveRemoteCharas.Values.Where(c => !c.isDead).ToList();
+        // lands owned by teams: only the days with a player of the land's own team count (the game's own count for
+        // the host's zone and party is taken back after it, see OnAdvancedDay)
+        var team = Teams.BasesOwned ? Teams.TeamOfZone(__instance.owner) : Teams.Wanderers;
+        if (team != Teams.Wanderers) {
+            __state = __instance.members.ToDictionary(m => m, m => m.c_daysWithPC);
+            others = others.Where(o => Teams.TeamOf(o.uid) == team).ToList();
+        }
+
         foreach (var member in __instance.members) {
             if (member.IsPC || member.isDead || member.IsPCParty || member.currentZone == pc.currentZone) {
                 continue;
@@ -97,8 +106,33 @@ internal static class BasePlayersPatch
 
             // (a player holding the map alone is no longer among the host's remote characters: its map counts too,
             // worldmove_suite DAYS 2026-10-23)
-            if (others.Any(o => member.currentZone == o.currentZone) || member.currentZone is { } zone && host.IsLeased(zone.uid) || CompanionHelper.OwnerOf(member) is { } owner && others.Contains(owner)) {
+            if (others.Any(o => member.currentZone == o.currentZone) || team == Teams.Wanderers && member.currentZone is { } zone && host.IsLeased(zone.uid) || CompanionHelper.OwnerOf(member) is { } owner && others.Contains(owner)) {
                 member.c_daysWithPC++;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     ...the game counted the host's zone and party whoever the host is: not when the host is of another team
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.OnAdvanceDay))]
+    internal static void OnAdvancedDay(FactionBranch __instance, Dictionary<Chara, int>? __state)
+    {
+        if (__state is null || EClass.pc is not { } pc || Teams.TeamOf(pc.uid) == Teams.TeamOfZone(__instance.owner)) {
+            return;
+        }
+
+        // (the members the host's zone or party explains; the other players' days were added by the prefix, on top
+        // of the game's, so only a day the host alone explains is taken back)
+        var others = NetSession.Instance.Connection is ElinNetHost host
+            ? host.ActiveRemoteCharas.Values.Where(c => !c.isDead && Teams.TeamOf(c.uid) == Teams.TeamOfZone(__instance.owner)).ToList()
+            : [];
+        foreach (var (member, days) in __state) {
+            var withTeam = others.Any(o => member.currentZone == o.currentZone) ||
+                           CompanionHelper.OwnerOf(member) is { } owner && others.Contains(owner);
+            if (!withTeam && member.c_daysWithPC > days) {
+                member.c_daysWithPC = days;
             }
         }
     }

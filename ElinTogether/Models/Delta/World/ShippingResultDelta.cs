@@ -36,8 +36,11 @@ public class ShippingResultDelta : ElinDelta
             ints = [..Ints],
         };
 
-        player.stats.shipNum = ShipNum;
-        player.stats.shipMoney = ShipMoney;
+        // (one total per owner: the host's is not ours, ours comes with ShippingPayout)
+        if (!Helper.TeamOwnStory.On) {
+            player.stats.shipNum = ShipNum;
+            player.stats.shipMoney = ShipMoney;
+        }
 
         var zone = game.spatials.Find(result.uidZone) ?? pc.homeZone;
         if (BranchLv > 0 && zone?.branch is { } branch) {

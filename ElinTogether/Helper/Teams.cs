@@ -96,6 +96,14 @@ internal static class Teams
     internal static IEnumerable<int> MembersOfTeam(int teamId) => TeamList.TryGetValue(teamId, out var team) ? MembersOf(team) : [];
 
     /// <summary>
+    ///     The player characters of a team (none for the Wanderers: they are no group)
+    /// </summary>
+    internal static IEnumerable<int> MembersOf(int teamId)
+    {
+        return TeamList.TryGetValue(teamId, out var team) ? MembersOf(team) : [];
+    }
+
+    /// <summary>
     ///     A guest's copy of the unpaid tax bills of each team (<see cref="TeamBills.Told" />)
     /// </summary>
     internal static Dictionary<int, int> ToldBills => _bills;
@@ -166,12 +174,28 @@ internal static class Teams
         };
     }
 
+    /// <summary>
+    ///     The land of that player's team with a base (the preferred one when it is the team's), none when the lands
+    ///     are not owned or its team has none: the shipping sale pays the hearth of its own team, not the last base
+    ///     anyone used
+    /// </summary>
+    internal static Zone? OwnLand(int charaUid, int preferredUid)
+    {
+        if (!BasesOwned || TeamOf(charaUid) is var team && team == Wanderers) {
+            return null;
+        }
+
+        var uids = Zones.Where(pair => pair.Value == team).Select(pair => pair.Key).OrderBy(uid => uid).ToList();
+        var uid = uids.Contains(preferredUid) ? preferredUid : uids.FirstOrDefault(u => EClass.game.spatials.Find(u)?.branch is not null);
+        return uid == 0 ? null : EClass.game.spatials.Find(uid) is { branch: not null } zone ? zone : null;
+    }
+
     internal static int OwnerOf(Card card)
     {
         return Owners.GetValueOrDefault(card.uid);
     }
 
-    private static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
+    internal static bool BasesOwned => NetSession.Instance.Rules is { UseTeams: true, TeamBases: true };
 
     private static bool PersonalOwned => NetSession.Instance.Rules is { UseTeams: true, TeamPersonal: true };
 
@@ -465,6 +489,34 @@ internal static class Teams
             return false;
         }, __instance.owner);
         return false;
+    }
+
+    /// <summary>
+    ///     The core of another team's land: no rename, spawn, home nor abandon, the click says whose land it is
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitCoreZone), nameof(TraitCoreZone.TrySetAct))]
+    private static bool OnCoreZoneAct(TraitCoreZone __instance, ActPlan p)
+    {
+        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone)) {
+            return true;
+        }
+
+        p.TrySetAct("actNameZone", () => {
+            SayBelongs();
+            return false;
+        }, __instance.owner);
+        return false;
+    }
+
+    /// <summary>
+    ///     ...and no other way to abandon it (a late act, the console)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.AbandonZone))]
+    private static bool OnAbandonZone(Zone __instance)
+    {
+        return !EClass.pc.IsPC || !BasesOwned || __instance != EClass._zone || CanTouch(EClass.pc, __instance);
     }
 
     /// <summary>
