@@ -58,22 +58,63 @@ internal partial class ElinNetClient
     private int? _hostZoneAfterDeparture;
 
     /// <summary>
+    ///     Where the player picked to come back after its death, travelled to once the host revived it
+    /// </summary>
+    private (Zone Zone, ZoneTransition Transition)? _deathTravel;
+
+    /// <summary>
+    ///     The host revived the local player (CharaReviveDelta): it goes where it picked on the death screen, its
+    ///     home or the last town, by the same independent travel as any other walk out of the host's map
+    /// </summary>
+    internal void OnRevived()
+    {
+        if (_deathTravel is not { } travel) {
+            return;
+        }
+
+        _deathTravel = null;
+        if (Session.IsAway || !Session.Rules.AllowIndependentTravel || pc.isDead || travel.Zone == pc.currentZone) {
+            return;
+        }
+
+        EmpLog.Information("Revived, going back to {ZoneFullName}", travel.Zone.ZoneFullName);
+        pc.MoveZone(travel.Zone, travel.Transition);
+    }
+
+    /// <summary>
     ///     The local player moves to a zone other than the one it replicates from the host <br />
     ///     Returns true to let the move happen now
     /// </summary>
-    internal bool TryTravel(Zone zone, ZoneTransition transition)
+    internal bool TryTravel(Zone? zone, ZoneTransition transition)
     {
-        // moving into the zone just granted
-        if (Session.AwayZone == zone && !_rejoining) {
+        // moving into the zone just granted (not a null zone: away from nothing, that would let a guest's
+        // MoveZone(null) through, see the death move below)
+        if (zone is not null && Session.AwayZone == zone && !_rejoining) {
             return true;
         }
 
         if (!Session.IsAway && (pc.isDead || player.deathZoneMove)) {
             // the host revives remote players where they fell, see CharaReviveEvent. Only that move is dropped:
-            // the game clears the mark inside the move we skip, left set it refused every travel that followed
+            // the game clears the mark inside the move we skip, left set it refused every travel that followed.
+            // With independent travel the player then goes where it picked, as the host does (OnRevived); without
+            // it, it cannot leave the host's map alone and stays where it was revived
+            _deathTravel = null;
+            if (player.deathZoneMove && Session.Rules.AllowIndependentTravel) {
+                // a guest's home can be unset (CharaImport.Adopt): the start site, or the last town, never nowhere
+                zone ??= game.StartZone ?? game.spatials.Find(player.uidLastTown);
+                _deathTravel = zone is null ? null : (zone, transition);
+            }
+
             player.deathZoneMove = false;
             return false;
         }
+
+        if (zone is null) {
+            return false;
+        }
+
+        // any other travel forgets a death choice the host never answered (a lost link, a crash)
+        _deathTravel = null;
 
         // leaving an instance, Elin sends the player back where it started, see Chara.MoveZone
         if (pc.currentZone?.instance is { } instance) {
