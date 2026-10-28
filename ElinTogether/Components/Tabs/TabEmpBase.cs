@@ -47,6 +47,9 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             page.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             page.LayoutElement().flexibleWidth = 1f;
             page.Layout.spacing = UIHelper.RowSpacing;
+            // (content starts at the top and keeps its own height: a short page is no tall empty box)
+            page.Layout.childAlignment = TextAnchor.UpperLeft;
+            page.Layout.childForceExpandHeight = false;
             build(page);
             _subPages.Add(page.gameObject);
             built.Add(page);
@@ -134,12 +137,10 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         var group = holder.AddComponent<UISelectableGroup>();
         group.autoInitialize = false;
 
-        // the pills flow onto a second line when they do not fit in one (World rules has nine)
+        // all on one line when they fit (World rules has nine); else two balanced lines, never one pill alone
         // (the view is not laid out yet when the page is built: the window's own width)
-        var width = Mathf.Max(scroll.GetComponent<RectTransform>().rect.width, Layer != null ? Layer.Bound.width : 0f, 400f) - 60f;
-        HorizontalLayoutGroup? line = null;
-        var used = 0f;
-        var lines = 0;
+        var width = Mathf.Max(scroll.GetComponent<RectTransform>().rect.width, Layer != null ? Layer.Bound.width : 0f, 400f) - 40f;
+        var pills = new List<(UIButton Pill, float Width)>();
         foreach (var label in labels) {
             var pill = Util.Instantiate(mold, holder.transform);
             pill.mainText.SetText(label);
@@ -148,10 +149,29 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             }
             pill.tooltip.enable = false;
             pill.RebuildLayout(true);
-            var w = pill.Rect().rect.width > 1f ? pill.Rect().rect.width : pill.mainText.preferredWidth + 40f;
+            pills.Add((pill, pill.Rect().rect.width > 1f ? pill.Rect().rect.width : pill.mainText.preferredWidth + 40f));
+        }
 
-            if (line == null || used + w > width) {
-                line = new GameObject("Line", typeof(RectTransform)).AddComponent<HorizontalLayoutGroup>();
+        var total = pills.Sum(p => p.Width + 2f);
+        var split = pills.Count;
+        if (total > width && pills.Count > 1) {
+            var best = float.MaxValue;
+            var first = 0f;
+            for (var i = 1; i < pills.Count; i++) {
+                first += pills[i - 1].Width + 2f;
+                var worst = Mathf.Max(first, total - first);
+                if (worst < best) {
+                    best = worst;
+                    split = i;
+                }
+            }
+        }
+
+        var lines = 0;
+        Transform? current = null;
+        for (var i = 0; i < pills.Count; i++) {
+            if (i == 0 || i == split) {
+                var line = new GameObject("Line", typeof(RectTransform)).AddComponent<HorizontalLayoutGroup>();
                 line.transform.SetParent(holder.transform, false);
                 line.childAlignment = TextAnchor.MiddleCenter;
                 line.childControlWidth = false;
@@ -159,12 +179,11 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
                 line.childForceExpandWidth = false;
                 line.spacing = 2f;
                 line.GetComponent<RectTransform>().sizeDelta = new(0f, PillRowHeight);
-                used = 0f;
+                current = line.transform;
                 lines++;
             }
 
-            pill.transform.SetParent(line.transform, false);
-            used += w + 2f;
+            pills[i].Pill.transform.SetParent(current, false);
         }
 
         var height = lines * PillRowHeight + 4f;
@@ -195,6 +214,8 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     /// </summary>
     internal void Relayout()
     {
+        // (a page built while hidden never drew its selected pill: draw it again now that the tab is shown)
+        _pills?.RefreshButtons();
         FitButtons();
         for (var i = 0; i < 2; i++) {
             this.RebuildLayout(true);
@@ -225,6 +246,7 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     private IEnumerator RelayoutLater()
     {
         yield return null;
+        _pills?.RefreshButtons();
         FitButtons();
         this.RebuildLayout(true);
         this.RebuildLayoutTo<UIContent>();
