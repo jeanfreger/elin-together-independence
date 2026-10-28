@@ -857,17 +857,6 @@ internal partial class ElinNetHost
             return;
         }
 
-        // the game of a hidden server's owner opens no listening socket of its own (its account is the server's):
-        // it holds no map, it can still be a guest of someone who does
-        if (zone is { IsRegion: false } && zone != _zone && IsOwnerSeat(peer) && FindZoneHolder(zone.uid, peer) is null) {
-            EmpLog.Information("Denied zone lease {ZoneFullName} to {@Peer}: the owner of a hidden server holds no map", request.ZoneFullName, peer);
-            peer.Send(new ZoneLeaseDenied {
-                ZoneUid = request.ZoneUid,
-                Reason = "emp_travel_hidden_owner",
-            });
-            return;
-        }
-
         // another player simulates the zone: join it as a guest of its zone session
         if (zone is { IsRegion: false } && GetPeerDenyReason(peer) is null && zone != _zone &&
             FindZoneHolder(zone.uid, peer) is { } holder) {
@@ -1101,15 +1090,6 @@ internal partial class ElinNetHost
 
             _guests.Remove(guestId);
             if (_departed.Contains(guestId) && Socket.Peers.FirstOrDefault(p => p.Id == guestId) is { } guest) {
-                // (the owner of a hidden server cannot hold the map: it goes back to the host with the others it
-                // would have taken, see below)
-                if (IsOwnerSeat(guest)) {
-                    guest.Send(new ZoneLeaseRecall {
-                        ZoneUid = zoneUid,
-                    });
-                    continue;
-                }
-
                 guests.Add(guest);
             }
         }
