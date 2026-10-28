@@ -50,7 +50,8 @@ affinity with each resident. Off: one value for the group, as before.
 
 ## Not covered
 
-- A guest alone on a map it holds (away) changes its own column locally; the host learns it only through the
-  existing paths (as before the option, where such changes were lost as well).
+- A guest away from the host's map (alone, or on a map another guest holds) sends its change straight to the world
+  host, which cannot see the resident there: only the size of the gain is checked. The host's answer does not
+  reach an away guest; its game keeps its own roll until the next join.
 - A world handed over to another player (takeover) keeps the old owner's values in `_cints[5]`.
 - Turning the option on in the middle of a session: guests get their column at their next join.
