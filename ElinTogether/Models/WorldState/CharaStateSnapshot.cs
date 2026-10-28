@@ -195,9 +195,11 @@ public class CharaStateSnapshot : EClass
         }
 
         // seen once: a move delta dropped or deferred, a hitch. Only a second snapshot in a row moves it (a character
-        // standing still on the host is only in the full snapshots, 1 s apart: within 2.2 s, see WorldStateSnapshot.Partial)
+        // standing still on the host is only in the full snapshots, 1 s apart: within 2.2 s, see WorldStateSnapshot.Partial;
+        // 4 s apart with the host box "Large crowds")
         var now = UnityEngine.Time.unscaledTime;
-        if (!_mismatchSeen.Remove(chara.uid, out var seen) || now - seen > MismatchWindow) {
+        var window = NetSession.Instance.Rules.LargeCrowds ? CrowdMismatchWindow : MismatchWindow;
+        if (!_mismatchSeen.Remove(chara.uid, out var seen) || now - seen > window) {
             _mismatchSeen[chara.uid] = now;
             return;
         }
@@ -208,6 +210,7 @@ public class CharaStateSnapshot : EClass
     }
 
     private const float MismatchWindow = 2.2f;
+    private const float CrowdMismatchWindow = 5.2f;
 
     // per character uid, when its tile last differed from the snapshot's by more than the snapshot allows
     private static readonly Dictionary<int, float> _mismatchSeen = [];

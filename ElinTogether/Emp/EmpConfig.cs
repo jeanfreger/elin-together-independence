@@ -715,6 +715,14 @@ internal partial class EmpConfig
             "Otherwise one tile holds one land, as before\n" +
             "同一个世界地图格子上可以有多块土地，各属于不同队伍：在已有土地的格子上使用土地证书会在同一格再开辟一块地，走进这样的格子时会列出可进入的土地；需要开启“据点归队伍所有”；关闭时一个格子只有一块土地");
 
+        Server.LargeCrowds = config.Bind(
+            "Server",
+            "LargeCrowds",
+            false,
+            "Large crowds: each player is sent at full rate only what is near its character (24 tiles), its companions, its team and whoever it trades, duels or fights with; the rest of the map once a second, and the whole map checked every 4 seconds. Nothing disappears, far characters move in steps\n" +
+            "Unticked, every player gets the whole map at full rate, as before\n" +
+            "大量玩家：只以全速向每名玩家发送其角色附近（24格）的内容、其同伴、队伍以及与其交易、决斗或战斗的对象；地图其余部分每秒一次，整张地图每4秒核对一次；不会有东西消失，远处角色的移动会一跳一跳；关闭时每名玩家以全速接收整张地图，如前");
+
         Server.LandAbandon = config.Bind(
             "Server",
             "LandAbandon",
@@ -1051,6 +1059,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
         internal static ConfigEntry<bool> LandRules { get; set; } = null!;
         internal static ConfigEntry<bool> SiblingLands { get; set; } = null!;
+        internal static ConfigEntry<bool> LargeCrowds { get; set; } = null!;
         internal static ConfigEntry<bool> LandAbandon { get; set; } = null!;
         internal static ConfigEntry<int> AbandonDays { get; set; } = null!;
         internal static ConfigEntry<int> LandsPerTeam { get; set; } = null!;

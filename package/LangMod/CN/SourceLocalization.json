@@ -946,5 +946,7 @@
     "LangGeneral.emp_ui_pl_pick.text": "请在左页选择一名玩家。",
     "LangGeneral.emp_ui_pl_actions.text": "操作",
     "LangGeneral.emp_ui_team_pick.text": "请在左页选择一名成员。",
-    "LangGeneral.emp_ui_play_joining.text": "正在接收世界..."
+    "LangGeneral.emp_ui_play_joining.text": "正在接收世界...",
+    "LangGeneral.emp_ui_sv_cfg_large_crowds.text": "大量玩家：只向每名玩家发送其附近的内容",
+    "LangGeneral.emp_ui_sv_desc_large_crowds.text": "只以全速向每名玩家发送其角色附近（24格）的内容、其同伴、队伍以及与其交易、决斗或战斗的对象；地图其余部分每秒一次，整张地图每4秒核对一次。不会有东西消失，远处角色的移动会一跳一跳。关闭：每名玩家以全速接收整张地图，如前。"
 }

@@ -464,6 +464,13 @@ public class NetSessionRules
     [Key(144)]
     public bool SiblingLands { get; set; }
 
+    /// <summary>
+    ///     Host box "Large crowds" (PLAN_100_players stage 1): each player is sent the characters near its own at full
+    ///     rate, the others once a second, and a full check every 4 s. An older host sends none: everything, as it was
+    /// </summary>
+    [Key(148)]
+    public bool LargeCrowds { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -490,6 +497,7 @@ public class NetSessionRules
         TeamLeaders = EmpConfig.Server.TeamLeaders.Value,
         LandRules = EmpConfig.Server.LandRules.Value,
         SiblingLands = EmpConfig.Server.SiblingLands.Value,
+        LargeCrowds = EmpConfig.Server.LargeCrowds.Value,
         TeamMaxSize = System.Math.Max(0, EmpConfig.Server.TeamMaxSize.Value),
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,

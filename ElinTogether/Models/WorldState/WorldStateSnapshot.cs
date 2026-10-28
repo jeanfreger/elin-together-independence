@@ -39,7 +39,9 @@ public class WorldStateSnapshot : EClass
 
     /// <summary>
     ///     Only the characters whose state changed since the last snapshot to everyone; every
-    ///     <see cref="ChangeTracker.FullEvery" />th one, and the first on a new map, has them all (efficiency audit
+    ///     <see cref="ChangeTracker.FullEvery" />th one (<see cref="ChangeTracker.CrowdFullEvery" />th with the host box
+    ///     "Large crowds", which also leaves the players' own steps out of the partial ones), and the first on a new
+    ///     map, has them all (efficiency audit
     ///     2026-10-27: most characters of a map stand still, and every one went to every player 5 times a second).
     ///     A character missing from a partial one is not gone: only a full one says who left
     /// </summary>
@@ -60,6 +62,13 @@ public class WorldStateSnapshot : EClass
         // 1 s at 5 Hz
         internal const int FullEvery = 5;
 
+        // 4 s at 5 Hz, host box "Large crowds" (PLAN_100_players stage 1): a player's own steps already reach
+        // everyone as CharaMoveDelta, the full one is the check that nothing drifted
+        internal const int CrowdFullEvery = 20;
+
+        // (the rules, not the file: a zone session keeps the world's)
+        internal static bool Crowds => NetSession.Instance.Rules.LargeCrowds;
+
         private Dictionary<int, int> _sent = [];
         private Dictionary<int, int> _next = [];
         private int _zoneUid;
@@ -67,9 +76,9 @@ public class WorldStateSnapshot : EClass
         /// <summary>
         ///     Whether the entry goes into this snapshot, and remember it for the next one
         /// </summary>
-        internal bool Keep(CharaStateSnapshot snapshot, bool full)
+        internal bool Keep(CharaStateSnapshot snapshot, bool full, bool player = false)
         {
-            var key = Key(snapshot);
+            var key = player ? StateKey(snapshot) : Key(snapshot);
             var uid = snapshot.Owner.Uid;
             _next[uid] = key;
             return full || !_sent.TryGetValue(uid, out var sent) || sent != key;
@@ -77,7 +86,7 @@ public class WorldStateSnapshot : EClass
 
         internal bool Begin(int zoneUid, int tick)
         {
-            var full = zoneUid != _zoneUid || tick % FullEvery == 0;
+            var full = zoneUid != _zoneUid || tick % (Crowds ? CrowdFullEvery : FullEvery) == 0;
             _zoneUid = zoneUid;
             _next.Clear();
             return full;
@@ -88,9 +97,18 @@ public class WorldStateSnapshot : EClass
             (_sent, _next) = (_next, _sent);
         }
 
-        private static int Key(CharaStateSnapshot s)
+        internal static int Key(CharaStateSnapshot s)
         {
             return HashCode.Combine(HashCode.Combine(s.Pos.X, s.Pos.Z, s.CurrentZoneUid, s.Hp, s.IsDead),
+                s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+        }
+
+        /// <summary>
+        ///     All but the tile: what a partial one carries of a player whose steps reach the other side anyway
+        /// </summary>
+        internal static int StateKey(CharaStateSnapshot s)
+        {
+            return HashCode.Combine(HashCode.Combine(s.CurrentZoneUid, s.Hp, s.IsDead),
                 s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
         }
     }
@@ -117,7 +135,7 @@ public class WorldStateSnapshot : EClass
                 snapshot.CurrentZoneUid = 0;
             }
 
-            if (tracker?.Keep(snapshot, full) ?? true) {
+            if (tracker?.Keep(snapshot, full, ChangeTracker.Crowds && chara.IsPlayer) ?? true) {
                 snapshots[chara.uid] = snapshot;
             }
         }
