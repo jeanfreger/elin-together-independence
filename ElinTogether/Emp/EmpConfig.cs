@@ -909,6 +909,13 @@ internal partial class EmpConfig
             "A dedicated server (-empserver) with nobody connected runs at 5 frames a second and with its sound stopped, the full rate again as soon as a player connects. Otherwise it runs at the game's own frame rate all the time\n" +
             "无人连接时，专用服务器（-empserver）以每秒 5 帧运行并停止声音，有玩家连接时立即恢复正常帧率；关闭时始终以游戏自身的帧率运行");
 
+        Server.ServerAvatar = config.Bind(
+            "Server",
+            "ServerAvatar",
+            true,
+            "A dedicated server (-empserver) plays no character: the save owner's character becomes an ordinary player character tied to its Steam id (it joins like any guest), and the server's own player is a hidden, untouchable stand-in. Off: the owner's character stays planted at the base as before. Has no effect on a game hosted from the menu\n" +
+            "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身；关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效");
+
         Dev.Listener = config.Bind(
             "Dev",
             "Listener",
@@ -1071,5 +1078,6 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> ActivitiesFromActor { get; set; } = null!;
         internal static ConfigEntry<int> TravelCheckpointSeconds { get; set; } = null!;
         internal static ConfigEntry<bool> ServerRestsWhenEmpty { get; set; } = null!;
+        internal static ConfigEntry<bool> ServerAvatar { get; set; } = null!;
     }
 }

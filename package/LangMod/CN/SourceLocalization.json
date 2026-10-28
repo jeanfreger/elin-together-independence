@@ -761,5 +761,7 @@
     "LangGeneral.emp_ui_sv_cfg_sibling_lands.text": "同一格多块土地",
     "LangGeneral.emp_ui_sv_desc_sibling_lands.text": "不同队伍的土地可以共用世界地图的同一格。在已有土地的格子上使用土地证书会在同一格开辟另一块地；走进有多块土地的格子时会列出供你选择。需要开启“据点归队伍所有”。关闭：每格一块土地。",
     "LangGeneral.emp_sibling_ask.text": "这一格已有土地。要在同一格再开辟一块地吗？你会走进新地块，再次使用证书来认领。",
-    "LangGeneral.emp_sibling_pick.text": "进入哪块土地"
+    "LangGeneral.emp_sibling_pick.text": "进入哪块土地",
+    "LangGeneral.emp_ui_sv_cfg_server_avatar.text": "服务器不扮演角色",
+    "LangGeneral.emp_ui_sv_desc_server_avatar.text": "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身。关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效。"
 }

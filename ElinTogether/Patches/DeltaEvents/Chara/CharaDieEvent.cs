@@ -9,8 +9,15 @@ namespace ElinTogether.Patches;
 internal static class CharaDieEvent
 {
     [HarmonyPrefix]
-    internal static bool OnCharaDie(Chara __instance, Element? e, Card? origin, AttackSource attackSource, Chara? originalTarget)
+    internal static bool OnCharaDie(Chara __instance, Element? e, Card? origin, AttackSource attackSource, Chara? originalTarget,
+        bool __runOriginal)
     {
+        // Harmony runs this prefix even after another one skipped the original (the server's stand-in cannot die): no
+        // death to tell then
+        if (!__runOriginal) {
+            return false;
+        }
+
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:
                 CharaMoveDelta.ClearRecentMove(__instance.uid);

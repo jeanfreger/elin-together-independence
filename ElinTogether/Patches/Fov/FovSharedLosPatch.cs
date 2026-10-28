@@ -20,7 +20,8 @@ internal class FovSharedLosPatch
     [HarmonyPostfix]
     internal static void OnRemoteLosCheck(object __instance, Card c, ref bool __result)
     {
-        if (__result || c is not Chara { IsPlayer: true }) {
+        // (not the server's stand-in, which nobody sees)
+        if (__result || c is not Chara { IsPlayer: true } || ServerAvatar.Is(c)) {
             return;
         }
 

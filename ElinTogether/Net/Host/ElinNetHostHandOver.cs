@@ -39,7 +39,7 @@ internal partial class ElinNetHost
 #if DEBUG
         EmpConfig.Dev.Identity.Value != 0 ? SteamNetPeer.DevIdentityBase + (ulong)EmpConfig.Dev.Identity.Value :
 #endif
-        UserData.Me;
+        ServerAvatar.HostUser;
 
     /// <summary>
     ///     Former local characters whose player is not known (a world last hosted before the owner was written): the
@@ -273,6 +273,22 @@ internal partial class ElinNetHost
             return false;
         }
 
+        Exchange(mine, formerOwner, me);
+        return true;
+    }
+
+    /// <summary>
+    ///     <paramref name="mine" /> (owned by <paramref name="me" />) becomes the local character in place of the one
+    ///     there now, which becomes the character of the absent player <paramref name="formerOwner" /> (0: not
+    ///     known, it waits for whoever comes without a character, see GiveOrphanTo). Nothing is copied, only who is
+    ///     the local character changes: fame, karma and random quests go to the books of whoever stops being it,
+    ///     the companions of the leader are tagged to it, and the two characters swap places. Both directions of a
+    ///     handover share it: the player who takes a world over (TakeOverPc) and the server that stops playing
+    ///     (ServerAvatar). The caller has checked that <paramref name="mine" /> is alive and the local one has a party
+    /// </summary>
+    private static void Exchange(Chara mine, ulong formerOwner, ulong me)
+    {
+        var party = pc.party!;
         var former = pc;
         EmpLog.Information("The world was {Owner}'s (0: not known): playing our own character {Mine} in place of {Former}",
             formerOwner, mine.uid, former.uid);
@@ -366,6 +382,5 @@ internal partial class ElinNetHost
         }
 
         SetPcOwner(me);
-        return true;
     }
 }

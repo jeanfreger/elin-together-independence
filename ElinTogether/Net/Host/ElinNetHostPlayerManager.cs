@@ -724,6 +724,31 @@ internal partial class ElinNetHost
             });
         }
 
+        // a server plays no character: the owner's is exchanged for a stand-in before the session opens (and the world
+        // loaded again, as above, when the exchange was saved), see ServerAvatar. One frame later for the same reason
+        if (Session.Transport is null && ServerAvatar.Active) {
+            ServerAvatar.Settled = false;
+            var loaded = game;
+            core.actionsNextFrame.Add(() => {
+                var again = false;
+                if (core.game == loaded && Session.Transport is null) {
+                    try {
+                        again = MigrateToServerAvatar();
+                    } catch (System.Exception ex) {
+                        // the server is the old one then, with the owner's character at the base
+                        EmpLog.Warning(ex, "Server: the exchange of characters for the stand-in failed");
+                    }
+                }
+
+                if (again) {
+                    var (id, cloud) = (Game.id, game.isCloud);
+                    core.actionsNextFrame.Add(() => Game.Load(id, cloud));
+                } else {
+                    ServerAvatar.Settled = true;
+                }
+            });
+        }
+
         IEnumerable<Chara> excluded = Session.Connection is ElinNetHost host
             ? host.ActiveRemoteCharas.Values
             : [];

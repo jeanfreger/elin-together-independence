@@ -86,7 +86,8 @@ internal static class EmpServer
             return;
         }
 
-        if (EClass.pc is null || EClass._map is null) {
+        // the owner's character is being exchanged for the server's stand-in (ServerAvatar): the session opens after
+        if (EClass.pc is null || EClass._map is null || (session.Transport is null && !ServerAvatar.Settled)) {
             return;
         }
 
