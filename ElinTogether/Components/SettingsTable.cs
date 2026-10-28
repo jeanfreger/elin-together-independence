@@ -512,6 +512,13 @@ internal static class SettingsTable
             [EmpConfig.Server.TimeStopsWhenEmpty] = r.TimeStopsWhenEmpty,
             [EmpConfig.Server.CatchUpDays] = r.CatchUpDays,
             [EmpConfig.Server.LivingWorldMinutes] = r.LivingWorldMinutes,
+            [EmpConfig.Server.OwnSleep] = r.UseOwnSleep,
+            [EmpConfig.Server.SharedWorldTime] = r.UseSharedWorldTime,
+            [EmpConfig.Server.WorldKeeper] = r.UseWorldKeeper,
+            [EmpConfig.Server.DumpSparesBelt] = r.DumpSparesBelt,
+            [EmpConfig.Server.AutoReconnect] = r.AllowReconnect,
+            [EmpConfig.Server.AutoResync] = r.AutoResync,
+            [EmpConfig.Server.SoftRecall] = r.SoftRecall,
         };
         return new(e => values.TryGetValue(e, out var v) ? v : null);
     }
