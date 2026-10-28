@@ -69,6 +69,34 @@ internal static class OwnerPartyPatch
             .InstructionEnumeration();
     }
 
+    /// <summary>
+    ///     Arriving in a town after a journey on the world map pays the party in experience (Player.MoveZone): every
+    ///     player and every player's companion, wherever they were, for the local player's steps. The local player's
+    ///     side (hunt 6 item 3)
+    /// </summary>
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(Player), nameof(Player.MoveZone))]
+    internal static IEnumerable<CodeInstruction> OnTravelReward(IEnumerable<CodeInstruction> instructions)
+    {
+        var codes = new CodeMatcher(instructions);
+        var found = 0;
+        while (codes.MatchStartForward(
+                   new CodeMatch(OpCodes.Call, GetPc),
+                   new CodeMatch(OpCodes.Ldfld, PartyField),
+                   new CodeMatch(i => i.Calls(Members))).IsValid) {
+            codes.Advance(1)
+                .SetAndAdvance(OpCodes.Call, AccessTools.Method(typeof(OwnerPartyPatch), nameof(Side)))
+                .RemoveInstruction();
+            found++;
+        }
+
+        if (found == 0) {
+            EmpLog.Warning("Travel reward: Player.MoveZone reads no party, left as the game has it");
+        }
+
+        return codes.InstructionEnumeration();
+    }
+
     internal static Chara PlayerOf(ElementContainerCard elements)
     {
         return NetSession.Instance.Connection is not null && elements.owner is Chara chara &&

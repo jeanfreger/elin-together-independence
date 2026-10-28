@@ -102,6 +102,9 @@ internal static class OwnSettings
                 LittleSaved = player.little_saved,
                 LittleDead = player.little_dead,
                 TotalFeat = player.totalFeat,
+                DistanceTravel = player.distanceTravel,
+                DateTravel = player.dateTravel,
+                LastTravelZone = player.uidLastTravelZone,
                 Log = EClass.game.log,
                 Digs = player.stats.digs,
                 Deaths = player.stats.death,
@@ -211,6 +214,14 @@ internal static class OwnSettings
             // and the levels it gained (the character sheet's "total feat", hunt 6 item 7): the host's count. None
             // noted (a first time, or an older file): one per level above the first, as Card.LevelUp counts them
             player.totalFeat = kept?.TotalFeat ?? Math.Max(0, chara.LV - 1);
+            // and its journey (hunt 6 item 3): the steps it walked on its own world map, since when, from which town.
+            // Player.MoveZone pays them in experience on arrival in another town, which for a guest walking into
+            // the host's map is in the new game (EnterHostMap): with the host's journey there, the guest's was lost.
+            // None noted: no journey yet. (Its own clock may have run ahead of this world's while away: not later than now)
+            player.distanceTravel = kept?.DistanceTravel ?? 0;
+            var now = EClass.game.world?.date?.GetRaw() ?? player.dateTravel;
+            player.dateTravel = Math.Min(kept?.DateTravel ?? now, now);
+            player.uidLastTravelZone = kept?.LastTravelZone ?? 0;
             // the journal tells about this player (council 2026-10-28, OwnJournal): its own message history, not the
             // host's last lines (a first time in this world: none yet)
             if (NetSession.Instance.Rules.OwnJournal) {
@@ -484,6 +495,9 @@ internal static class OwnSettings
         public int LittleSaved;
         public int LittleDead;
         public int? TotalFeat;
+        public int DistanceTravel;
+        public int DateTravel;
+        public int LastTravelZone;
 
         // the message history (the journal's log), see OwnJournal
         public MsgLog? Log;
