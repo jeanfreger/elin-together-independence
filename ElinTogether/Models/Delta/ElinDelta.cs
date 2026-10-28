@@ -353,9 +353,10 @@ public abstract class ElinDelta : EClass
         try {
             reason = OnHostPermit(host, host.PlayerChara(OriginPeer));
         } catch (Exception ex) {
-            // a check that fails says nothing: the delta goes on as it did before there were checks
+            // a check that fails is a refusal like any other: logged, and the delta dropped where strangers come in
+            // (security audit 2026-10-27, item 14: a forged delta that made its check throw went through unchecked)
             EmpLog.Debug(ex, "Permit check of {DeltaType} threw", GetType().Name);
-            return true;
+            reason = "its check failed";
         }
 
         if (reason is null) {

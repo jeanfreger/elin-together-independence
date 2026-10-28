@@ -47,7 +47,7 @@ internal partial class ElinNetHost
             return;
         }
 
-        if (!ExportAllowed) {
+        if (!ExportAllowed || !ImportTrusted(peer.User)) {
             EmpLog.Warning("Player {@Peer} asked to take chara {Uid} to a solo save while it is not allowed", peer, chara.uid);
             PreparePlayerJoin(peer);
             return;

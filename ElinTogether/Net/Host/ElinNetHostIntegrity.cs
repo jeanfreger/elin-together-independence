@@ -198,5 +198,8 @@ internal partial class ElinNetHost
         public string DisconnectReason = EmpDisconnectInfo.Timeout;
         public NetHandshakePhase Phase;
         public float Timeout;
+
+        // the player was told its differences and may go on with them (SourceValidationFailed)
+        public bool MayContinue;
     }
 }

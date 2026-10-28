@@ -119,7 +119,7 @@ internal partial class ElinNetHost
         }
 
         var roster = RosterOf(peer.User);
-        var import = EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting;
+        var import = EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting && ImportTrusted(peer.User);
         // (a character taken to a solo save is not played here until it comes back)
         var known = SavedRemoteCharas.TryGetValue(peer.User, out var played) &&
                     game.cards.globalCharas.Find(played) is { } last && !CharaExport.IsAway(last);
@@ -149,7 +149,7 @@ internal partial class ElinNetHost
             peer.Send(new SessionCharaSelectRequest {
                 AllowImport = import,
                 AllowDelete = EmpConfig.Server.DeleteCharacter.Value,
-                AllowExport = ExportAllowed,
+                AllowExport = ExportAllowed && ImportTrusted(peer.User),
                 Notice = notice,
                 Charas = roster
                     .Select(c => new SessionCharaEntry {
@@ -332,6 +332,16 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     A character brought from a save is whatever that save says: any level, any item (security audit 2026-10-27,
+    ///     item 14). Where strangers come in (TrustEnforced) only a player the host vouched for brings one: an admin,
+    ///     or one let in with "allow"
+    /// </summary>
+    internal static bool ImportTrusted(ulong user)
+    {
+        return !ElinDelta.TrustEnforced || Admins.ContainsKey(user) || Members.ContainsKey(user);
+    }
+
+    /// <summary>
     ///     Net event: the player brings the character of one of its own saves
     /// </summary>
     private void OnSessionCharaImportResponse(SessionCharaImportResponse response, ISteamNetPeer peer)
@@ -344,6 +354,17 @@ internal partial class ElinNetHost
             EmpLog.Warning("Player {@Peer} sent a character while bringing one is not allowed", peer);
             PreparePlayerJoin(peer);
             return;
+        }
+
+        if (!ImportTrusted(peer.User)) {
+            EmpLog.Warning("Refused the character brought by {@Peer}: not vouched for by the host on a public server", peer);
+            AdminLog($"refused a character brought by {(ulong)peer.User}: not an admin nor let in with allow");
+            PreparePlayerJoin(peer);
+            return;
+        }
+
+        if (!ElinDelta.TrustEnforced && !Admins.ContainsKey(peer.User) && !Members.ContainsKey(peer.User)) {
+            EmpLog.Information("Would have refused the character brought by {@Peer} on a public server", peer);
         }
 
         Chara chara;
