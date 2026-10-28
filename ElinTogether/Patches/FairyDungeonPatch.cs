@@ -47,7 +47,8 @@ internal static class FairyDungeonPatch
 
     internal static Chara? Here(Party party, string id)
     {
-        if (NetSession.Instance.Connection is null) {
+        // Transport, not Connection: Connection is null while this player is away, the host's companion would match
+        if (NetSession.Instance.Transport is null) {
             return party.Find(id);
         }
 
