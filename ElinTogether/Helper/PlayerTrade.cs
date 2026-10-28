@@ -363,6 +363,24 @@ public static class PlayerTrade
         return _sessions.Exists(s => s.A == chara || s.B == chara);
     }
 
+    /// <summary>
+    ///     Whom that character trades with or is invited by, as the authority knows it (ElinNetHost.Crowd)
+    /// </summary>
+    internal static Chara? PartnerOf(Chara chara)
+    {
+        foreach (var s in _sessions) {
+            if (s.A == chara) {
+                return s.B;
+            }
+
+            if (s.B == chara) {
+                return s.A;
+            }
+        }
+
+        return null;
+    }
+
     private static bool Present(Chara chara)
     {
         return chara is { isDead: false, isDestroyed: false } && EClass._map.charas.Contains(chara);

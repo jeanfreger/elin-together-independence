@@ -173,6 +173,22 @@ public class WorldStateSnapshot : EClass
         };
     }
 
+    /// <summary>
+    ///     The same tick with only these entries, a partial one (host box "Large crowds": what one player is sent)
+    /// </summary>
+    internal WorldStateSnapshot With(ImmutableArray<CharaStateSnapshot> entries)
+    {
+        return new() {
+            ServerTick = ServerTick,
+            GameDate = GameDate,
+            CharaSnapshots = entries,
+            GlobalUidNext = GlobalUidNext,
+            SharedSpeed = SharedSpeed,
+            ZoneUid = ZoneUid,
+            Partial = true,
+        };
+    }
+
     public void ApplyReconciliation()
     {
         if (NetSession.Instance.Connection is not ElinNetClient client) {
