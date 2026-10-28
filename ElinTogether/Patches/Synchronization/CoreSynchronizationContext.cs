@@ -42,6 +42,12 @@ internal class CoreSynchronizationContext : SynchronizationContext
         PlayerDuel.Always();
 
         if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
+            // (alone on a map of its own there is no connection, and the clock of the world is still lived there:
+            // bench 2026-10-28, the away guest's date stood still in living world)
+            if (NetSession.Instance.IsAway) {
+                LivingWorld.Update();
+            }
+
             return;
         }
 

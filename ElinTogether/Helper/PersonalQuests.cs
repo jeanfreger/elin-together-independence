@@ -205,6 +205,15 @@ internal static class PersonalQuests
         }
 
         _source = EClass.game;
+        // what is held is from another connection when the host has not spoken on this one yet (Tick, which resets it
+        // at the title, no longer runs once the connection is removed): its quests and date would be taken for this
+        // world's, a rejoining player's quests kept the time they had left whatever the host rule said (bench 2026-10-28)
+        if (!ReferenceEquals(NetSession.Instance.Transport, _transport)) {
+            _mine = [];
+            _now = 0;
+            _hasStanding = false;
+        }
+
         Rebase(_now);
         Restore();
     }
