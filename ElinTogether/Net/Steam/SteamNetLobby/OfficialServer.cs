@@ -70,9 +70,18 @@ internal static class OfficialServer
         }
     }
 
-    internal static bool Verify(ulong lobbyId, string? signature)
+    /// <summary>
+    ///     The owner of the lobby, when Steam tells it (only to its members, 0 before), is the Elin Together account:
+    ///     a signature copied onto a lobby of someone else is worth nothing (council 2026-10-28, ops)
+    /// </summary>
+    internal static bool OwnerAllows(ulong owner)
     {
-        if (string.IsNullOrEmpty(signature)) {
+        return owner == 0 || owner == Account;
+    }
+
+    internal static bool Verify(ulong lobbyId, string? signature, ulong owner = 0)
+    {
+        if (string.IsNullOrEmpty(signature) || !OwnerAllows(owner)) {
             return false;
         }
 
@@ -87,7 +96,16 @@ internal static class OfficialServer
 
     internal static bool IsOfficial(LobbyData lobby)
     {
-        return Verify(lobby.SteamId.m_SteamID, lobby[SignatureKey]);
+        return Verify(lobby.SteamId.m_SteamID, lobby[SignatureKey], OwnerOf(lobby));
+    }
+
+    private static ulong OwnerOf(LobbyData lobby)
+    {
+        try {
+            return SteamMatchmaking.GetLobbyOwner(lobby.SteamId).m_SteamID;
+        } catch (Exception) {
+            return 0;
+        }
     }
 
     // (the lobby id, so that a signature copied onto another lobby is worth nothing)

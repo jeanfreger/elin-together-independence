@@ -209,6 +209,61 @@ internal partial class ElinNetHost
         return Socket.Peers.FirstOrDefault(p => p.Id == peerId) is { } peer && ModerationDelta.IsMuted(peer.User);
     }
 
+    // chat flood limit (council 2026-10-28, ops): lines in the last ChatWindow seconds per player, and who is silenced until when
+    internal const int ChatBurst = 8;
+    internal const float ChatWindow = 10f;
+    internal const float ChatMuteSeconds = 30f;
+    private readonly Dictionary<int, Queue<float>> _chatTimes = [];
+    private readonly Dictionary<int, float> _chatSilencedUntil = [];
+
+    /// <summary>
+    ///     A typed line (public chat or whisper) of that player is over the flood limit: more than 8 lines in 10 s
+    ///     silence it for 30 s, told to that player only. Where trust is enforced (public servers); the host's admins
+    ///     are not limited. The line is dropped, nothing reaches the others
+    /// </summary>
+    internal bool ChatFlooded(int peerId)
+    {
+        if (!ElinDelta.TrustEnforced || Socket.Peers.FirstOrDefault(p => p.Id == peerId) is not { } peer || Admins.ContainsKey(peer.User)) {
+            return false;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        if (_chatSilencedUntil.TryGetValue(peerId, out var until)) {
+            if (now < until) {
+                return true;
+            }
+
+            _chatSilencedUntil.Remove(peerId);
+        }
+
+        if (!_chatTimes.TryGetValue(peerId, out var times)) {
+            _chatTimes[peerId] = times = new();
+        }
+
+        while (times.Count > 0 && now - times.Peek() > ChatWindow) {
+            times.Dequeue();
+        }
+
+        times.Enqueue(now);
+        if (times.Count <= ChatBurst) {
+            return false;
+        }
+
+        times.Clear();
+        _chatSilencedUntil[peerId] = now + ChatMuteSeconds;
+        EmpLog.Information("Chat of {@Peer} silenced for {Seconds} s: over {Burst} lines in {Window} s", peer, ChatMuteSeconds, ChatBurst, ChatWindow);
+        peer.Send(new MsgSayDelta {
+            Text = "emp_chat_flood".lang(),
+            R = 1,
+            G = 1,
+            B = 1,
+            A = 1,
+            Notice = true,
+            Name = "[Server]",
+        });
+        return true;
+    }
+
     internal string MakeAdmin(ulong user, bool admin)
     {
         if (admin) {

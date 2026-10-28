@@ -101,7 +101,7 @@ public class MsgSayDelta : ElinDelta
         // a muted player's line goes no further than its own game; nor a line under another player's name, nor a
         // wall of text (security audit 2026-10-27)
         if (net is ElinNetHost from && FromPeer &&
-            (from.FromMuted(OriginPeer) || Text.Length > 500 ||
+            (from.FromMuted(OriginPeer) || Text.Length > 500 || (Chat && from.ChatFlooded(OriginPeer)) ||
              // (a player holding a map passes its visitors' lines up: only the host's and other present players' names
              // are someone else's)
              (Chat && SpeakerUid != 0 && (SpeakerUid == pc.uid ||

@@ -50,7 +50,7 @@ public class WhisperDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         // a muted player's line goes no further than its own game
-        if (net is ElinNetHost from && from.FromMuted(OriginPeer)) {
+        if (net is ElinNetHost from && FromPeer && (from.FromMuted(OriginPeer) || from.ChatFlooded(OriginPeer))) {
             return;
         }
 
