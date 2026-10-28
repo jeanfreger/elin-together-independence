@@ -50,18 +50,25 @@ internal class TabTeam : TabEmpBase
             return;
         }
 
+        // the journal's two pages: the team and its members on the left, the picked member and the leader's tools
+        // on the right (without a team: founding and invitations on the left, the other teams on the right)
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
-        BuildInvitation(me);
+        var (left, right) = this.Book();
+        BuildInvitation(left, me);
         if (mine == Teams.Wanderers) {
-            BuildFound();
+            BuildFound(left);
+            BuildOtherTeams(right, mine);
+            BuildTeamLines(right);
         } else {
-            BuildOwnTeam(mine, me);
+            BuildOwnTeam(left, right, mine, me);
+            BuildOtherTeams(left, mine);
+            BuildTeamLines(left);
         }
-
-        BuildOtherTeams(mine);
-        BuildTeamLines();
     }
+
+    // the member whose page is open on the right, kept over reopenings
+    private static int _picked;
 
     private static Chara? CharaOf(int uid) => EClass.game.cards.globalCharas.Find(uid);
 
@@ -82,21 +89,21 @@ internal class TabTeam : TabEmpBase
     /// <summary>
     ///     A team invited this player: a row with the two answers (no popup)
     /// </summary>
-    private void BuildInvitation(int me)
+    private static void BuildInvitation(YKLayout page, int me)
     {
         var team = Teams.InviteOf(me);
         if (team == Teams.Wanderers) {
             return;
         }
 
-        var card = this.Card("emp_ui_team_invite_title".lang());
+        var card = page.Card("emp_ui_team_invite_title".lang());
         AnswerRow(card, "emp_ui_team_invite_line".Loc(Teams.NameOf(team), Teams.PlayerName(Teams.LeaderOf(team))),
             () => Teams.Ask(TeamAsk.AcceptInvite, team), () => Teams.Ask(TeamAsk.RefuseInvite, team));
     }
 
-    private void BuildFound()
+    private static void BuildFound(YKLayout page)
     {
-        var card = this.Card("emp_ui_team_title".lang());
+        var card = page.Card("emp_ui_team_title".lang());
         card.EmptyState("emp_ui_team_none".lang(), "emp_team_found".lang(), () => {
             Dialog.InputName("emp_ui_team_name_ask", EClass.pc.NameSimple, (cancel, text) => {
                 if (!cancel) {
@@ -106,58 +113,52 @@ internal class TabTeam : TabEmpBase
         });
     }
 
-    private void BuildOwnTeam(int mine, int me)
+    private static void BuildOwnTeam(YKVertical left, YKVertical right, int mine, int me)
     {
         var leader = Teams.LeaderOf(mine);
         var leads = leader == me;
         var manages = leads && Teams.LeadersManage;
         var members = Teams.MembersOfTeam(mine).ToList();
 
-        // the header: the team's name, who leads it and whether anyone may join
-        var card = this.Card(Teams.NameOf(mine), EmpUi.Icon("icon_factions"));
-        var head = card.Row();
-        head.TextSmall("emp_ui_team_leader_line".Loc(Teams.PlayerName(leader), members.Count), FontColor.Gray).LayoutElement().flexibleWidth = 1f;
-        head.Chip((Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
+        // the header: the team's name, then its facts as the character sheet lists them
+        var card = left.Card(Teams.NameOf(mine));
+        card.KeyValue("emp_ui_kv_leader".lang(), Teams.PlayerName(leader));
+        card.KeyValue("emp_ui_kv_members".lang(), members.Count.ToString());
+        card.KeyValue("emp_ui_kv_joining".lang(), (Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
+        if (TeamBoxes.TeamBankGold() is { } bank) {
+            card.KeyValue("emp_ui_kv_bank".lang(), bank.ToString());
+        }
+        if (TeamBills.On) {
+            card.KeyValue("emp_ui_kv_bills".lang(), TeamBills.UnpaidOf(mine).ToString());
+        }
+        if (TeamStory.On) {
+            card.KeyValue("emp_ui_kv_story".lang(), TeamStory.ChapterOf(mine).ToString());
+        }
 
-        // the members: a row each, with the leader's tools behind its "..."
+        // the members: a row each; a click opens the member's page on the right
+        var list = left.Card("emp_ui_kv_members".lang());
+        var picked = members.Contains(_picked) ? _picked : me;
         foreach (var member in members) {
-            card.Divider();
             var chara = CharaOf(member);
-            var actions = new List<(string, System.Action)>();
-            if (manages && member != me) {
-                var target = member;
-                actions.Add(("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, target)));
-                actions.Add(("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, target)));
-            }
-
-            var row = card.PlayerRow(new PlayerRowInfo(Teams.PlayerName(member), MemberLine(chara, member), chara), actions);
+            var target = member;
+            var row = list.PickRow(new PlayerRowInfo(Teams.PlayerName(member), MemberLine(chara, member), chara), member == picked, () => {
+                _picked = target;
+                LayerElinTogether.Instance?.Reopen();
+            });
             if (member == leader) {
                 AddCrown(row);
             }
         }
 
-        card.Divider();
-        var footer = card.Row();
-        if (TeamBoxes.TeamBankGold() is { } bank) {
-            footer.Text("emp_ui_team_bank".Loc(bank)).LayoutElement().flexibleWidth = 1f;
-        } else {
-            footer.Text("").LayoutElement().flexibleWidth = 1f;
-        }
+        list.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
 
-        footer.RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
-
-        if (TeamBills.On) {
-            card.TextSmall("emp_ui_team_bills".Loc(TeamBills.UnpaidOf(mine)), FontColor.Gray);
-        }
-        if (TeamStory.On) {
-            card.TextSmall("emp_ui_team_story".Loc(TeamStory.ChapterOf(mine)), FontColor.Gray);
-        }
+        BuildMemberPage(right, picked, leader, me, manages);
 
         // the leader answers who asks (the choices of the player list moved here)
         if (leads) {
             var asking = Teams.Asking(mine).ToList();
             if (asking.Count > 0) {
-                var requests = this.Card("emp_ui_team_requests".lang());
+                var requests = left.Card("emp_ui_team_requests".lang());
                 foreach (var asker in asking) {
                     var target = asker;
                     AnswerRow(requests, "emp_ui_team_asks_row".Loc(Teams.PlayerName(asker)),
@@ -166,7 +167,33 @@ internal class TabTeam : TabEmpBase
             }
         }
 
-        BuildTools(mine, leads, manages);
+        BuildTools(right, mine, leads, manages);
+    }
+
+    /// <summary>
+    ///     The right page: the picked member's facts and, for a leader who manages the team, promote and remove
+    /// </summary>
+    private static void BuildMemberPage(YKVertical page, int member, int leader, int me, bool manages)
+    {
+        var chara = CharaOf(member);
+        var card = page.Card(Teams.PlayerName(member));
+        var head = card.Row();
+        if (chara != null) {
+            head.PlayerRow(new("", "", chara), []).LayoutElement().flexibleWidth = 0f;
+        }
+        var lines = head.Vertical();
+        lines.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        lines.LayoutElement().flexibleWidth = 1f;
+        lines.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
+        lines.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
+        lines.KeyValue("emp_ui_kv_state".lang(), (Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang());
+        lines.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
+
+        if (manages && member != me) {
+            var buttons = card.ButtonRow();
+            buttons.RowButton("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member));
+            buttons.RowButton("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member));
+        }
     }
 
     private static string MemberLine(Chara? chara, int member)
@@ -195,9 +222,9 @@ internal class TabTeam : TabEmpBase
     ///     The leader's tools in one card (host box "Team leaders manage their team"): rename, who may join, invite the
     ///     players in the game who have no team, end the team. Grey, with one line saying why, for anyone else
     /// </summary>
-    private void BuildTools(int mine, bool leads, bool manages)
+    private static void BuildTools(YKLayout page, int mine, bool leads, bool manages)
     {
-        var card = this.Card("emp_ui_team_manage".lang(), EmpUi.Icon("icon_medal"));
+        var card = page.Card("emp_ui_team_manage".lang());
         if (!manages) {
             card.TextSmall((leads ? "emp_ui_team_tools_host_off" : "emp_ui_team_tools_leader_only").lang(), FontColor.Gray);
         }
@@ -240,14 +267,14 @@ internal class TabTeam : TabEmpBase
         }));
     }
 
-    private void BuildOtherTeams(int mine)
+    private static void BuildOtherTeams(YKLayout page, int mine)
     {
         var others = Teams.Ids().Where(id => id != Teams.Wanderers && id != mine).ToList();
         if (others.Count == 0) {
             return;
         }
 
-        var card = this.Card("emp_ui_team_others".lang());
+        var card = page.Card("emp_ui_team_others".lang());
         foreach (var team in others) {
             var row = card.Row();
             row.TextColumn(Teams.NameOf(team),
@@ -263,13 +290,13 @@ internal class TabTeam : TabEmpBase
     ///     The bills and story chapter of every team (host options "Teams pay their own land" and "Teams keep their own
     ///     story journal"), moved here from the session page
     /// </summary>
-    private void BuildTeamLines()
+    private static void BuildTeamLines(YKLayout page)
     {
         if (!TeamBills.On && !TeamStory.On) {
             return;
         }
 
-        var card = this.Card("emp_ui_teams_title".lang());
+        var card = page.Card("emp_ui_teams_title".lang());
         foreach (var team in Teams.Ids()) {
             var line = Teams.NameOf(team);
             if (TeamBills.On) {

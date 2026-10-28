@@ -21,26 +21,56 @@ internal class TabPlayers : TabEmpBase
 {
     public const string TabName = "emp_tab_players";
 
-    // the folded sections the player opened stay open when the page is rebuilt
-    private static readonly HashSet<string> Opened = [];
+    private static bool HostLists => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
 
     public override void OnLayout()
     {
-        BuildPlayerList();
-        BuildSavedCharacters();
-        BuildBannedList();
+        // sub-tabs: who is here, then for the host the characters of this world and the bans
+        var pages = new List<(string, Action<YKVertical>)> { ("emp_ui_sub_online".lang(), BuildPlayerList) };
+        if (HostLists) {
+            pages.Add(("emp_ui_sub_characters".lang(), BuildSavedCharacters));
+            pages.Add(("emp_ui_sub_banned".lang(), BuildBannedList));
+        }
+
+        SubTabs("players", pages);
     }
 
-    private void BuildPlayerList()
-    {
-        var players = NetSession.Instance.CurrentPlayers.ToList();
-        var card = this.Card("emp_ui_players_title".Loc(players.Count), EmpUi.Icon("icon_LayerPeople"));
-        for (var i = 0; i < players.Count; i++) {
-            if (i > 0) {
-                card.Divider();
-            }
+    // the player whose page is open on the right (by account), kept over reopenings
+    private static ulong _picked;
 
-            BuildPlayerLine(card, players[i]);
+    /// <summary>
+    ///     The journal's two pages: the players on the left, the picked one's facts and actions on the right
+    /// </summary>
+    private static void BuildPlayerList(YKVertical page)
+    {
+        var (left, right) = page.Book();
+        FillBook(left, right);
+    }
+
+    private static void FillBook(YKVertical left, YKVertical right)
+    {
+        foreach (Transform child in left.transform) {
+            child.gameObject.SetActive(false);
+            Destroy(child.gameObject);
+        }
+        foreach (Transform child in right.transform) {
+            child.gameObject.SetActive(false);
+            Destroy(child.gameObject);
+        }
+
+        var players = NetSession.Instance.CurrentPlayers.ToList();
+        var picked = players.FirstOrDefault(p => (ulong)p.User == _picked) ?? players.FirstOrDefault(p => p.User.IsMe) ?? players.FirstOrDefault();
+        var card = left.Card("emp_ui_players_title".Loc(players.Count));
+        foreach (var player in players) {
+            var target = player;
+            BuildPlayerLine(card, player, player == picked, () => {
+                _picked = target.User;
+                FillBook(left, right);
+            });
+        }
+
+        if (picked is not null) {
+            BuildPlayerPage(right, picked);
         }
 
         // nobody else: say so, and the one click that helps (invite when in a game, else the Play page)
@@ -53,49 +83,79 @@ internal class TabPlayers : TabEmpBase
                     () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
             }
         }
+
+        UIHelper.WrapTexts(left);
+        UIHelper.WrapTexts(right);
+        left.GetComponentInParent<TabEmpBase>()?.Relayout();
     }
 
     /// <summary>
-    ///     A folded card: its title on a button, its body shown when opened
+    ///     The right page: the player's name, the facts of the character sheet (character, level, team, ping, role),
+    ///     then what can be done, one button each (the entries the "..." menu had)
     /// </summary>
-    private YKVertical Fold(string id, string title, out YKVertical body)
+    private static void BuildPlayerPage(YKVertical page, NetPeerState player)
     {
-        var card = this.MakeCard();
-        UIButton? head = null;
-        var inner = card.Vertical();
-        inner.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        inner.Layout.spacing = UIHelper.RowSpacing * 2f;
-        string Label() => (Opened.Contains(id) ? "v " : "> ") + title;
-        head = card.Button(Label(), () => {
-            if (!Opened.Add(id)) {
-                Opened.Remove(id);
-            }
+        var chara = player.FindChara();
+        var name = string.IsNullOrWhiteSpace(player.User.Name) ? chara?.Name ?? "?" : player.User.Name;
+        var facts = page.Card(name);
+        if (chara is null) {
+            facts.TextSmall("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid), FontColor.Gray);
+            return;
+        }
 
-            head!.mainText.text = Label();
-            inner.gameObject.SetActive(Opened.Contains(id));
-            this.RebuildLayout(true);
-        });
-        // (the button was added after the body: it goes first)
-        head.transform.SetAsFirstSibling();
-        head.LayoutElement().flexibleWidth = 1f;
-        inner.gameObject.SetActive(Opened.Contains(id));
-        body = inner;
-        return card;
+        var head = facts.Row();
+        head.PlayerRow(new("", "", chara), []).LayoutElement().flexibleWidth = 0f;
+        var lines = head.Vertical();
+        lines.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        lines.LayoutElement().flexibleWidth = 1f;
+        lines.KeyValue("emp_ui_kv_character".lang(), chara.Name);
+        lines.KeyValue("emp_ui_kv_level".lang(), chara.LV.ToString());
+        if (NetSession.Instance.Rules.UseTeams) {
+            lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(Teams.TeamOf(chara.uid)));
+        }
+        var ms = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
+        lines.KeyValue("emp_ui_kv_ping".lang(), player.Index == 0 || ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
+        lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
+
+        var actions = ActionsFor(player, chara);
+        if (actions.Count == 0) {
+            return;
+        }
+
+        var buttons = page.Card("emp_ui_pl_actions".lang());
+        foreach (var (label, act) in actions) {
+            var action = act;
+            buttons.ButtonRow().RowButton(label, () => action());
+        }
+    }
+
+    private static string RoleOf(NetPeerState player)
+    {
+        var role = player.Index == 0 ? "emp_ui_player_host".lang()
+            : ModerationDelta.AdminIds.Contains(player.User) ? "emp_ui_role_admin".lang()
+            : ModerationDelta.ModeratorIds.Contains(player.User) ? "emp_ui_role_mod".lang() : "emp_ui_role_player".lang();
+        if (ModerationDelta.FrozenIds.Contains(player.User)) {
+            role += ", " + "emp_ui_role_frozen".lang();
+        }
+        if (player.Idle) {
+            role += ", " + "emp_ui_role_idle".lang();
+        }
+        return role;
     }
 
     /// <summary>
     ///     The host: the characters players made in this world, each with Delete when nobody plays it (upstream
     ///     1f932a8: a character left by someone who will not come back stayed in the world for good)
     /// </summary>
-    private void BuildSavedCharacters()
+    private static void BuildSavedCharacters(YKVertical page)
     {
-        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host ||
-            host.SavedCharacters() is not { Count: > 0 } saved) {
+        var body = page.Card("emp_ui_saved_chars_title".lang());
+        body.TextSmall("emp_ui_saved_chars_desc".lang(), FontColor.Gray);
+        if (NetSession.Instance.Transport is not ElinNetHost host || host.SavedCharacters() is not { Count: > 0 } saved) {
+            body.EmptyText("emp_ui_saved_chars_none".lang());
             return;
         }
 
-        Fold("saved", "emp_ui_saved_chars_title".lang(), out var body);
-        body.TextSmall("emp_ui_saved_chars_desc".lang(), FontColor.Gray);
         foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
             var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
             var row = body.Row();
@@ -118,13 +178,14 @@ internal class TabPlayers : TabEmpBase
     /// <summary>
     ///     The host: who is banned from this world, each with Unban (admin tools, council 2026-10-27)
     /// </summary>
-    private void BuildBannedList()
+    private static void BuildBannedList(YKVertical page)
     {
-        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } || ElinNetHost.Bans.Count == 0) {
+        var body = page.Card("emp_ui_banned_title".lang());
+        if (ElinNetHost.Bans.Count == 0) {
+            body.EmptyText("emp_ui_banned_none".lang());
             return;
         }
 
-        Fold("banned", "emp_ui_banned_title".lang(), out var body);
         foreach (var (user, why) in ElinNetHost.Bans.ToList()) {
             var row = body.Row();
             row.Text(why.Length > 0 ? $"{user}  ({why})" : user.ToString()).LayoutElement().flexibleWidth = 1f;
@@ -139,7 +200,7 @@ internal class TabPlayers : TabEmpBase
     ///     One row per player (council 2026-10-26): portrait, name, character and level, team, ping, badges, and the
     ///     "..." menu
     /// </summary>
-    private static void BuildPlayerLine(YKLayout parent, NetPeerState player)
+    private static void BuildPlayerLine(YKLayout parent, NetPeerState player, bool picked, Action onPick)
     {
         var chara = player.FindChara();
         if (chara is null) {
@@ -175,7 +236,7 @@ internal class TabPlayers : TabEmpBase
         // (the host's own line has no ping: index 0)
         var ping = player.Index == 0 ? -1 : EmpUi.PingBarsFor(player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs);
         var team = NetSession.Instance.Rules.UseTeams ? Teams.NameOf(Teams.TeamOf(chara.uid)) : null;
-        parent.PlayerRow(new(name, detail, chara, team, ping, badges), ActionsFor(player, chara));
+        parent.PickRow(new(name, detail, chara, team, ping, badges), picked, onPick);
     }
 
     /// <summary>

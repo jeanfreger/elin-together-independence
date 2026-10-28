@@ -16,6 +16,41 @@ internal static class MultiplayerHubPatch
     internal const string LayerId = "LayerElinTogether";
 
     private static Sprite? _icon;
+    private static Sprite? _logo;
+    private static bool _logoLooked;
+
+    /// <summary>
+    ///     The mod's logo, two putits in pixel art (package/Texture/emp_logo.png, next to the DLL as LangMod is),
+    ///     loaded once with point filtering; null when the file is missing
+    /// </summary>
+    internal static Sprite? Logo {
+        get {
+            if (_logoLooked) {
+                return _logo;
+            }
+
+            _logoLooked = true;
+            try {
+                var dir = System.IO.Path.GetDirectoryName(EmpMod.Assembly.Location) ?? "";
+                var path = System.IO.Path.Combine(dir, "Texture", "emp_logo.png");
+                if (!System.IO.File.Exists(path)) {
+                    EmpLog.Debug("No logo at {Path}", path);
+                    return null;
+                }
+
+                var tex = IO.LoadPNG(path, FilterMode.Point);
+                tex.wrapMode = TextureWrapMode.Clamp;
+                _logo = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0,
+                    SpriteMeshType.FullRect);
+                _logo.name = "emp_logo";
+            }
+            catch (System.Exception e) {
+                EmpLog.Warning(e, "Could not load the logo");
+            }
+
+            return _logo;
+        }
+    }
 
     /// <summary>A putit, from the game's own putit sprite (null if unavailable).</summary>
     internal static Sprite? Icon {

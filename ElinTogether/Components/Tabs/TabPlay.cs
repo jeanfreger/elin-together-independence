@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Helper;
@@ -22,63 +23,69 @@ internal class TabPlay : TabEmpBase
 
     public override void OnLayout()
     {
-        if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
-            BuildConnected();
-        } else {
-            // the project's own public game first: its card is the most visible thing of the page
-            var official = BuildOfficialCard();
-            BuildHost();
-            BuildJoin();
-            BuildPublicServers(official);
-        }
-
+        var pages = new List<(string, System.Action<YKVertical>)> { ("emp_ui_tab_play".lang(), BuildPlay) };
 #if DEBUG
-        if (EClass.core.IsGameStarted) {
-            BuildBotButtons(this.Card("Debug"));
+        // the bot tools of the debug build, out of the player's way (coordinator, 2026-10-28)
+        if (EClass.core.IsGameStarted && NetSession.Instance.Transport is not ElinNetClient) {
+            pages.Add(("Debug", page => BuildBotButtons(page.Card("Debug"))));
         }
 #endif
+        SubTabs("play", pages);
+    }
+
+    private void BuildPlay(YKVertical page)
+    {
+        if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
+            BuildConnected(page);
+        } else if (NetSession.Instance is { HasActiveConnection: true, Transport: ElinNetClient }) {
+            // a guest at the title screen, already joined and waiting for the world: no host or join cards (a second
+            // join from here would drop the first), only where it stands and the way out
+            BuildJoining(page);
+        } else {
+            // the project's own public game first: its card is the most visible thing of the page
+            var official = BuildOfficialCard(page);
+            BuildHost(page);
+            BuildJoin(page);
+            BuildPublicServers(page, official);
+        }
     }
 
     // ---------------------------------------------------------------- connected
 
-    private void BuildConnected()
+    private static void BuildConnected(YKVertical page)
     {
         var net = NetSession.Instance;
         var players = net.CurrentPlayers.ToList();
         var host = players.FirstOrDefault(p => p.Index == 0)?.User.Name;
         var isHost = net.Transport is ElinNetHost;
         var title = isHost || string.IsNullOrEmpty(host) ? "emp_ui_play_connected".lang() : "emp_ui_play_world".Loc(host!);
-        var card = this.Card(title, EmpUi.Icon("icon_LayerTravel"));
+        var card = page.Card(title);
 
-        var status = card.Row();
-        StatusDot(status, net.IsAway ? new(0.85f, 0.62f, 0.2f) : new(0.45f, 0.68f, 0.32f));
-        // (the title already says "Connected": the status line gives the head count, or the reconnecting state)
-        status.Text(net.IsAway ? "emp_ui_play_reconnecting".lang() : "emp_ui_play_players_line".Loc(players.Count));
-
-        if (!string.IsNullOrEmpty(host)) {
-            card.TextSmall("emp_ui_play_host_line".Loc(host!), FontColor.Gray);
-        }
+        // the facts as the character sheet lists them: a small label, the value
+        card.KeyValue("emp_ui_kv_state".lang(), (net.IsAway ? "emp_ui_play_reconnecting" : "emp_ui_state_connected").lang());
+        card.KeyValue("emp_ui_kv_players".lang(), players.Count.ToString());
+        card.KeyValue("emp_ui_kv_host".lang(), host);
         if (EClass._zone is { } zone) {
-            card.TextSmall("emp_ui_play_where".Loc(zone.NameWithLevel), FontColor.Gray);
+            card.KeyValue("emp_ui_kv_where".lang(), zone.NameWithLevel);
         }
 
         var buttons = card.ButtonRow();
         buttons.RowButton("emp_ui_sv_invite".lang(), net.Lobby.InviteSteamOverlay);
         buttons.RowButton("emp_ui_sv_dc".lang(), DisconnectFromPanel);
 
-        BuildRulesNote();
+        BuildRulesNote(page);
     }
 
     /// <summary>
     ///     A friend sees the rules of the host's world, read only, as the host last sent them (council 2026-10-23)
     /// </summary>
-    private void BuildRulesNote()
+    private static void BuildRulesNote(YKVertical page)
     {
         if (NetSession.Instance.Transport is not ElinNetClient) {
             return;
         }
 
-        var card = this.Card("emp_ui_rules_title".lang());
+        var card = page.Card("emp_ui_rules_title".lang());
         card.TextSmall("emp_ui_rules_note".lang(), FontColor.Gray);
         foreach (var (label, value) in SettingsTable.RuleLines(SettingsTable.FromRules(NetSession.Instance.Rules))) {
             card.TextSmall("emp_ui_rules_line".Loc(label, value));
@@ -109,9 +116,19 @@ internal class TabPlay : TabEmpBase
         rt.localRotation = Quaternion.Euler(0f, 0f, 45f);
     }
 
+    private static void BuildJoining(YKVertical page)
+    {
+        var card = page.Card("emp_ui_play_join_title".lang());
+        var host = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.Index == 0)?.User.Name;
+        card.KeyValue("emp_ui_kv_state".lang(), "emp_ui_play_joining".lang());
+        card.KeyValue("emp_ui_kv_host".lang(), host);
+        card.ButtonRow().RowButton("emp_ui_sv_dc".lang(), DisconnectFromPanel);
+    }
+
     private static void DisconnectFromPanel()
     {
-        var isClient = NetSession.Instance.Transport is ElinNetClient;
+        // (a guest still at the title screen has no game to leave: back to the title only from a game)
+        var isClient = NetSession.Instance.Transport is ElinNetClient && EClass.core.IsGameStarted;
 
         // (a host whose guests would take the world over gives them a last save first)
         ElinNetHost.LeaveWithLastCopy(true, () => {
@@ -126,9 +143,9 @@ internal class TabPlay : TabEmpBase
 
     // ---------------------------------------------------------------- not connected
 
-    private void BuildHost()
+    private static void BuildHost(YKVertical page)
     {
-        var card = this.Card("emp_ui_play_host_title".lang(), EmpUi.Icon("icon_LayerTravel"));
+        var card = page.Card("emp_ui_play_host_title".lang());
         if (!EClass.core.IsGameStarted) {
             // the world kept in the depot: whoever comes first takes it and hosts it
             if (SaveDepot.Enabled) {
@@ -160,9 +177,9 @@ internal class TabPlay : TabEmpBase
         }
     }
 
-    private void BuildJoin()
+    private static void BuildJoin(YKVertical page)
     {
-        var card = this.Card("emp_ui_play_join_title".lang(), EmpUi.Icon("icon_goto"));
+        var card = page.Card("emp_ui_play_join_title".lang());
         if (EClass.core.IsGameStarted) {
             // (joining leaves this game: from the title screen only, as before)
             card.TextSmall("emp_ui_play_join_ingame".lang(), FontColor.Gray);
@@ -231,17 +248,17 @@ internal class TabPlay : TabEmpBase
     ///     The official server: its own card at the top, always there (also closed), with its state and Join. Filled
     ///     when the lobby list answers (BuildPublicServers)
     /// </summary>
-    private YKVertical BuildOfficialCard()
+    private static YKVertical BuildOfficialCard(YKVertical page)
     {
-        var card = this.Card("emp_ui_official_title".lang(), EmpUi.Icon("icon_medal"));
+        var card = page.Card("emp_ui_official_title".lang());
         card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
         return card;
     }
 
     private static void FillOfficial(YKVertical card, LobbyData? lobby)
     {
-        // (drop the "searching" line, keep the header)
-        for (var i = card.transform.childCount - 1; i >= 1; i--) {
+        // (drop the "searching" line: the header is outside the body)
+        for (var i = card.transform.childCount - 1; i >= 0; i--) {
             UnityEngine.Object.Destroy(card.transform.GetChild(i).gameObject);
         }
 
@@ -263,9 +280,9 @@ internal class TabPlay : TabEmpBase
         }
     }
 
-    private void BuildPublicServers(YKVertical officialCard)
+    private void BuildPublicServers(YKVertical page, YKVertical officialCard)
     {
-        var card = this.Card("emp_ui_play_public_title".lang(), EmpUi.Icon("icon_zones"));
+        var card = page.Card("emp_ui_play_public_title".lang());
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -302,7 +319,7 @@ internal class TabPlay : TabEmpBase
 
             // (these lines come after the layer was laid out, see LayerElinTogether.OnLayout)
             UIHelper.WrapTexts(this);
-            this.RebuildLayout(true);
+            Relayout();
         }
     }
 
