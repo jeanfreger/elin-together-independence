@@ -33,6 +33,8 @@ internal static class EmpServer
     private static string _saved = "-";
     private static string _order = "";
     private static int _lastPlayers;
+    private static int _ownFrameRate;
+    private static bool _resting;
     private static readonly DateTime _started = DateTime.Now;
 
     internal static bool Requested => _save is not null;
@@ -49,6 +51,12 @@ internal static class EmpServer
     /// </summary>
     internal static void Update()
     {
+        // every frame, not on the 2-second tick: a player who connects to a resting server is served at full rate
+        // from the next frame, the join (several round trips) does not crawl at 5 frames a second
+        if (Requested) {
+            Rest();
+        }
+
         if (!Requested || Time.unscaledTime < _next) {
             return;
         }
@@ -155,6 +163,31 @@ internal static class EmpServer
         }
 
         Tell("running");
+    }
+
+    /// <summary>
+    ///     ServerRestsWhenEmpty: nobody connected, nobody to simulate for (the world is frozen, EmptyWorld), so the
+    ///     machine that keeps the server on all day mostly sleeps. Only the frame rate and the sound: the world, the
+    ///     session and the saves stay as they are, and the game's own rate comes back as soon as a peer is there
+    /// </summary>
+    private static void Rest()
+    {
+        var rest = EmpConfig.Server.ServerRestsWhenEmpty.Value && EClass.core.IsGameStarted &&
+                   NetSession.Instance.Transport is ElinNetHost host && !host.PeerIds.Any();
+        if (rest == _resting) {
+            return;
+        }
+
+        _resting = rest;
+        if (rest) {
+            _ownFrameRate = Application.targetFrameRate;
+            Application.targetFrameRate = 5;
+        } else {
+            Application.targetFrameRate = _ownFrameRate;
+        }
+
+        AudioListener.pause = rest;
+        EmpLog.Information("Server: {State}", rest ? "nobody connected, resting at 5 frames a second" : "awake");
     }
 
     /// <summary>
