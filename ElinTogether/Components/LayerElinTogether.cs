@@ -45,11 +45,10 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
         DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
-        // the world's rules: the host edits them, a guest reads the host's (the tab's own guest view)
-        if (NetSession.Instance.Transport is ElinNetHost or ElinNetClient) {
-            _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
-            DecorateLastTab("icon_policy", "emp_tip_tab_server");
-        }
+        // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
+        // reads the host's (the tab's own guest view)
+        _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
+        DecorateLastTab("icon_policy", "emp_tip_tab_server");
 
         _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
         DecorateLastTab("icon_book", "emp_tip_tab_info");
