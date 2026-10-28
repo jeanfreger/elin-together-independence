@@ -315,7 +315,7 @@ internal static class SettingsTable
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.IndependentTravel.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
