@@ -54,6 +54,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Team id -> the last day (counted from 2020-01-01, real time) someone of that team was in the game: the host
+    ///     box "Abandoned land" reads it (<see cref="Teams.CheckAbandon" />)
+    /// </summary>
+    [ElinGameIOProperty("team_seen")]
+    internal static Dictionary<int, int> TeamSeen
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Card uid -> the chara uid of the player it belongs to
     /// </summary>
     [ElinGameIOProperty("card_owner")]
@@ -278,6 +289,7 @@ internal partial class ElinNetHost
     private readonly Dictionary<int, float> _landGrace = [];
     private readonly Dictionary<int, int> _lastOpenZone = [];
     private float _landSweepAt;
+    private float _abandonAt;
 
     /// <summary>
     ///     Once a second, on the game that keeps the book: each player on a land closed to it is told, and after the
@@ -285,6 +297,12 @@ internal partial class ElinNetHost
     /// </summary>
     private void UpdateLandRules()
     {
+        // (abandoned lands, once a minute: days are the unit)
+        if (!IsZoneSession && _zone is not null && UnityEngine.Time.unscaledTime >= _abandonAt) {
+            _abandonAt = UnityEngine.Time.unscaledTime + 60f;
+            Teams.CheckAbandon();
+        }
+
         if (IsZoneSession || !Teams.LandRulesOn || _zone is null) {
             _landGrace.Clear();
             return;

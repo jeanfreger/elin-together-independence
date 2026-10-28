@@ -691,6 +691,28 @@ internal partial class EmpConfig
             "Otherwise a land is as before: its team builds, others visit\n" +
             "队长可为队伍的每块土地设置本队与其他人的权限：封闭（不能进入）、参观、参观并使用、建造；需要开启“据点归队伍所有”；关闭时土地如前：本队可建造，其他人只能参观");
 
+        Server.LandAbandon = config.Bind(
+            "Server",
+            "LandAbandon",
+            false,
+            "A team none of whose members came into the game for the days set below loses its claim on its lands: they are nobody's, open to everyone, until claimed again. Needs \"Team ownership of bases\"\n" +
+            "Otherwise a team keeps its lands however long it is away\n" +
+            "队伍的所有成员在下方设定的天数内都没有进入游戏时，该队伍失去对其土地的认领：土地变为无主、对所有人开放，直到再次被认领；需要开启“据点归队伍所有”；关闭时队伍无论离开多久都保留其土地");
+
+        Server.AbandonDays = config.Bind(
+            "Server",
+            "AbandonDays",
+            30,
+            "With \"Abandoned land\": real days without any member of a team in the game before its lands are lost\n" +
+            "启用“废弃土地”时：队伍的成员连续多少个现实天数没有进入游戏后失去土地");
+
+        Server.LandsPerTeam = config.Bind(
+            "Server",
+            "LandsPerTeam",
+            0,
+            "The most lands one team may claim: past it, a deed is not read. 0: no limit\n" +
+            "每个队伍最多可认领多少块土地：达到上限后不能再使用土地证书。0：不限");
+
         Server.TeamMaxSize = config.Bind(
             "Server",
             "TeamMaxSize",
@@ -988,6 +1010,9 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
         internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
         internal static ConfigEntry<bool> LandRules { get; set; } = null!;
+        internal static ConfigEntry<bool> LandAbandon { get; set; } = null!;
+        internal static ConfigEntry<int> AbandonDays { get; set; } = null!;
+        internal static ConfigEntry<int> LandsPerTeam { get; set; } = null!;
         internal static ConfigEntry<int> TeamMaxSize { get; set; } = null!;
         internal static ConfigEntry<int> TeamFoundCooldown { get; set; } = null!;
         internal static ConfigEntry<bool> TeamPersonal { get; set; } = null!;

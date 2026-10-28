@@ -985,6 +985,63 @@ internal static class Teams
         return false;
     }
 
+    internal static bool AbandonOn => BasesOwned && EmpConfig.Server.LandAbandon.Value;
+
+    private static int Today() => (int)(System.DateTime.UtcNow - new System.DateTime(2020, 1, 1)).TotalDays;
+
+    /// <summary>
+    ///     Host box "Abandoned land", once a minute: a team with someone in the game is seen today; a team nobody of which
+    ///     was seen for the set days loses its claim on its lands (they are nobody's: the mod's claim, the game's own
+    ///     base stays as it is). A team never seen before starts counting now
+    /// </summary>
+    internal static void CheckAbandon()
+    {
+        if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
+            return;
+        }
+
+        var (today, days, seen) = (Today(), System.Math.Max(1, EmpConfig.Server.AbandonDays.Value), ElinNetHost.TeamSeen);
+        foreach (var id in TeamList.Keys.ToArray()) {
+            if (AnyOnline(id) || !seen.ContainsKey(id)) {
+                seen[id] = today;
+            } else if (AbandonOn && today - seen[id] >= days && LandsOf(id).ToArray() is { Length: > 0 } lands) {
+                foreach (var land in lands) {
+                    Zones.Remove(land);
+                    ZoneRules.Remove(land);
+                }
+
+                EmpLog.Information("Team {TeamId} {TeamName} was away for {Days} days: its {Count} lands are nobody's", id, NameOf(id), today - seen[id],
+                    lands.Length);
+                Tell();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     That player's team already holds as many lands as the host allows (box "Lands per team"): a deed is not read
+    /// </summary>
+    internal static bool LandCapReached(Chara chara)
+    {
+        return BasesOwned && EmpConfig.Server.LandsPerTeam.Value is > 0 and var cap && TeamOf(chara.uid) is var team and not Wanderers &&
+               LandsOf(team).Count() >= cap;
+    }
+
+    /// <summary>
+    ///     The deed of a team at its cap of lands is not read (the host's own player: a guest's deed is refused by the
+    ///     host, see ClaimZoneDelta)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TraitDeed), nameof(TraitDeed.OnRead))]
+    private static bool OnReadDeed(Chara c)
+    {
+        if (!KeepsBook || !c.IsPC || !LandCapReached(c)) {
+            return true;
+        }
+
+        Msg.Say("emp_team_land_cap".Loc(EmpConfig.Server.LandsPerTeam.Value));
+        return false;
+    }
+
     /// <summary>
     ///     The leader puts that member out (it is a Wanderer, told so)
     /// </summary>

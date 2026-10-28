@@ -191,6 +191,20 @@ internal static class SettingsTable
         source => source.Raw(EmpConfig.Server.TeamFoundCooldown) is int minutes ? Array.IndexOf(FoundWaitSteps, minutes) : -1,
         i => [(EmpConfig.Server.TeamFoundCooldown, FoundWaitSteps[i])]);
 
+    // council 2026-10-28: real days away before a team loses its lands, and lands one team may claim (0 no limit)
+    private static readonly int[] AbandonSteps = [7, 14, 30, 60, 90];
+    private static readonly int[] LandCapSteps = [1, 2, 3, 5, 10, 0];
+
+    internal static Choice AbandonDays => new("abandon_days", [..AbandonSteps.Select(n => n.ToString())],
+        () => [EmpConfig.Server.AbandonDays],
+        source => source.Raw(EmpConfig.Server.AbandonDays) is int days ? Array.IndexOf(AbandonSteps, days) : -1,
+        i => [(EmpConfig.Server.AbandonDays, AbandonSteps[i])]);
+
+    internal static Choice LandsPerTeam => new("lands_per_team", [..LandCapSteps.Select(n => n.ToString())],
+        () => [EmpConfig.Server.LandsPerTeam],
+        source => source.Raw(EmpConfig.Server.LandsPerTeam) is int count ? Array.IndexOf(LandCapSteps, count) : -1,
+        i => [(EmpConfig.Server.LandsPerTeam, LandCapSteps[i])]);
+
     // characters per player (user, 2026-10-27), 0 no limit
     private static readonly int[] CharaSteps = [1, 3, 5, 10, 0];
 
@@ -331,6 +345,9 @@ internal static class SettingsTable
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("land_rules", "together", true, EmpConfig.Server.LandRules, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
+        yield return new("land_abandon", "together", true, EmpConfig.Server.LandAbandon, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
+        yield return new("abandon_days", "together", true, Choice: AbandonDays, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value && EmpConfig.Server.LandAbandon.Value);
+        yield return new("lands_per_team", "together", true, Choice: LandsPerTeam, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("team_leaders", "together", true, EmpConfig.Server.TeamLeaders, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_max_size", "together", true, Choice: TeamMaxSize, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamLeaders.Value);
         yield return new("team_found_cooldown", "together", true, Choice: TeamFoundCooldown, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamLeaders.Value);
@@ -403,6 +420,7 @@ internal static class SettingsTable
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
         EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
         EmpConfig.Server.LivingWorldMinutes, EmpConfig.Server.TeamMaxSize, EmpConfig.Server.TeamFoundCooldown,
+        EmpConfig.Server.AbandonDays, EmpConfig.Server.LandsPerTeam,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
