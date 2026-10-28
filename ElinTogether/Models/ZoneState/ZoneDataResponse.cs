@@ -55,6 +55,8 @@ public class ZoneDataResponse
         ZoneLeaseState.CommitStaged(zone.uid);
         zone.map?.Save(zone.pathSave);
         NetMetrics.MapSave.Add(0, start);
+        // (FastJoinsAndSaves: what the last save wrote beside the game is on the disk before it is read)
+        SaveWriter.Wait();
 
         start = Stopwatch.GetTimestamp();
         var response = new ZoneDataResponse {
@@ -87,6 +89,7 @@ public class ZoneDataResponse
         ZoneLeaseState.CommitStaged(zone.uid);
         zone.map?.Save(zone.pathSave);
         NetMetrics.MapSave.Add(0, start);
+        SaveWriter.Wait();
 
         return new(zone.ZoneFullName, zone.uid, LZ4Bytes.ToJson(zone),
             Directory
