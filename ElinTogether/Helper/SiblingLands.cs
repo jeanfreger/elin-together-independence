@@ -96,13 +96,56 @@ internal static class SiblingLands
     /// <summary>
     ///     The step onto a zone from the world map, the way the game takes it (Player.EnterLocalZone)
     /// </summary>
-    internal static void Enter(Zone zone)
+    internal static void Enter(Zone zone, ZoneTransition? trans = null)
     {
-        EClass.pc.MoveZone(zone, new ZoneTransition {
+        EClass.pc.MoveZone(zone, trans ?? new ZoneTransition {
             state = zone.RegionEnterState == ZoneTransition.EnterState.Dir
                 ? ZoneTransition.DirToState(EClass.pc.GetCurrentDir())
                 : zone.RegionEnterState,
         });
+    }
+
+    /// <summary>
+    ///     Walking onto a tile with two lands or more (Player.EnterLocalZone asks the region for "the" zone there and takes
+    ///     the first): a list of the lands, the team that holds each and what that land lets this player do, a closed one
+    ///     greyed. The choice is the zone's uid, so the travel and the lease request name that zone (the host reads it
+    ///     again with Teams.Allowed, see ElinNetHost.LeaseZone). One land: the game as it was
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Player), nameof(Player.EnterLocalZone), typeof(Point), typeof(ZoneTransition), typeof(bool), typeof(Chara))]
+    private static bool OnEnterLocalZone(Point p, ZoneTransition? trans, bool encounter)
+    {
+        if (encounter || !On || ElinDelta.IsApplying) {
+            return true;
+        }
+
+        var map = EClass.scene.elomap;
+        var lands = EClass._zone.IsRegion ? LandsAt(p.x + map.minX, p.z + map.minY) : LandsAt(p.x, p.z);
+        if (lands.Count < 2) {
+            return true;
+        }
+
+        var shut = new HashSet<Zone>(lands.Where(l => !Teams.Allowed(EClass.pc, l, Teams.Visit)));
+        EClass.ui.AddLayer<LayerList>().SetNoSound().SetList2(lands.OrderBy(l => l.uid).ToList(), Label, (zone, _) => {
+            if (shut.Contains(zone)) {
+                SE.Beep();
+                Msg.Say("emp_land_closed".lang());
+            } else if (zone.IsClosed) {
+                Msg.Say("zoneClosed");
+            } else {
+                Enter(zone, trans);
+            }
+        }, (zone, item) => {
+            if (shut.Contains(zone)) {
+                item.button1.mainText.color = new UnityEngine.Color(0.55f, 0.55f, 0.55f);
+            }
+        }).SetSize(480f).SetHeader("emp_sibling_pick");
+        return false;
+    }
+
+    private static string Label(Zone zone)
+    {
+        return $"{Teams.NameOf(Teams.TeamOfZone(zone))} - {zone.Name} ({$"emp_ui_team_rule_{Teams.LevelOn(EClass.pc, zone)}".lang()})";
     }
 
     /// <summary>
