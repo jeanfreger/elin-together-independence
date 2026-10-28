@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -31,5 +32,10 @@ public class CardPlacedDelta : ElinDelta
 
         card.dir = Dir;
         card.Stub_SetPlacedState(PlaceState, ByPlayer);
+        // the player who installs a mail box owns it
+        if (net is ElinNetHost host && FromPeer && PlaceState == PlaceState.installed && ByPlayer &&
+            host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)) {
+            TeamMail.Claim(card, sender.uid);
+        }
     }
 }

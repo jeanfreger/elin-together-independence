@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using System.Linq;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
@@ -53,7 +54,7 @@ internal partial class ElinNetHost
     {
         var parcel = ThingGen.CreateParcel(null, things);
         parcel.c_idRefName = "emp_story_share".Loc(player.NameSimple);
-        world.SendPackage(parcel);
+        TeamMail.Send(player, parcel);
         EmpLog.Information("Gift of the date {Id} for player {Uid} in the mail", things[0].id, player.uid);
     }
 }

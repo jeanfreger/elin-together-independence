@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -28,7 +29,7 @@ public class BackerGiftDelta : ElinDelta
 
         player.SetBool(Given, true);
         // as FactionBranch.ReceivePackages does for the host: in the base's mail with the next parcels
-        world.SendPackage(ThingGen.Create("gift"));
+        TeamMail.Send(player, ThingGen.Create("gift"));
         EmpLog.Information("Backer gift box sent for player {Uid}", player.uid);
     }
 }

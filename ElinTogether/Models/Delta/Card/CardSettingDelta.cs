@@ -43,6 +43,7 @@ public class CardSettingDelta : ElinDelta
     public const byte AutoRefuel = 20;
     public const byte StockUse = 21;
     public const byte CharaSkin = 22;
+    public const byte MailOwner = 23;
 
     [Key(0)]
     public required RemoteCard Card { get; init; }
@@ -107,6 +108,7 @@ public class CardSettingDelta : ElinDelta
                 AutoRefuel => card.autoRefuel ? 1 : 0,
                 StockUse => card.c_isDisableStockUse ? 1 : 0,
                 CharaSkin => card.idSkin,
+                MailOwner => card.GetInt(TeamMail.OwnerKey),
                 _ => 0,
             },
             Blob = kind == Painting ? card.c_textureData : null,
@@ -243,7 +245,7 @@ public class CardSettingDelta : ElinDelta
             (Kind == Teleporter && thing.trait is not TraitTeleporter) || (Kind == Door && thing.trait is not TraitDoor) ||
             (Kind == HouseBoard && thing.trait is not TraitHouseBoard) ||
             (Kind == Painting && (thing.trait is not TraitCanvas || Blob is not { Length: <= 1 << 20 })) ||
-            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || Kind is > RoomPlate and < AutoToggle or > StockUse) {
+            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > MailOwner) {
             return;
         }
 
@@ -251,6 +253,18 @@ public class CardSettingDelta : ElinDelta
             // the fields are the host's to tell
             if (Kind == Fields || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
                 (thing.GetRootCard() is Chara holder && holder != sender)) {
+                return;
+            }
+
+            // a mail box's owner: the current owner's to hand over (a refused word is answered with the real one)
+            if (Kind == MailOwner) {
+                if (!TeamMail.MayChange(thing, sender, Value)) {
+                    host.SendDeltaTo(OriginPeer, Create(thing, Kind));
+                    return;
+                }
+
+                host.Delta.AddRemote(this);
+                thing.SetInt(TeamMail.OwnerKey, Value);
                 return;
             }
 
@@ -329,6 +343,9 @@ public class CardSettingDelta : ElinDelta
                     thing.elements.SetBase(405, n[7]);
                 }
 
+                break;
+            case MailOwner:
+                thing.SetInt(TeamMail.OwnerKey, Value);
                 break;
             case Well:
                 thing.c_charges = Value;
