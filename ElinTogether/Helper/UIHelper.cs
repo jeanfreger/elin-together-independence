@@ -85,6 +85,8 @@ public static class UIHelper
     {
         foreach (var fitter in root.GetComponentsInChildren<ContentSizeFitter>(true)) {
             if (fitter.horizontalFit != ContentSizeFitter.FitMode.PreferredSize ||
+                // (a section header keeps its one line: wrapped, its first words hid above the line)
+                fitter.GetComponentInParent<UIHeader>() != null ||
                 !fitter.TryGetComponent<Text>(out var text) || text.horizontalOverflow != HorizontalWrapMode.Wrap ||
                 fitter.transform.parent?.GetComponent<HorizontalOrVerticalLayoutGroup>() is not { childControlWidth: true }) {
                 continue;

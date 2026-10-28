@@ -62,7 +62,10 @@ internal class TabPlay : TabEmpBase
         var card = page.Card(title);
 
         // the facts as the character sheet lists them: a small label, the value
-        card.KeyValue("emp_ui_kv_state".lang(), (net.IsAway ? "emp_ui_play_reconnecting" : "emp_ui_state_connected").lang());
+        // (the title already says "Connected": a state line only when it is something else)
+        if (net.IsAway) {
+            card.KeyValue("emp_ui_kv_state".lang(), "emp_ui_play_reconnecting".lang());
+        }
         card.KeyValue("emp_ui_kv_players".lang(), players.Count.ToString());
         card.KeyValue("emp_ui_kv_host".lang(), host);
         if (EClass._zone is { } zone) {

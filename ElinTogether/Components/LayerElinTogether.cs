@@ -112,7 +112,16 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         // (the two putits keep their shape in the caption's square)
         if (Window.iconCaption != null) {
-            Window.iconCaption.preserveAspect = true;
+            var icon = Window.iconCaption;
+            icon.preserveAspect = true;
+            // as tall as the caption's text, like the game's caption icons: the sprite's own size covered the
+            // window's corner and the caption's first letters
+            var height = Mathf.Clamp(Window.textCaption != null ? Window.textCaption.Rect().rect.height : 16f, 12f, 16f);
+            var aspect = icon.sprite != null && icon.sprite.rect.height > 0f ? icon.sprite.rect.width / icon.sprite.rect.height : 1f;
+            icon.rectTransform.sizeDelta = new(height * aspect, height);
+            var element = icon.gameObject.GetComponent<UnityEngine.UI.LayoutElement>() ?? icon.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+            element.minWidth = element.preferredWidth = height * aspect;
+            element.minHeight = element.preferredHeight = height;
         }
     }
 
