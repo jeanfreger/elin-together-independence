@@ -28,8 +28,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Resources.Load<UIButton>("UI/Element/Button/ButtonNote");
 
-        // the two putits, as on the HUD button
-        Window.setting.spriteCaption = MultiplayerHubPatch.Icon;
+        // the mod's logo, two putits (package/Texture/emp_logo.png); the HUD button keeps its single putit
+        Window.setting.spriteCaption = MultiplayerHubPatch.Logo ?? MultiplayerHubPatch.Icon;
 
         if (_resetHyp) {
             Lang.setting.hyphenation = false;
