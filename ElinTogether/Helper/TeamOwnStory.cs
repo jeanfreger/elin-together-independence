@@ -299,6 +299,159 @@ internal static class TeamOwnStory
         EmpLog.Information("One story for the world again: the world owner's");
     }
 
+    // ---- another owner's story, for a moment
+
+    // the owner whose story the quest log holds for the length of an As scope
+    private static int? _as;
+
+    /// <summary>
+    ///     The owner whose story the local quest log holds right now: the one an As scope put in, or the local one
+    /// </summary>
+    internal static int? CurrentOwner => _as ?? LocalOwner;
+
+    internal static bool Swapped => _as is not null;
+
+    /// <summary>
+    ///     In the game that keeps the book: for the length of the scope the quest log holds that owner's story (what a
+    ///     guest's step checks, moves and triggers is read against its own story), stored back at the end and the exact
+    ///     objects of the local story put back. What the diff loops have to tell is told before (from the local story),
+    ///     nothing is re-baselined after. Nothing when it is the local owner (one team of friends: never a swap)
+    /// </summary>
+    internal static ScopeExit As(int owner)
+    {
+        if (LocalOwner is not { } local || !On || !Seeded || _as is not null || owner == local || EClass.game?.quests is null) {
+            return new();
+        }
+
+        DialogFlagSync.TellChanges();
+        PersonalQuests.Tick();
+        SharedQuests.TellChanges();
+
+        var snap = Snap();
+        Put(Of(owner, true));
+        _as = owner;
+        return new() {
+            OnExit = () => {
+                try {
+                    Store(owner, Take());
+                } finally {
+                    Restore(snap);
+                    _as = null;
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    ///     On the host, around the permit, the refusal and the apply of a guest's story message: the sender's story
+    /// </summary>
+    internal static ScopeExit AsSender(ElinNetHost host, int peer)
+    {
+        return !host.IsZoneSession && host.PlayerChara(peer) is { } sender ? As(OwnerOf(sender.uid)) : new();
+    }
+
+    /// <summary>
+    ///     A zone a player keeps never holds a visitor's story (council risk 7): a story step of a visitor of another
+    ///     owner is not applied there (the visitor's own game holds it)
+    /// </summary>
+    internal static bool KeeperDrops(ElinNetHost host, ElinDelta delta)
+    {
+        if (!host.IsZoneSession || !On || !IsStoryDelta(delta) || host.PlayerChara(delta.OriginPeer) is not { } sender ||
+            OwnerOf(sender.uid) == OwnerOf(EClass.pc.uid)) {
+            return false;
+        }
+
+        EmpLog.Debug("A visitor's story step {DeltaType} is not this zone's story: left to its own game", delta.GetType().Name);
+        return true;
+    }
+
+    private static readonly HashSet<string> StoryFlags = [..DialogIds.Select(id => "d:" + id)];
+
+    /// <summary>
+    ///     A dialog flag of the story (DialogFlagSync's id)
+    /// </summary>
+    internal static bool IsStoryFlag(string id)
+    {
+        return StoryFlags.Contains(id);
+    }
+
+    /// <summary>
+    ///     A message about the story: a step, a start, an end, a change of the main quest or the exploration, a dialog
+    ///     choice of the story
+    /// </summary>
+    internal static bool IsStoryDelta(ElinDelta delta)
+    {
+        return delta switch {
+            QuestChangePhaseDelta q => IsStoryQuest(q.Uid, q.Id),
+            QuestUpdateDelta q => IsStoryQuest(q.Uid, q.Id),
+            QuestCompleteDelta q => IsStoryQuest(q.Uid, q.Id),
+            QuestStartDelta q => IsStoryQuest(q.Uid, null),
+            QuestFailDelta q => IsStoryQuest(q.Uid, null),
+            DialogFlagDelta f => IsStoryFlag(f.Id),
+            _ => false,
+        };
+    }
+
+    private static bool IsStoryQuest(int uid, string? id)
+    {
+        if (id is not null) {
+            return StoryIds.Contains(id);
+        }
+
+        var quests = EClass.game?.quests;
+        return IsStory(quests?.list.Find(q => q.uid == uid) ?? quests?.globalList.Find(q => q.uid == uid));
+    }
+
+    /// <summary>
+    ///     On the host of the world: the owner whose players alone hear that message (a story message, while the box is
+    ///     on); none when everyone does
+    /// </summary>
+    internal static int? RouteOf(ElinNetHost host, ElinDelta delta)
+    {
+        return !host.IsZoneSession && On && Seeded && CurrentOwner is { } owner && IsStoryDelta(delta) ? owner : null;
+    }
+
+    /// <summary>
+    ///     A message the host sends to everyone: a story message goes to the players of the story it is about only
+    ///     (relays to teammates, or to the player alone). True when it was sent here
+    /// </summary>
+    internal static bool Divert(ElinDeltaManager manager, ElinDelta delta)
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost host || !ReferenceEquals(host.Delta, manager) ||
+            RouteOf(host, delta) is not { } owner) {
+            return false;
+        }
+
+        foreach (var (peer, uid) in host.PeerCharas()) {
+            if (OwnerOf(uid) == owner) {
+                host.SendDeltaTo(peer, delta);
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     The guardian of Nymelle moves the exploration on as it dies (Chara.Die, "isygarad"), in the game that runs
+    ///     its map: the story of the player who killed it, not the host's
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
+    private static void BeforeDie(Chara __instance, Card? origin, out ScopeExit? __state)
+    {
+        __state = null;
+        if (__instance.id == "isygarad" && KeepsBook && PlayerKarma.PlayerBehind(origin) is { } killer) {
+            __state = As(OwnerOf(killer.uid));
+        }
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
+    private static void AfterDie(ScopeExit? __state)
+    {
+        __state?.Dispose();
+    }
+
     // ---- the save: the world owner's story, then the local team's again
 
     /// <summary>

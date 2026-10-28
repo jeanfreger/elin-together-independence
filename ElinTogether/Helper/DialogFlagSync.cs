@@ -208,7 +208,8 @@ internal static class DialogFlagSync
             return;
         }
 
-        if (ReferenceEquals(player, _source)) {
+        // (another owner's story in the quest log for a moment: what was told is the local story's, kept)
+        if (ReferenceEquals(player, _source) && !(TeamOwnStory.Swapped && TeamOwnStory.IsStoryFlag(id))) {
             _shared[id] = value;
         }
     }

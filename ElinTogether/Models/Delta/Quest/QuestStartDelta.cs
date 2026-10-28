@@ -8,6 +8,8 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class QuestStartDelta : ElinDelta
 {
+    internal override bool InSendersStory => true;
+
     [Key(0)]
     public required int Uid { get; init; }
 

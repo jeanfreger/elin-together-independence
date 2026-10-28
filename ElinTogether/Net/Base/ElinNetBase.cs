@@ -146,6 +146,17 @@ public abstract partial class ElinNetBase : EMono
 
     internal void SendDeltaToAllExcept(int peerIndex, ElinDelta delta)
     {
+        // (a relay of a story message: only to the players of that story, see TeamOwnStory)
+        if (this is ElinNetHost host && Helper.TeamOwnStory.RouteOf(host, delta) is { } owner) {
+            foreach (var (peer, uid) in host.PeerCharas()) {
+                if (peer != peerIndex && Helper.StoryOwner.Of(uid) == owner) {
+                    SendDeltaTo(peer, delta);
+                }
+            }
+
+            return;
+        }
+
         foreach (var peer in Socket.Peers) {
             if (peer.Id != peerIndex) {
                 peer.Send(new WorldStateDeltaList {

@@ -141,6 +141,18 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Each connected player's peer and the chara uid it plays (away ones too)
+    /// </summary>
+    internal IEnumerable<(int Peer, int CharaUid)> PeerCharas()
+    {
+        foreach (var peer in Socket.Peers.ToArray()) {
+            if (SavedRemoteCharas.TryGetValue(peer.User, out var uid)) {
+                yield return (peer.Id, uid);
+            }
+        }
+    }
+
+    /// <summary>
     ///     The chara uid of every player of this world, the host's own included
     /// </summary>
     internal static IEnumerable<int> PlayerCharaUids()

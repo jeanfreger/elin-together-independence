@@ -73,15 +73,36 @@ public class QuestJournalDelta : ElinDelta
         // hosted: the Vernis mine reached and its boss beaten in one evening left the quest at 3 (2026-10-15)
         QuestVernisRepair.Repair();
 
+        // each player or team living its own story: each is told the journal of its own story
+        if (TeamOwnStory.CurrentOwner is not null && TeamOwnStory.On) {
+            foreach (var group in host.PeerCharas().GroupBy(p => StoryOwner.Of(p.CharaUid))) {
+                QuestJournalDelta told;
+                using (TeamOwnStory.As(group.Key)) {
+                    told = Build(quests);
+                }
+
+                foreach (var (peer, _) in group) {
+                    host.SendDeltaTo(peer, told);
+                }
+            }
+
+            return;
+        }
+
+        host.Delta.AddRemote(Build(quests));
+    }
+
+    private static QuestJournalDelta Build(QuestManager quests)
+    {
         var steps = quests.list.Where(q => q is QuestSequence && !PersonalQuests.IsPersonal(q)).ToList();
-        host.Delta.AddRemote(new QuestJournalDelta {
+        return new() {
             Phases = steps.SelectMany(q => new[] { q.uid, q.phase }).ToArray(),
             Ids = steps.Select(q => q.id).ToArray(),
             Completed = quests.completedIDs.ToArray(),
             CompletedTypes = quests.completedTypes.ToArray(),
             Offers = LZ4Bytes.Create(quests.globalList.Where(q => !q.IsRandomQuest).ToList()),
             Tax = [player.stats.taxBills, player.stats.taxBillsPaid],
-        });
+        };
     }
 
     protected override void OnApply(ElinNetBase net)
