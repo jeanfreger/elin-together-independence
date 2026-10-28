@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -8,14 +9,17 @@ using Newtonsoft.Json;
 namespace ElinTogether.Helper;
 
 /// <summary>
-///     Council 2026-10-28, host option "Teams live their own story" (experimental, dev/COUNCIL_2026-10-28_team_story.md).
-///     The story is the main quest (QuestMain, 0-700) and the exploration of Nymelle (QuestExploration, 0-6), with the
-///     dialog choices told to Ash and Fiama: with the box on, each team has its own. The host keeps every team's in its
-///     save (<see cref="ElinNetHost.TeamStoryBundles" />); every game, the host's own included, holds its team's in
-///     its quest log while it plays. The save holds the WORLD TEAM's (the host's team when the box was ticked, changed
-///     only by the host): a world opened without the mod, or with the box off, goes on with that team's story. Side
-///     stories, key items and the rest of the quest log stay the world's (their union is the world's anyway). Random
-///     and personal quests are never part of it. Copied from <see cref="TeamKnowledge" />
+///     Council 2026-10-28, host option "Each player or team lives its own story" (experimental, off by default: one
+///     story for all as before; always on for the official public server; dev/COUNCIL_2026-10-28_team_story.md). The story is the main quest (QuestMain, 0-700) and the exploration of
+///     Nymelle (QuestExploration, 0-6), with the dialog choices told to Ash and Fiama. The user, 2026-10-28: "each player
+///     does the story at its own pace, and does it as a team". So the story has an OWNER: the player's team when it is
+///     in a team (teammates share one story), otherwise the player alone (owner -chara uid: players without a team
+///     never share one). The host keeps every owner's story in its save (<see cref="ElinNetHost.TeamStoryBundles" />);
+///     every game, the host's own included, holds its owner's in its quest log while it plays. The save holds the WORLD
+///     OWNER's (the host's own owner when the box was ticked, changed only by the host): a world opened without the mod,
+///     or with the box off, goes on with that story. Side stories, key items and the rest of the quest log stay the
+///     world's (their union is the world's anyway). Random and personal quests are never part of it. Copied from
+///     <see cref="TeamKnowledge" />
 /// </summary>
 [HarmonyPatch]
 internal static class TeamOwnStory
@@ -43,27 +47,42 @@ internal static class TeamOwnStory
     /// <summary>
     ///     The box as this game knows it: the host's own setting, a guest's from the host's rules
     /// </summary>
-    internal static bool On => !TooNew && (KeepsBook
-        ? EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamOwnStory.Value
-        : NetSession.Instance.Rules is { UseTeams: true, TeamOwnStory: true });
+    internal static bool On => !TooNew && (KeepsBook ? Wanted : NetSession.Instance.Rules is { TeamOwnStory: true });
+
+    /// <summary>
+    ///     The host's box, read as on whatever is stored while this game hosts the official public server (the user,
+    ///     2026-10-28: there the story is separated by player and team)
+    /// </summary>
+    internal static bool Wanted => EmpConfig.Server.TeamOwnStory.Value || Net.Steam.OfficialServer.Hosting;
+
+    // (an owner the ledger never heard of, a player new to the world: the story point of the tick)
+    private const int SeedOwner = StoryOwner.Seed;
+
+    /// <summary>
+    ///     Whose story that player plays: its team's, or its own when it has none
+    /// </summary>
+    internal static int OwnerOf(int charaUid)
+    {
+        return StoryOwner.Of(charaUid);
+    }
 
     private static bool Seeded => State[1] != 0;
 
     /// <summary>
-    ///     The team whose story the save keeps
+    ///     The owner whose story the save keeps
     /// </summary>
-    internal static int WorldTeam => State[2];
+    internal static int WorldOwner => State[2];
 
-    // the game the ledger was read against, and the team whose story its quest log holds (none: the world team's, as
+    // the game the ledger was read against, and the owner whose story its quest log holds (none: the world owner's, as
     // the save has it)
     private static Game? _game;
-    private static int? _team;
+    private static int? _owner;
 
     /// <summary>
-    ///     The team whose story the local quest log holds, in the game that keeps the book; none while it holds the
-    ///     world team's as the save has it, or the box is off
+    ///     The owner whose story the local quest log holds, in the game that keeps the book; none while it holds the
+    ///     world owner's as the save has it, or the box is off
     /// </summary>
-    internal static int? LocalTeam => KeepsBook && ReferenceEquals(EClass.game, _game) ? _team : null;
+    internal static int? LocalOwner => KeepsBook && ReferenceEquals(EClass.game, _game) ? _owner : null;
 
     internal static bool IsStory(Quest? quest)
     {
@@ -71,8 +90,8 @@ internal static class TeamOwnStory
     }
 
     /// <summary>
-    ///     Every frame, in the game that keeps the book: the box ticked gives every team the world's story (once), the
-    ///     box unticked gives the world the world team's story
+    ///     Every frame, in the game that keeps the book: the box ticked gives every owner the world's story (once), the
+    ///     box unticked gives the world the world owner's story
     /// </summary>
     internal static void Update()
     {
@@ -81,9 +100,9 @@ internal static class TeamOwnStory
         }
 
         if (!ReferenceEquals(EClass.game, _game)) {
-            // (a save just read: its quest log holds the world team's story)
+            // (a save just read: its quest log holds the world owner's story)
             _game = EClass.game;
-            _team = null;
+            _owner = null;
             if (State[0] > Schema) {
                 EmpLog.Warning("The teams' story was written by a newer version of the mod ({Schema}): one story for everyone",
                     State[0]);
@@ -98,47 +117,192 @@ internal static class TeamOwnStory
             Seed();
         } else if (!On && Seeded) {
             MergeBack();
+            TellEveryone();
+        }
+
+        // the host plays its own story like any player, its team's when it is in one
+        if (On && Seeded && OwnerOf(EClass.pc.uid) is var owner && owner != _owner) {
+            Hold(owner);
+        }
+
+        if (On && Seeded && _owner is not null) {
+            ForgetGoneTeams();
         }
     }
 
     /// <summary>
-    ///     The box was ticked: every team, the Wanderers too, starts at the story point the world is at. The world team
-    ///     is the host's
+    ///     The local quest log holds that owner's story: what it held goes back to its owner first
+    /// </summary>
+    private static void Hold(int team)
+    {
+        var was = _owner;
+        Store(was ?? WorldOwner, Take());
+        if (was is not null || team != WorldOwner) {
+            Put(Of(team, true));
+            Rebaseline();
+        }
+
+        _owner = team;
+        if (was is not null) {
+            Msg.SayRaw("emp_team_story_moved".lang());
+        }
+
+        EmpLog.Information("The host plays the story of owner {Owner}: main {Main}, exploration {Exploration}",
+            team, EClass.game.quests.GetPhase<QuestMain>(), EClass.game.quests.GetPhase<QuestExploration>());
+    }
+
+    /// <summary>
+    ///     That owner's story now: the local quest log's for the owner it holds, the ledger's for another (one the
+    ///     ledger never heard of: the story point of the tick)
+    /// </summary>
+    internal static StoryBundle Of(int team, bool stored = false)
+    {
+        return !stored && team == LocalOwner ? Take() : Stored(team) ?? Stored(SeedOwner) ?? Stored(WorldOwner) ?? Take();
+    }
+
+    /// <summary>
+    ///     What that player's owner holds, for its copy of the world; none when the box is off or the copy holds it
+    ///     already (the host's own story)
+    /// </summary>
+    internal static StoryBundle? For(Chara chara)
+    {
+        return LocalOwner is { } local && On && OwnerOf(chara.uid) is var owner && owner != local ? Of(owner) : null;
+    }
+
+    /// <summary>
+    ///     A guest: what its game holds now, to keep in the copy of the world coming in (another player's zone); none
+    ///     when the box is off
+    /// </summary>
+    internal static StoryBundle? Carry()
+    {
+        return On && EClass.core.IsGameStarted && EClass.game?.quests is not null && EClass.player is not null ? Take() : null;
+    }
+
+    /// <summary>
+    ///     A guest's game: the host says what its team's story is now (the box unticked: the world owner's)
+    /// </summary>
+    internal static void Hear(StoryBundle bundle, bool line)
+    {
+        if (EClass.game?.quests is null || EClass.player is null) {
+            return;
+        }
+
+        Put(bundle);
+        Rebaseline();
+        if (line) {
+            Msg.SayRaw("emp_team_story_moved".lang());
+        }
+
+        EmpLog.Information("The host says where this player's team stands in the story: main {Main}, exploration {Exploration}",
+            bundle.Main, bundle.Exploration);
+    }
+
+    // what the quest log and the dialogs hold now is what this game was given: nothing to tell
+    private static void Rebaseline()
+    {
+        foreach (var quest in EClass.game.quests.list.Where(IsStory)) {
+            SharedQuests.Remember(quest);
+            quest.UpdateJournal();
+        }
+
+        foreach (var id in DialogIds) {
+            if (EClass.player.dialogFlags.TryGetValue(id, out var value)) {
+                DialogFlagSync.Learn("d:" + id, value);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The box was unticked: every player is told the world owner's story
+    /// </summary>
+    private static void TellEveryone()
+    {
+        if (NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } host) {
+            return;
+        }
+
+        var world = Take();
+        foreach (var peer in host.ActiveRemoteCharas.Keys) {
+            host.SendDeltaTo(peer, new StoryBundleDelta { Bundle = world });
+        }
+    }
+
+    // ---- teams changing
+
+    /// <summary>
+    ///     In the game that keeps the book: that player went from one team to another (or none). Joining a team: it
+    ///     plays the team's story, or the team takes its story when the team has none yet (its first member). Leaving
+    ///     for no team: it keeps a copy of the team's story as its own. One quiet line in its journal. The host's own
+    ///     player: on the next frame (<see cref="Update" />)
+    /// </summary>
+    internal static void Moved(Chara chara, int fromTeam, int toTeam)
+    {
+        var from = StoryOwner.Of(fromTeam, chara.uid);
+        var to = StoryOwner.Of(toTeam, chara.uid);
+        if (LocalOwner is null || !On || from == to) {
+            return;
+        }
+
+        if (StoryOwner.TakesMovers(to, Stored(to) is not null || to == LocalOwner)) {
+            Store(to, Of(from));
+        }
+
+        EmpLog.Information("Player {CharaUid} went from story {From} to story {To}", chara.uid, from, to);
+        if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } host &&
+            host.ActiveRemoteCharas.FirstOrDefault(p => p.Value == chara) is { Value: not null } player) {
+            host.SendDeltaTo(player.Key, new StoryBundleDelta { Bundle = Of(to), Line = true });
+        }
+    }
+
+    /// <summary>
+    ///     A team that is no more is out of the ledger (not the world owner: the save keeps its story)
+    /// </summary>
+    private static void ForgetGoneTeams()
+    {
+        foreach (var team in ElinNetHost.TeamStoryBundles.Keys.Where(t => StoryOwner.IsGoneTeam(t) && t != WorldOwner && t != _owner).ToArray()) {
+            ElinNetHost.TeamStoryBundles.Remove(team);
+            EmpLog.Information("Team {TeamId} is gone: its story is out of the ledger", team);
+        }
+    }
+
+    /// <summary>
+    ///     The box was ticked: every team and every player without one starts at the story point the world is at (a
+    ///     player new to the world later too). The world owner is the host's
     /// </summary>
     private static void Seed()
     {
         var world = Take();
-        var host = Teams.TeamOf(EClass.pc.uid);
-        foreach (var team in Teams.Ids().Append(host).Distinct()) {
-            Store(team, world);
+        var host = OwnerOf(EClass.pc.uid);
+        foreach (var owner in StoryOwner.All().Append(host).Append(SeedOwner).Distinct()) {
+            Store(owner, world);
         }
 
         ElinNetHost.TeamStoryBundleState = [Schema, 1, host, 0];
-        _team = host;
-        EmpLog.Information("Teams live their own story: every team starts at main {Main}, exploration {Exploration}; the world team is {TeamId}",
+        _owner = host;
+        EmpLog.Information("Each player or team lives its own story: all start at main {Main}, exploration {Exploration}; the world owner is {Owner}",
             world.Main, world.Exploration, host);
     }
 
     /// <summary>
-    ///     The box was unticked: the world goes on with the world team's story, the ledger is emptied (ticked again,
+    ///     The box was unticked: the world goes on with the world owner's story, the ledger is emptied (ticked again,
     ///     every team starts again from the world's)
     /// </summary>
     private static void MergeBack()
     {
-        if (LocalTeam is { } local && local != WorldTeam && Stored(WorldTeam) is { } world) {
+        if (LocalOwner is { } local && local != WorldOwner && Stored(WorldOwner) is { } world) {
             Put(world);
         }
 
-        _team = null;
+        _owner = null;
         ElinNetHost.TeamStoryBundles.Clear();
         ElinNetHost.TeamStoryBundleState = [Schema, 0, 0, 0];
-        EmpLog.Information("One story for the world again: the world team's");
+        EmpLog.Information("One story for the world again: the world owner's");
     }
 
-    // ---- the save: the world team's story, then the local team's again
+    // ---- the save: the world owner's story, then the local team's again
 
     /// <summary>
-    ///     The game writes its save: the quest log holds the world team's story while it is written. A save opened
+    ///     The game writes its save: the quest log holds the world owner's story while it is written. A save opened
     ///     without the mod, or with the box off, goes on with it
     /// </summary>
     [HarmonyPrefix]
@@ -146,13 +310,13 @@ internal static class TeamOwnStory
     private static void BeforeSave(out Snapshot? __state)
     {
         __state = null;
-        if (LocalTeam is not { } team || !On || EClass.game?.quests is null) {
+        if (LocalOwner is not { } team || !On || EClass.game?.quests is null) {
             return;
         }
 
         // (the ledger is written with this save: the local team's as it is now)
         Store(team, Take());
-        if (team == WorldTeam || Stored(WorldTeam) is not { } world) {
+        if (team == WorldOwner || Stored(WorldOwner) is not { } world) {
             return;
         }
 
@@ -160,7 +324,7 @@ internal static class TeamOwnStory
         Put(world);
     }
 
-    // a finalizer: a save that throws does not leave the world team's story in place
+    // a finalizer: a save that throws does not leave the world owner's story in place
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(Game), nameof(Game.Save))]
     private static void AfterSave(Snapshot? __state)
@@ -311,36 +475,35 @@ internal static class TeamOwnStory
     }
 
     /// <summary>
-    ///     What the bench reads: each team's main and exploration phases, the world team
+    ///     What the bench reads: each team's main and exploration phases, the world owner
     /// </summary>
     internal static string Describe()
     {
         var lines = ElinNetHost.TeamStoryBundles.Keys.OrderBy(k => k).Select(team => Stored(team) is { } bundle
-            ? $"{team} main {bundle.Main} exploration {bundle.Exploration} dialog {string.Join(",", bundle.Dialog.Select(d => $"{d.Key}={d.Value}"))}"
-            : $"{team} unreadable");
-        return $"schema {State[0]} seeded {State[1]} world {State[2]} lothria {State[3]} local {LocalTeam?.ToString() ?? "-"}\n" +
+            ? $"{Name(team)} main {bundle.Main} exploration {bundle.Exploration} dialog {string.Join(",", bundle.Dialog.Select(d => $"{d.Key}={d.Value}"))}"
+            : $"{Name(team)} unreadable");
+        return $"schema {State[0]} seeded {State[1]} world {State[2]} lothria {State[3]} local {LocalOwner?.ToString() ?? "-"}\n" +
                string.Join("\n", lines);
     }
 
+    private static string Name(int owner) => StoryOwner.Name(owner);
+
     /// <summary>
-    ///     The host's explicit choice: the story of that team is the one the save keeps from now on
+    ///     The host's explicit choice: the story of that owner (a team id, or minus a chara uid) is the one the save keeps
+    ///     from now on
     /// </summary>
-    internal static string SetWorldTeam(int team)
+    internal static string SetWorldOwner(int team)
     {
         if (!KeepsBook || !On || !Seeded) {
             return "Host only, with the box on";
         }
 
-        if (team != Teams.Wanderers && !ElinNetHost.TeamList.ContainsKey(team)) {
-            return $"No team {team}";
-        }
-
-        if (Stored(team) is null && team != LocalTeam) {
-            Store(team, Take());
+        if (team == SeedOwner || (Stored(team) is null && team != LocalOwner)) {
+            return $"No story for {team} in the ledger";
         }
 
         State[2] = team;
-        EmpLog.Information("The world team is now {TeamId}: the save keeps its story", team);
-        return $"The world team is {team}";
+        EmpLog.Information("The world owner is now {TeamId}: the save keeps its story", team);
+        return $"The world owner is {team}";
     }
 }

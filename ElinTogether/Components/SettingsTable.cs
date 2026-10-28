@@ -65,6 +65,10 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
                 desc = $"{desc} {"emp_ui_sv_import_official".lang()}";
             }
 
+            if (Id == "team_own_story" && OfficialServer.Hosting) {
+                desc = $"{desc} {"emp_ui_sv_own_story_official".lang()}";
+            }
+
             return Apply is null ? desc : $"{desc}{(Choice is null ? " " : "\n")}{$"emp_ui_sv_apply_{Apply}".lang()}";
         }
     }
@@ -307,7 +311,7 @@ internal static class SettingsTable
         yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);

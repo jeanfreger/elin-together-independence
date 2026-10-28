@@ -330,6 +330,8 @@ internal partial class ElinNetClient
         // what this player's team knows: from the host of the world with its copy, kept from the game going away
         // when the copy is another player's zone (that player's team's)
         var lore = probe.Lore ?? (IsZoneSession ? TeamKnowledge.Carry() : null);
+        // and where its team stands in the story, the same way
+        var story = probe.Story ?? (IsZoneSession ? TeamOwnStory.Carry() : null);
 
         if (returning || (IsZoneSession && core.IsGameStarted)) {
             // the cards of the game going away are no host cards: destroying them must not reach the host
@@ -375,6 +377,10 @@ internal partial class ElinNetClient
         // (after the game's own load fixes, which wrote in the copy's lists)
         if (lore is not null) {
             TeamKnowledge.Put(player, lore);
+        }
+
+        if (story is not null) {
+            TeamOwnStory.Put(story);
         }
 
         // this player's own random quests and standing, in place of the host's

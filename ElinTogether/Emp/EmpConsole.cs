@@ -153,12 +153,12 @@ internal class EmpConsole
     }
 
     /// <summary>
-    ///     The host's explicit choice of the world team: the team whose story the save keeps
+    ///     The host's explicit choice of the world owner: whose story the save keeps (a team id, or minus a chara uid)
     /// </summary>
     [ConsoleCommand("team.story_world")]
     internal static string TeamStoryWorld(int teamId)
     {
-        return TeamOwnStory.SetWorldTeam(teamId);
+        return TeamOwnStory.SetWorldOwner(teamId);
     }
 
     [ConsoleCommand("team.found")]

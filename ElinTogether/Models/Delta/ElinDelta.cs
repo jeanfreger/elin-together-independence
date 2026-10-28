@@ -178,6 +178,8 @@ namespace ElinTogether.Models;
 [Union(982, typeof(TeamSpawnDelta))]
 // Teams learn on their own
 [Union(1010, typeof(TeamLoreDelta))]
+// Teams live their own story
+[Union(1110, typeof(StoryBundleDelta))]
 // World time (council 2026-10-26)
 [Union(983, typeof(PlayerIdleDelta))]
 // Admin tools (council 2026-10-27)

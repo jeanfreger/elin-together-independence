@@ -22,6 +22,14 @@ public class SaveDataProbe
     [Key(2)]
     public TeamLore? Lore { get; init; }
 
+    /// <summary>
+    ///     Host option "Teams live their own story": where this player's team stands in the story, in place of what the
+    ///     copy of the world holds (the host's own team's). None when the box is off, when the copy holds it already,
+    ///     and from a zone hosted by a client
+    /// </summary>
+    [Key(3)]
+    public StoryBundle? Story { get; init; }
+
     public Game MakeGameSave()
     {
         return Game.Decompress<Game>();
