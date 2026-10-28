@@ -28,7 +28,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Resources.Load<UIButton>("UI/Element/Button/ButtonNote");
 
-        // the mod's logo, two putits (package/Texture/emp_logo.png); the HUD button keeps its single putit
+        // the mod's logo, two putits (package/Texture/emp_logo.png); the HUD button uses it too
         Window.setting.spriteCaption = MultiplayerHubPatch.Logo ?? MultiplayerHubPatch.Icon;
 
         if (_resetHyp) {

@@ -113,7 +113,9 @@ internal static class MultiplayerHubPatch
 
     private static Sprite? BuildIcon()
     {
-        var putit = EClass.sources.charas.map.TryGetValue("putty")?.GetSprite();
+        // the mod's logo, two putits (user, 2026-10-28); the game's single putit when the file is missing
+        var logo = Logo;
+        var putit = logo ?? EClass.sources.charas.map.TryGetValue("putty")?.GetSprite();
         if (putit == null) {
             return null;
         }
@@ -125,8 +127,8 @@ internal static class MultiplayerHubPatch
 
         var src = Read(putit);
         var box = AlphaBox(src.Pixels, src.W, src.H);
-        // one putit, centred (user, 2026-10-28: "just a putit")
-        var small = Mathf.RoundToInt(size * 0.6f);  // about the footprint of the game's own icons (0.85 looked too big next to them)
+        // centred, about the footprint of the game's own icons (one putit at 0.85 looked too big next to them)
+        var small = Mathf.RoundToInt(size * (logo != null ? 0.75f : 0.6f));
         var scale = (float)small / Mathf.Max(box.width, box.height);
         var w = Mathf.Max(1, Mathf.RoundToInt(box.width * scale));
         var h = Mathf.Max(1, Mathf.RoundToInt(box.height * scale));
