@@ -93,6 +93,11 @@ internal static class PlayerWhisper
 
     internal static void Receive(WhisperDelta delta)
     {
+        // an ignored player's line is dropped here, and it is told nothing (my personal list, see Social)
+        if (PlayerSocial.IsIgnoredUid(delta.FromUid)) {
+            return;
+        }
+
         var name = NameOf(delta.FromUid, delta.Name);
         ChatBubbleEvent.PopChat("emp_whisper_from".lang(name), delta.Text);
     }

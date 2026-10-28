@@ -48,6 +48,13 @@ public class MsgSayDelta : ElinDelta
     [Key(9)]
     public string? Name { get; init; }
 
+    /// <summary>
+    ///     A line of the server itself (an admin's announcement, a restart warning): shown to every player in the pop
+    ///     text and in the message log, whatever the chat rules
+    /// </summary>
+    [Key(10)]
+    public bool Notice { get; init; }
+
     private static readonly Queue<int> RecentIds = new();
 
     /// <summary>
@@ -65,6 +72,24 @@ public class MsgSayDelta : ElinDelta
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     Only the host speaks as the server
+    /// </summary>
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return Notice ? "a server notice written by a guest" : null;
+    }
+
+    /// <summary>
+    ///     The way the game tells something to everyone: the pop text and one line in its message log
+    /// </summary>
+    internal static void ShowNotice(string text)
+    {
+        ChatBubbleEvent.PopChat("[Server]", text);
+        Msg.SetColor(new Color(1f, 0.85f, 0.4f, 1f));
+        Msg.SayRaw("[Server] " + text);
     }
 
     protected override void OnApply(ElinNetBase net)
@@ -100,6 +125,16 @@ public class MsgSayDelta : ElinDelta
                 NetSession.Instance.Transport is ElinNetClient up) {
                 up.SendChatWhileAway(this);
             }
+        }
+
+        if (Notice) {
+            ShowNotice(Text);
+            return;
+        }
+
+        // an ignored player's line is not shown to me, it still travels on (my personal list, see Social)
+        if (Chat && PlayerSocial.IsIgnoredUid(SpeakerUid)) {
+            return;
         }
 
         // a player's line shows like a player speaking on the map: the pop text, never the log (user, 2026-10-24).

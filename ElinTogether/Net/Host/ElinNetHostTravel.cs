@@ -365,6 +365,7 @@ internal partial class ElinNetHost
     {
         base.Update();
         UpdateJoinCopies();
+        UpdateRestartWarnings();
         UpdateQuestAsk();
         UpdateSoftRejoins();
         UpdateWorldMapTogether();

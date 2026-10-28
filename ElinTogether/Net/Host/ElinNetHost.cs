@@ -104,6 +104,7 @@ internal partial class ElinNetHost : ElinNetBase
         // setup session states
         // (rules and player list of an earlier session do not carry over)
         Session.Rules = NetSessionRules.Default;
+        Helper.ServerInfo.Arrived();
         Session.Player = pc;
         Session.Self = selfState;
         Session.CurrentPlayers.Clear();
