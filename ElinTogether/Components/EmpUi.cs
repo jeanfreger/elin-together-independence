@@ -288,9 +288,10 @@ internal static class EmpUi
     /// <summary>
     ///     A row of the left page: a player row that is picked by a click, the picked one shaded as the journal's
     /// </summary>
-    public static YKHorizontal PickRow(this YKLayout parent, PlayerRowInfo info, bool picked, Action onPick)
+    public static YKHorizontal PickRow(this YKLayout parent, PlayerRowInfo info, bool picked, Action onPick,
+        IReadOnlyList<(string Label, Action Act)>? actions = null)
     {
-        var row = parent.PlayerRow(info, []);
+        var row = parent.PlayerRow(info, actions ?? []);
         var shade = row.gameObject.AddComponent<Image>();
         shade.color = picked ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
         var button = row.gameObject.AddComponent<Button>();

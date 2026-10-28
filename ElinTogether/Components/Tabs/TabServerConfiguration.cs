@@ -50,8 +50,6 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     private readonly List<Group> _groups = [];
-    private UIInputText? _searchInput;
-    private UIText? _noMatch;
     private bool _guest;
     private RuleSource _src = RuleSource.Current;
     private RuleSource _target = RuleSource.Defaults;
@@ -528,7 +526,6 @@ internal class TabServerConfiguration : TabEmpBase
             }
         }
 
-        _noMatch?.gameObject.SetActive(searching && !any);
         Relayout();
     }
 
@@ -546,10 +543,6 @@ internal class TabServerConfiguration : TabEmpBase
 
         var line = group.Lines.First(l => l.Row.Id == rowId);
         _search = "";
-        if (_searchInput != null) {
-            _searchInput.Text = "";
-        }
-
         ShowSubTab(PageOf(group));
         ApplyFilter();
         if (GetComponentInParent<ScrollRect>() is not { content: { } content } scroll) {
