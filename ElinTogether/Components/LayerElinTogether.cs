@@ -38,11 +38,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DecorateLastTab("icon_LayerTravel", "emp_tip_tab_session");
         }
 
-        // the teams (council 2026-10-28): who is in which, and what a leader may do
-        if (NetSession.Instance.HasActiveConnection && NetSession.Instance.Rules.UseTeams) {
-            _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
-            DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
-        }
+        // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
+        _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
+        DecorateLastTab("icon_LayerChara", "emp_tip_tab_team");
+        _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
+        DecorateLastTab("icon_area", "emp_tip_tab_lands");
 
         if (NetSession.Instance.Transport is ElinNetHost) {
             _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
