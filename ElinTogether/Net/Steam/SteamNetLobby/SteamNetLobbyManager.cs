@@ -172,6 +172,7 @@ public class SteamNetLobbyManager : EClass
             NetSession.Instance.InitializeComponent<ElinNetClient>();
         }
 
+        (NetSession.Instance.Transport as ElinNetClient)?.MarkLobbyJoinRequested();
         SteamMatchmaking.JoinLobby(lobby);
     }
 
