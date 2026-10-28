@@ -919,5 +919,6 @@
     "LangGeneral.emp_ui_sub_how.text": "玩法说明",
     "LangGeneral.emp_ui_sv_needs_official.text": "由官方服务器设定",
     "LangGeneral.emp_ui_saved_chars_none.text": "这个世界还没有创建过角色。",
-    "LangGeneral.emp_ui_banned_none.text": "没有被封禁的玩家。"
+    "LangGeneral.emp_ui_banned_none.text": "没有被封禁的玩家。",
+    "LangGeneral.emp_ui_sv_adv_title.text": "高级"
 }

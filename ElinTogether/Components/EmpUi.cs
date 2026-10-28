@@ -168,7 +168,11 @@ internal static class EmpUi
     {
         var row = parent.Row();
         row.TextColumn(title, description);
-        var button = row.Button(buttonText, act).FixedWidth();
+        // (as wide as its label: a whole-width bar beside a short title in a half-width box left no room for it)
+        var button = row.Button(buttonText, act);
+        var element = button.LayoutElement();
+        element.preferredWidth = Mathf.Max(110f, (button.mainText != null ? button.mainText.preferredWidth : 0f) + 48f);
+        element.flexibleWidth = 0f;
         if (tooltip != null) {
             button.SetTooltipLang(tooltip);
         }
@@ -408,39 +412,94 @@ internal static class EmpUi
         element.flexibleWidth = 0f;
     }
 
+    // ---------------------------------------------------------------- (f) Box and columns (the options window)
+
+    /// <summary>
+    ///     A framed group as the game's options window draws one ("Language", "User Interface"): its frame and its
+    ///     small title, copied from LayerConfig's Group prefab; the rows inside. Without a title the frame alone
+    /// </summary>
+    public static YKVertical Box(this YKLayout parent, string? title = null)
+    {
+        var box = parent.Vertical();
+        box.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        box.LayoutElement().flexibleWidth = 1f;
+        box.Layout.padding = new(20, 20, title is null ? 16 : 44, 16);
+        box.Layout.spacing = UIHelper.RowSpacing;
+
+        var mold = EmpUiParts.ConfigGroup;
+        if (mold != null && mold.Find("BG") is { } frame) {
+            var bg = UnityEngine.Object.Instantiate(frame, box.transform, false);
+            bg.GetOrCreate<LayoutElement>().ignoreLayout = true;
+            Stretch((RectTransform)bg);
+            bg.SetAsFirstSibling();
+        } else {
+            // (no options window to copy from: the parchment frame of the mod's old cards)
+            var image = box.gameObject.AddComponent<Image>();
+            image.sprite = UIHelper.FindSprite("buttonBig");
+            image.type = Image.Type.Sliced;
+        }
+
+        if (title is null) {
+            return box;
+        }
+
+        if (mold != null && mold.Find("Text topic") is { } topic) {
+            var copy = UnityEngine.Object.Instantiate(topic, box.transform, false);
+            copy.GetOrCreate<LayoutElement>().ignoreLayout = true;
+            if (copy.GetComponent<UIText>() is { } text) {
+                // (the prefab's own lang id would come back on a language change)
+                text.lang = null;
+                text.horizontalOverflow = HorizontalWrapMode.Overflow;
+                text.SetText(title);
+            }
+        } else {
+            var head = box.TextSmall(title, FontColor.Topic);
+            head.LayoutElement().ignoreLayout = true;
+            var rt = head.Rect();
+            rt.anchorMin = rt.anchorMax = rt.pivot = new(0f, 1f);
+            rt.anchoredPosition = new(24f, -14f);
+        }
+
+        return box;
+    }
+
+    /// <summary>
+    ///     Two columns side by side, the same width, as the options window lays its groups out
+    /// </summary>
+    public static (YKVertical Left, YKVertical Right) Columns(this YKLayout parent)
+    {
+        var row = parent.Horizontal();
+        row.Layout.childForceExpandWidth = true;
+        row.Layout.childControlWidth = true;
+        row.Layout.childAlignment = TextAnchor.UpperLeft;
+        row.Layout.spacing = 14f;
+        row.LayoutElement().flexibleWidth = 1f;
+
+        YKVertical Column()
+        {
+            var col = row.Vertical();
+            col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            col.Layout.spacing = 12f;
+            var element = col.LayoutElement();
+            element.flexibleWidth = 1f;
+            element.preferredWidth = 0f;
+            element.minWidth = 0f;
+            return col;
+        }
+
+        return (Column(), Column());
+    }
+
     // ---------------------------------------------------------------- (b) SettingRow
 
     /// <summary>
-    ///     The shared skeleton of a setting: [title / grey description] [changed dot + revert] [control slot]. Every
-    ///     control slot has the same width and sits on the right, so the controls of a card line up. Returns the slot
+    ///     The "changed" mark of a setting: a dot and the revert arrow, hidden (but keeping its width, so nothing
+    ///     jumps) while the value is the reference one
     /// </summary>
-    private sealed record SettingParts(YKHorizontal Slot, Action<bool> ShowChanged, Action<Action> SetRevert);
+    private sealed record Marks(Action<bool> ShowChanged, Action<Action> SetRevert);
 
-    private static SettingParts SettingSkeleton(YKLayout parent, string title, string? description, bool readOnly,
-        string setByHostText)
+    private static Marks AddMarks(YKHorizontal row)
     {
-        var row = Line(parent);
-        row.LayoutElement().minHeight = UIHelper.RowHeight;
-        GrowWithText(row);
-
-        var col = row.Vertical();
-        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        col.Layout.spacing = 0f;
-        col.LayoutElement().flexibleWidth = 1f;
-
-        if (readOnly) {
-            var titleLine = Line(col, spacing: 8f);
-            titleLine.Text(title).SetSize(UIHelper.LabelSize);
-            titleLine.Chip(setByHostText);
-        } else {
-            col.Text(title).SetSize(UIHelper.LabelSize);
-        }
-
-        if (!string.IsNullOrEmpty(description)) {
-            GreyLine(col, description!);
-        }
-
-        // the mark slot keeps its width when nothing changed, so the controls never jump
         var marks = NewBox(row.transform, "Marks", MarkSlotWidth, UIHelper.RowHeight);
         var group = marks.gameObject.AddComponent<CanvasGroup>();
         var dot = NewImage(marks, "ChangedDot", Dot).rectTransform;
@@ -462,16 +521,39 @@ internal static class EmpUi
 
         group.alpha = 0f;
         group.blocksRaycasts = false;
-
-        var slot = Line(row, TextAnchor.MiddleRight, 0f);
-        var slotElement = slot.LayoutElement();
-        slotElement.preferredWidth = UIHelper.ControlWidth;
-        slotElement.minWidth = UIHelper.ControlWidth;
-        slotElement.flexibleWidth = 0f;
-        return new(slot, changed => {
+        return new(changed => {
             group.alpha = changed ? 1f : 0f;
             group.blocksRaycasts = changed;
         }, act => onRevert = act);
+    }
+
+    /// <summary>
+    ///     The words of a setting: its title (with "set by the host" when the player only reads it) and a grey line
+    /// </summary>
+    private static void SettingWords(YKVertical col, string title, string? description, bool readOnly, string setByHostText)
+    {
+        if (readOnly && setByHostText.Length > 0) {
+            var titleLine = Line(col, spacing: 8f);
+            titleLine.Text(title).SetSize(UIHelper.LabelSize);
+            titleLine.Chip(setByHostText);
+        } else {
+            col.Text(title).SetSize(UIHelper.LabelSize);
+        }
+
+        if (!string.IsNullOrEmpty(description)) {
+            GreyLine(col, description!);
+        }
+    }
+
+    private static YKVertical WordsColumn(YKHorizontal row)
+    {
+        var col = row.Vertical();
+        col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        col.Layout.spacing = 0f;
+        var element = col.LayoutElement();
+        element.flexibleWidth = 1f;
+        element.minWidth = 0f;
+        return col;
     }
 
     private static void Lock(Selectable control, bool readOnly)
@@ -480,30 +562,36 @@ internal static class EmpUi
     }
 
     /// <summary>
-    ///     A box setting. With a reference value, a changed value shows the dot and the revert arrow
+    ///     A box setting as the options window has them: the game's checkbox first, then the title and a grey line.
+    ///     With a reference value, a changed value shows the dot and the revert arrow
     /// </summary>
     public static UIButton ToggleRow(this YKLayout parent, string title, string? description, bool value,
         Action<bool> onChange, bool? reference = null, bool readOnly = false, string setByHostText = "")
     {
-        var parts = SettingSkeleton(parent, title, description, readOnly, setByHostText);
-        var slot = parts.Slot;
-        var showChanged = parts.ShowChanged;
+        var row = Line(parent, TextAnchor.UpperLeft, 6f);
+        row.LayoutElement().minHeight = UIHelper.RowHeight;
+        GrowWithText(row);
+
         var current = value;
+        Marks? marks = null;
+        void Refresh() => marks?.ShowChanged(reference.HasValue && current != reference.Value);
         // (only the box: the title is the row's own text, so the label here stays empty)
-        UIButton? toggle = null;
-        void Refresh() => showChanged(reference.HasValue && current != reference.Value);
-        toggle = slot.Toggle("", value, v => {
+        var toggle = row.Toggle("", value, v => {
             current = v;
             onChange(v);
             Refresh();
         });
+        toggle.mainText.text = "";
         var element = toggle.LayoutElement();
-        element.minWidth = 44f;
-        element.preferredWidth = 44f;
+        element.minWidth = element.preferredWidth = 40f;
+        element.minHeight = element.preferredHeight = UIHelper.RowHeight;
         element.flexibleWidth = 0f;
         toggle.AsRow();
+
+        SettingWords(WordsColumn(row), title, description, readOnly, setByHostText);
+        marks = AddMarks(row);
         Lock(toggle, readOnly);
-        parts.SetRevert(() => {
+        marks.SetRevert(() => {
             if (!reference.HasValue) {
                 return;
             }
@@ -517,29 +605,45 @@ internal static class EmpUi
     }
 
     /// <summary>
-    ///     A choice setting (the reference is an option index)
+    ///     A control under its title, the whole width of the box (the options window's sliders and font choice)
+    /// </summary>
+    private static (YKVertical Group, Marks Marks) StackedSetting(YKLayout parent, string title, bool readOnly,
+        string setByHostText)
+    {
+        var group = parent.Vertical();
+        group.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        group.Layout.spacing = 2f;
+        var titleLine = Line(group, TextAnchor.UpperLeft, 6f);
+        GrowWithText(titleLine);
+        // (the grey line goes under the control, added by the caller)
+        SettingWords(WordsColumn(titleLine), title, null, readOnly, setByHostText);
+        return (group, AddMarks(titleLine));
+    }
+
+    /// <summary>
+    ///     A choice setting: title, the game's dropdown under it, a grey line (the reference is an option index)
     /// </summary>
     public static UIDropdown DropdownSettingRow(this YKLayout parent, string title, string? description,
         List<string> options, int value, Action<int> onPick, int? reference = null, bool readOnly = false,
         string setByHostText = "")
     {
-        var parts = SettingSkeleton(parent, title, description, readOnly, setByHostText);
-        var slot = parts.Slot;
-        var showChanged = parts.ShowChanged;
+        var (group, marks) = StackedSetting(parent, title, readOnly, setByHostText);
         var current = value;
-        UIDropdown? dropdown = null;
-        void Refresh() => showChanged(reference.HasValue && current != reference.Value);
-        dropdown = slot.Dropdown(options, i => {
+        void Refresh() => marks.ShowChanged(reference.HasValue && current != reference.Value);
+        var dropdown = group.Dropdown(options, i => {
             current = i;
             onPick(i);
             Refresh();
         }, value);
         var element = dropdown.LayoutElement();
-        element.preferredWidth = UIHelper.ControlWidth;
         element.flexibleWidth = 1f;
+        element.preferredHeight = UIHelper.RowHeight;
         dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
+        if (!string.IsNullOrEmpty(description)) {
+            GreyLine(group, description!);
+        }
         Lock(dropdown, readOnly);
-        parts.SetRevert(() => {
+        marks.SetRevert(() => {
             if (reference.HasValue) {
                 dropdown.value = reference.Value;
             }
@@ -549,28 +653,26 @@ internal static class EmpUi
     }
 
     /// <summary>
-    ///     A number setting on the game's own slider (whole numbers, as YKF's slider is)
+    ///     A number setting on the options window's own slider (whole numbers, as YKF's slider is), under its title
     /// </summary>
     public static Slider SliderRow(this YKLayout parent, string title, string? description, int value, int min,
         int max, Action<int> onChange, Func<int, string>? label = null, int? reference = null, bool readOnly = false,
         string setByHostText = "")
     {
-        var parts = SettingSkeleton(parent, title, description, readOnly, setByHostText);
-        var slot = parts.Slot;
-        var showChanged = parts.ShowChanged;
+        var (group, marks) = StackedSetting(parent, title, readOnly, setByHostText);
         var current = value;
-        Slider? slider = null;
-        void Refresh() => showChanged(reference.HasValue && current != reference.Value);
-        slider = slot.Slider(value, v => {
+        void Refresh() => marks.ShowChanged(reference.HasValue && current != reference.Value);
+        var slider = group.Slider(value, v => {
             current = Mathf.RoundToInt(v);
             onChange(current);
             Refresh();
         }, min, max, v => label?.Invoke(Mathf.RoundToInt(v)) ?? Mathf.RoundToInt(v).ToString());
-        var element = slider.LayoutElement();
-        element.preferredWidth = UIHelper.ControlWidth;
-        element.flexibleWidth = 1f;
+        slider.LayoutElement().flexibleWidth = 1f;
+        if (!string.IsNullOrEmpty(description)) {
+            GreyLine(group, description!);
+        }
         Lock(slider, readOnly);
-        parts.SetRevert(() => {
+        marks.SetRevert(() => {
             if (reference.HasValue) {
                 slider.value = reference.Value;
             }

@@ -299,26 +299,65 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     /// <summary>
-    ///     A group of rules on its own sub-tab: every row of it, the advanced ones included (a page has the room)
+    ///     A group of rules on its own sub-tab, laid out as the game's options window: two framed boxes side by side,
+    ///     the main rows on the left, the advanced ones on the right ("Advanced"); a group without advanced rows is cut
+    ///     in two halves. A row stays with the rows under it
     /// </summary>
     private void BuildGroup(YKVertical page, string id, List<SettingRow> rows)
     {
         var group = new Group(id) { Title = $"emp_ui_sv_sec_{id}".lang() };
-        var body = page.Card(group.Title);
-        body.Layout.spacing = UIHelper.RowSpacing * 2;
         group.Card = page.gameObject;
+
+        // a row and the rows under it, as one block
+        var blocks = new List<List<SettingRow>>();
         foreach (var row in rows) {
-            if (BuildRow(body, row) is { } line) {
-                group.Lines.Add(line);
+            if (row.Under is not null && blocks.Count > 0 && blocks[^1].Any(r => r.Id == row.Under)) {
+                blocks[^1].Add(row);
+            } else {
+                blocks.Add([row]);
             }
         }
 
+        var main = blocks.Where(b => !b[0].Advanced).ToList();
+        var advanced = blocks.Where(b => b[0].Advanced).ToList();
+        string? rightTitle = "emp_ui_sv_adv_title".lang();
+        if (advanced.Count == 0 || main.Count == 0) {
+            var all = main.Concat(advanced).ToList();
+            var half = (all.Sum(b => b.Count) + 1) / 2;
+            main = [];
+            advanced = [];
+            var count = 0;
+            foreach (var block in all) {
+                (count < half ? main : advanced).Add(block);
+                count += block.Count;
+            }
+            rightTitle = null;
+        }
+
+        var (left, right) = page.Columns();
+        Fill(left.Box(group.Title), main);
+        if (advanced.Count > 0) {
+            Fill(right.Box(rightTitle), advanced);
+        }
+
         _groups.Add(group);
+        return;
+
+        void Fill(YKVertical box, List<List<SettingRow>> part)
+        {
+            box.Layout.spacing = UIHelper.RowSpacing * 2;
+            foreach (var row in part.SelectMany(b => b)) {
+                if (BuildRow(box, row) is { } line) {
+                    group.Lines.Add(line);
+                }
+            }
+        }
     }
 
     /// <summary>
-    ///     One row: title and a grey line on the left (or what it needs), a dot and Revert when it differs from the
-    ///     preset, the control on the right
+    ///     One row as the options window draws one: a box setting is the game's checkbox then its title and grey line;
+    ///     a choice is its title, the game's dropdown under it, then the grey line. What a greyed row needs is said
+    ///     under it; a dot and the revert arrow when it differs from the preset
     /// </summary>
     private Line? BuildRow(YKVertical parent, SettingRow row)
     {
@@ -327,69 +366,84 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         var changed = IsChanged(row, _src, _target);
-        var line = parent.Horizontal();
-        line.Layout.childForceExpandWidth = false;
-        line.Layout.childAlignment = TextAnchor.MiddleLeft;
-        line.Layout.spacing = 10f;
+        var block = parent.Vertical();
+        block.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        block.Layout.spacing = 2f;
         if (row.Under is not null) {
-            line.Layout.padding = new(UIHelper.SubIndent, 0, 0, 0);
-        }
-
-        var left = line.Vertical();
-        left.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        left.Layout.spacing = 2f;
-        left.LayoutElement().flexibleWidth = 1f;
-        left.Text(row.Label).SetSize(UIHelper.LabelSize);
-        foreach (var text in row.Description.Split('\n')) {
-            left.TextSmall(text, FontColor.Gray);
+            block.Layout.padding = new(UIHelper.SubIndent, 0, 0, 0);
         }
 
         var needs = NeedsText(row);
-        if (needs is not null) {
-            left.TextSmall(needs, FontColor.Warning);
+        var enabled = !_guest && needs is null;
+
+        var top = block.Horizontal();
+        top.Layout.childForceExpandWidth = false;
+        top.Layout.childControlHeight = true;
+        top.Layout.childForceExpandHeight = false;
+        top.Layout.childAlignment = TextAnchor.UpperLeft;
+        top.Layout.spacing = 6f;
+
+        if (row is { Entry: { } entry }) {
+            var toggle = top.Toggle("", _src.Get(entry) ?? false, value => {
+                Capture();
+                SettingsTable.Write([(entry, value)]);
+            });
+            toggle.mainText.text = "";
+            var element = toggle.LayoutElement();
+            element.minWidth = element.preferredWidth = 40f;
+            element.minHeight = element.preferredHeight = UIHelper.RowHeight;
+            element.flexibleWidth = 0f;
+            toggle.AsRow();
+            toggle.interactable = enabled;
         }
 
-        var enabled = !_guest && needs is null;
+        var words = top.Vertical();
+        words.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        words.Layout.spacing = 0f;
+        words.LayoutElement().flexibleWidth = 1f;
+        words.LayoutElement().minWidth = 0f;
+        words.Text(row.Label).SetSize(UIHelper.LabelSize);
+
         if (changed) {
-            MakeDot(line);
+            MakeDot(top);
             if (!_guest) {
-                var revert = line.Button("emp_ui_sv_revert".lang(), () => Revert(row));
-                revert.LayoutElement().preferredWidth = 110f;
-                revert.LayoutElement().flexibleWidth = 0f;
+                var revert = top.Button("<", () => Revert(row));
+                revert.SetTooltipLang("emp_ui_sv_revert");
+                var element = revert.LayoutElement();
+                element.minWidth = element.preferredWidth = 34f;
+                element.preferredHeight = UIHelper.RowHeight - 6f;
+                element.flexibleWidth = 0f;
             }
         }
 
-        switch (row) {
-            case { Choice: { } choice }:
-                var current = choice.Read(_src);
-                var options = Enumerable.Range(0, choice.Options.Length).Select(choice.OptionLabel).ToList();
-                // (boxes that match no option: shown as such, never rewritten until the host picks one)
-                if (current < 0) {
-                    options.Add(choice.OptionLabel(-1));
-                }
-                var dropdown = line.Dropdown(options, i => {
-                    Capture();
-                    SettingsTable.Write(choice.WriteFor(i));
-                }, current < 0 ? options.Count - 1 : current);
-                dropdown.LayoutElement().preferredWidth = UIHelper.ControlWidth * 0.7f;
-                dropdown.LayoutElement().flexibleWidth = 0f;
-                dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
-                dropdown.interactable = enabled;
-                break;
-            case { Entry: { } entry }:
-                var toggle = line.Toggle("", _src.Get(entry) ?? false, value => {
-                    Capture();
-                    SettingsTable.Write([(entry, value)]);
-                });
-                toggle.mainText.text = "";
-                toggle.LayoutElement().preferredWidth = 50f;
-                toggle.LayoutElement().flexibleWidth = 0f;
-                toggle.AsRow();
-                toggle.interactable = enabled;
-                break;
+        // (a box setting's grey lines stay beside its box, under its title; a choice's go under its dropdown)
+        var below = row.Entry is not null ? words : block;
+        if (row is { Choice: { } choice }) {
+            var current = choice.Read(_src);
+            var options = Enumerable.Range(0, choice.Options.Length).Select(choice.OptionLabel).ToList();
+            // (boxes that match no option: shown as such, never rewritten until the host picks one)
+            if (current < 0) {
+                options.Add(choice.OptionLabel(-1));
+            }
+            var dropdown = block.Dropdown(options, i => {
+                Capture();
+                SettingsTable.Write(choice.WriteFor(i));
+            }, current < 0 ? options.Count - 1 : current);
+            dropdown.LayoutElement().flexibleWidth = 1f;
+            dropdown.LayoutElement().preferredHeight = UIHelper.RowHeight;
+            dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
+            dropdown.interactable = enabled;
         }
 
-        return new(row, line.gameObject, $"{row.Label} {row.Description}", changed);
+        foreach (var text in row.Description.Split('\n')) {
+            below.TextSmall(text, FontColor.Gray);
+        }
+
+        if (needs is not null) {
+            below.TextSmall(needs, FontColor.Warning);
+        }
+
+        return new(row, block.gameObject, $"{row.Label} {row.Description}", changed);
     }
 
     /// <summary>

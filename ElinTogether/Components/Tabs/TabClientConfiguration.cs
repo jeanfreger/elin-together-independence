@@ -23,15 +23,17 @@ internal class TabClientConfiguration : TabEmpBase
             ("emp_ui_sub_mods".lang(), BuildMods),
             ("emp_ui_sub_depot".lang(), BuildDepot),
             ("emp_ui_sub_social".lang(), page => {
-                BuildFriends(page);
-                BuildIgnored(page);
+                // side by side, as the options window lays out its groups
+                var (left, right) = page.Columns();
+                BuildFriends(left);
+                BuildIgnored(right);
             }),
         ]);
     }
 
     private static void BuildControls(YKVertical page)
     {
-        var card = page.Card("emp_ui_cl_sec_controls".lang());
+        var card = page.Box("emp_ui_cl_sec_controls".lang());
         var pingKey = new EInput.KeyMap {
             action = EAction.None,
             key = KeyCode.P,
@@ -53,7 +55,7 @@ internal class TabClientConfiguration : TabEmpBase
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
     private static void BuildMods(YKVertical page)
     {
-        var card = page.Card("emp_ui_cl_sec_mods".lang());
+        var card = page.Box("emp_ui_cl_sec_mods".lang());
         var fetch = EmpConfig.Client.FetchMods;
         var fetchBox = card.ToggleRow("emp_ui_cl_fetch_mods".lang(), "emp_ui_cl_desc_fetch_mods".lang(), fetch.Value,
             v => fetch.Value = v);
@@ -61,7 +63,6 @@ internal class TabClientConfiguration : TabEmpBase
 
         // ... and kept: subscribed to, so that the next join needs no restart
         // (keeping them means nothing without fetching them: greyed out until then)
-        card.Divider();
         var keep = EmpConfig.Client.KeepMods;
         var keepBox = card.ToggleRow("emp_ui_cl_keep_mods".lang(), "emp_ui_cl_desc_keep_mods".lang(), keep.Value,
             v => keep.Value = v);
@@ -72,7 +73,7 @@ internal class TabClientConfiguration : TabEmpBase
     // the shared save folder (the depot): optional, not needed to play together
     private static void BuildDepot(YKVertical page)
     {
-        var card = page.Card("emp_ui_cl_sec_depot".lang());
+        var card = page.Box("emp_ui_cl_sec_depot".lang());
         card.TextSmall("emp_ui_cl_desc_depot".lang(), FontColor.Gray);
 
         var depot = EmpConfig.Client.DepotPath;
@@ -109,7 +110,7 @@ internal class TabClientConfiguration : TabEmpBase
 
     private static void BuildFriends(YKVertical page)
     {
-        var card = page.Card("emp_info_friends".lang());
+        var card = page.Box("emp_info_friends".lang());
         var online = NetSession.Instance.CurrentPlayers.Where(p => !p.User.IsMe && PlayerSocial.IsFriend(p.User)).ToList();
         foreach (var player in online) {
             var user = (ulong)player.User;
@@ -135,7 +136,7 @@ internal class TabClientConfiguration : TabEmpBase
 
     private static void BuildIgnored(YKVertical page)
     {
-        var card = page.Card("emp_info_ignored".lang());
+        var card = page.Box("emp_info_ignored".lang());
         card.TextSmall("emp_info_ignored_note".lang(), FontColor.Gray);
         foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
             card.ButtonSetting(name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {
