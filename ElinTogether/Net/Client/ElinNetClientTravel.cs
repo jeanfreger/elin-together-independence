@@ -331,7 +331,21 @@ internal partial class ElinNetClient
             zone.ZoneFullName, grant.UidRangeStart, grant.Map is not null);
 
         ArrivedAt = Time.realtimeSinceStartup;
+        CloseDramas();
         pc.MoveZone(zone, transition);
+    }
+
+    /// <summary>
+    ///     The game holds the map change while a drama layer is open (Scene.Update: !LayerDrama.IsActive()). The
+    ///     bout's "Yes" moves the player from the drama's own kill callback, so a layer that is still listed then
+    ///     (the adventurer's menu, seen with LayerDrama.Instance already null) kept the granted zone from loading for
+    ///     90 s. Closed with the game's own kill, which also runs the callbacks the dialog left
+    /// </summary>
+    private static void CloseDramas()
+    {
+        foreach (var layer in ui.layers.OfType<LayerDrama>().ToArray()) {
+            layer.Close();
+        }
     }
 
     /// <summary>
