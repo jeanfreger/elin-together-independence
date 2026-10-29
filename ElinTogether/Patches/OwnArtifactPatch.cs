@@ -45,7 +45,7 @@ internal static class OwnArtifactPatch
 
     /// <summary>
     ///     The player whose side a chara is on: a player itself, a summon its master's, a companion or resident its
-    ///     owner's (by its tag, in the party or not), and the host's when nobody else's
+    ///     owner's (by its tag, in the party or not), an untagged party member its leader's, and its own otherwise
     /// </summary>
     private static int Side(Chara chara, int depth = 0)
     {
@@ -57,7 +57,12 @@ internal static class OwnArtifactPatch
             return Side(master, depth + 1);
         }
 
-        return chara.CompanionOwnerUid is var uid and not 0 ? uid : (EClass.pc.party?.leader ?? EClass.pc).uid;
+        if (chara.CompanionOwnerUid is var uid and not 0) {
+            return uid;
+        }
+
+        // (issue 34: an untagged chara is the leader's only when really in that party, else nobody's but its own)
+        return chara.party is { } p && p.members.Contains(chara) ? (p.leader ?? EClass.pc).uid : chara.uid;
     }
 
     [HarmonyFinalizer]
