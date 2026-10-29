@@ -825,6 +825,30 @@ internal partial class EmpConfig
             "Otherwise no journal per team\n" +
             "每个队伍保留自己的剧情日志：其玩家参与过的主线最远章节（推进剧情的玩家及同一地图上的玩家），显示在队伍卡片上；剧情本身仍属于整个世界。关闭时没有队伍日志");
 
+        Server.TeamSheets = config.Bind(
+            "Server",
+            "TeamSheets",
+            false,
+            "Players can open a read-only character sheet of their teammates, sent by the host (levels, skills, equipment, karma, fame)\nOtherwise no sheets\n玩家可以查看队友的只读角色面板，由房主发送（等级、技能、装备、善恶值、名声）。关闭时没有角色面板");
+
+        Server.ActivityJournal = config.Bind(
+            "Server",
+            "ActivityJournal",
+            false,
+            "The host keeps a journal of the world's events (teams founded, duels won, boss kills, deaths, records), shown on the Journal page\nOtherwise no journal\n房主记录世界大事日志（队伍成立、决斗获胜、击败首领、死亡、纪录），显示在日志页面。关闭时没有日志");
+
+        Server.TeamBanner = config.Bind(
+            "Server",
+            "TeamBanner",
+            false,
+            "Each team gets a banner (an emblem and a colour) chosen by its leader and shown on the Teams page\nOtherwise no banners\n每个队伍有一面由队长选择的旗帜（徽记和颜色），显示在队伍页面。关闭时没有旗帜");
+
+        Server.Leaderboards = config.Bind(
+            "Server",
+            "Leaderboards",
+            false,
+            "The host ranks players and teams (level, deepest floor, duels won, team wealth), shown on the Leaderboards page\nOtherwise no rankings\n房主为玩家和队伍排名（等级、最深楼层、决斗获胜、队伍财富），显示在排行榜页面。关闭时没有排名");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1103,6 +1127,10 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamBills { get; set; } = null!;
         internal static ConfigEntry<bool> TeamStory { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnStory { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamSheets { get; set; } = null!;
+        internal static ConfigEntry<bool> ActivityJournal { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamBanner { get; set; } = null!;
+        internal static ConfigEntry<bool> Leaderboards { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;

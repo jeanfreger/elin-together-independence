@@ -47,6 +47,12 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
         DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
+        // journal and rankings (PLAN_hub_features): always there, saying so when their box is off
+        _tabs.Add(CreateTab<TabJournal>("emp_ui_tab_journal", TabJournal.TabName));
+        DecorateLastTab("icon_book", "emp_tip_tab_journal");
+        _tabs.Add(CreateTab<TabLeaderboard>("emp_ui_tab_leaderboard", TabLeaderboard.TabName));
+        DecorateLastTab("icon_medal", "emp_tip_tab_leaderboard");
+
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
         // reads the host's (the tab's own guest view)
         _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));

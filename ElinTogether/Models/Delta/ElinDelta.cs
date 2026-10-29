@@ -206,6 +206,10 @@ namespace ElinTogether.Models;
 // Closed lands: a player is moved out (council 2026-10-28)
 [Union(1200, typeof(TeamEvictDelta))]
 [Union(1225, typeof(SiblingLandDelta))]
+// Hub features: character sheets, activity journal, leaderboards (PLAN_hub_features)
+[Union(1230, typeof(CharaSheetDelta))]
+[Union(1231, typeof(JournalDelta))]
+[Union(1232, typeof(LeaderboardDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

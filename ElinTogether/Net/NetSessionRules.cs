@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 144 (141 unused), the next free one is 146 (145 reserved for the server avatar). Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 152 (141 unused), the next free one is 153 (145 reserved for the server avatar, 146 and 147 spare). Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
@@ -471,6 +471,30 @@ public class NetSessionRules
     [Key(148)]
     public bool LargeCrowds { get; set; }
 
+    /// <summary>
+    ///     Host box "Team character sheets" (PLAN_hub_features A). An older host sends none: no sheets
+    /// </summary>
+    [Key(149)]
+    public bool TeamSheets { get; set; }
+
+    /// <summary>
+    ///     Host box "Activity journal" (PLAN_hub_features B). An older host sends none: no journal
+    /// </summary>
+    [Key(150)]
+    public bool ActivityJournal { get; set; }
+
+    /// <summary>
+    ///     Host box "Team banners" (PLAN_hub_features C). An older host sends none: no banners
+    /// </summary>
+    [Key(151)]
+    public bool TeamBanner { get; set; }
+
+    /// <summary>
+    ///     Host box "Leaderboards" (PLAN_hub_features D). An older host sends none: no rankings
+    /// </summary>
+    [Key(152)]
+    public bool Leaderboards { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -502,6 +526,10 @@ public class NetSessionRules
         TeamBills = EmpConfig.Server.TeamBills.Value,
         TeamStory = EmpConfig.Server.TeamStory.Value,
         TeamOwnStory = Helper.TeamOwnStory.Wanted,
+        TeamSheets = EmpConfig.Server.TeamSheets.Value,
+        ActivityJournal = EmpConfig.Server.ActivityJournal.Value,
+        TeamBanner = EmpConfig.Server.TeamBanner.Value,
+        Leaderboards = EmpConfig.Server.Leaderboards.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

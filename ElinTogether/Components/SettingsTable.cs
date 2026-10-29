@@ -384,6 +384,10 @@ internal static class SettingsTable
         yield return new("team_boxes", "together", true, EmpConfig.Server.TeamBoxes, Requires: () => EmpConfig.Server.Teams.Value && !OfficialServer.Hosting);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_sheets", "together", true, EmpConfig.Server.TeamSheets, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("activity_journal", "together", true, EmpConfig.Server.ActivityJournal);
+        yield return new("team_banner", "together", true, EmpConfig.Server.TeamBanner, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("leaderboards", "together", true, EmpConfig.Server.Leaderboards);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
         yield return new("team_own_guilds", "together", true, EmpConfig.Server.TeamOwnGuilds, Requires: () => Helper.TeamOwnStory.Wanted);
 
@@ -713,6 +717,10 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamBills] = r.TeamBills,
             [EmpConfig.Server.TeamStory] = r.TeamStory,
             [EmpConfig.Server.TeamOwnStory] = r.TeamOwnStory,
+            [EmpConfig.Server.TeamSheets] = r.TeamSheets,
+            [EmpConfig.Server.ActivityJournal] = r.ActivityJournal,
+            [EmpConfig.Server.TeamBanner] = r.TeamBanner,
+            [EmpConfig.Server.Leaderboards] = r.Leaderboards,
             [EmpConfig.Server.TeamOwnGuilds] = r.TeamOwnGuilds,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
