@@ -125,6 +125,16 @@ internal partial class EmpConfig
             "Only with \"Download the game's mods\"\n" +
             "同时下载包含代码（DLL 文件）的游戏模组，仅限你信任的主机。模组中的代码以你的全部权限在本机运行：主机可以指定任何创意工坊物品，包括它自己上传的。关闭时：缺少的模组含有代码时不下载，会告诉你是哪个模组，本机不做任何更改");
 
+        // security: the hosts whose mods are fetched without asking (ModFetch), and the code mods of each
+        // the player accepted already. Only on this PC, never in a world
+        Client.TrustedHosts = config.Bind(
+            "Client",
+            "TrustedHosts",
+            "",
+            "Hosts whose game mods are downloaded without asking (\"Always trust this host\"), as steamid:codemod,codemod;steamid:...\n" +
+            "You are still asked when a host names a mod with code (DLL) you have not accepted from it. Empty it to be asked again for every host\n" +
+            "无需询问即可下载其游戏模组的主机（“始终信任此主机”），格式为 steamid:代码模组,代码模组;steamid:...。主机指定你尚未从它接受过的含代码（DLL）模组时仍会询问。清空即可对所有主机重新询问");
+
         Client.KeepMods = config.Bind(
             "Client",
             "KeepMods",
@@ -1043,6 +1053,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> RecordReplay { get; set; } = null!;
         internal static ConfigEntry<bool> KeepMods { get; set; } = null!;
         internal static ConfigEntry<bool> FetchCodeMods { get; set; } = null!;
+        internal static ConfigEntry<string> TrustedHosts { get; set; } = null!;
     }
 
     internal static class Server

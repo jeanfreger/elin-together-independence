@@ -32,7 +32,10 @@ namespace ElinTogether.Helper;
 ///     subscribed to, unsubscribed from or deleted in the Workshop; a link is removed, never what it points to <br />
 ///     Security (the host names what is fetched): only Workshop numbers are read from its list; the Workshop is
 ///     asked about each item first (an Elin mod, not banned, size capped, one log line each); a mod with code
-///     (a DLL) is loaded only with the client setting FetchCodeMods, off by default
+///     (a DLL) is loaded only with the client setting FetchCodeMods, off by default. Before anything is
+///     downloaded or restarted the player is asked, in the game's own box (who the host is, a Steam friend or
+///     not, each mod), and again before a restart with code mods; "Always trust this host" (client setting
+///     TrustedHosts) skips that unless a code mod not accepted from that host yet is in the list
 /// </summary>
 internal static class ModFetch
 {
@@ -192,9 +195,11 @@ internal static class ModFetch
     ///     Steam away, a list that cannot be trusted) and the caller goes on as without it
     /// </summary>
     /// <param name="reference">the list of the game, as modlist.txt</param>
-    internal static bool Begin(string reference, ModList.Diff diff, string returnTo)
+    /// <param name="host">the Steam account of the host naming these mods (0: unknown, never trusted)</param>
+    internal static bool Begin(string reference, ModList.Diff diff, string returnTo, ulong host = 0, string hostName = "")
     {
         if (!EmpConfig.Client.FetchMods.Value || _done || _busy || returnTo.Length == 0 || BaseCore.IsOffline ||
+            reference == _declined ||
             ModManager.disableMod || EmpServer.Requested || diff.Missing.Count > MaxMods ||
             reference.Length > MaxReferenceChars || diff.Missing.Any(m => !IsWorkshopId(m.Workshop))) {
             return false;
@@ -203,11 +208,11 @@ internal static class ModFetch
         _busy = true;
         EmpLog.Information("Fetching {Count} mods of the game, then restarting to come back to {Where}",
             diff.Missing.Count, returnTo);
-        EmpMod.Instance.StartCoroutine(Fetch(reference, diff, returnTo));
+        EmpMod.Instance.StartCoroutine(Fetch(reference, diff, returnTo, host, hostName));
         return true;
     }
 
-    private static IEnumerator Fetch(string reference, ModList.Diff diff, string returnTo)
+    private static IEnumerator Fetch(string reference, ModList.Diff diff, string returnTo, ulong host, string hostName)
     {
         // the caller closes its link with the host first
         yield return null;
@@ -292,6 +297,61 @@ internal static class ModFetch
                 yield break;
             }
 
+            // security (advice of the community, approved by the project lead): mods may be malicious, the
+            // player says yes before anything is downloaded or restarted. A trusted host is not asked again
+            // unless it names a code mod not accepted from it yet (those already on this PC are known now,
+            // those downloaded are asked about before the restart)
+            hostName = HostName(host, hostName);
+            var friend = IsFriend(host);
+            var onDisk = diff.Missing.Except(queue).ToList();
+            var knownCode = onDisk
+                .Where(m => packages.FirstOrDefault(p => ModList.WorkshopOf(p) == m.Workshop && p.dirInfo is not null && !IsLink(p)) is { } pkg &&
+                            HasCode(pkg.dirInfo.FullName))
+                .Select(m => m.Workshop)
+                .ToList();
+            if (IsTrusted(host) && knownCode.All(Approved(host).Contains)) {
+                EmpLog.Information("Mods of the host {Host} ({HostId}, friend {Friend}): trusted host, no new code mod, not asked",
+                    hostName, host, friend);
+            } else {
+                foreach (var owner in details.Values.Select(d => d.m_ulSteamIDOwner).Distinct()) {
+                    SteamFriends.RequestUserInformation(new(owner), true);
+                }
+
+                // (the names of the authors, when Steam has them in time)
+                var named = Time.realtimeSinceStartup;
+                while (Time.realtimeSinceStartup - named < 3f && details.Values.Any(d => Author(d.m_ulSteamIDOwner).Length == 0)) {
+                    yield return null;
+                }
+
+                kill();
+                kill = () => { };
+                var text = AskText(hostName, friend, queue, onDisk, knownCode, details);
+                var choice = Choice.None;
+                Ask(text, friend, host != 0, "emp_ui_mods_ask_download", c => choice = c);
+                while (choice == Choice.None) {
+                    yield return null;
+                }
+
+                EmpLog.Information("Mods of the host {Host} ({HostId}, friend {Friend}), {Count} to download, {Code} with code known: the player chose {Choice}",
+                    hostName, host, friend, queue.Count, knownCode.Count, choice);
+                if (choice is Choice.Without or Choice.Cancel) {
+                    failure = "";
+                    Decline(choice, reference, returnTo);
+                    yield break;
+                }
+
+                // (accepted from a trusted host: those code mods are accepted from it from now on)
+                if (choice == Choice.Trust || IsTrusted(host)) {
+                    Trust(host, knownCode);
+                }
+
+                line = "emp_ui_mods_fetching".Loc(0, queue.Count, "", 0);
+                kill = EGui.CreatePopup(() => new(line), _ => !_busy).Kill;
+            }
+
+            // the code mods downloaded below, asked about before Elin restarts with them
+            var fetchedCode = new List<(string Workshop, string Title, string Author, long Size)>();
+
             // before anything arrives: the player's own list hides it, a crash from here on leaves its game as it was
             Hide(queue.Select(m => Path.Combine(root, m.Workshop)).Concat(links ? queue.Select(m => LinkPath(m.Workshop)) : []));
 
@@ -341,6 +401,10 @@ internal static class ModFetch
                             yield break;
                         }
 
+                        if (code) {
+                            fetchedCode.Add((mod.Workshop, title, Author(item.m_ulSteamIDOwner), item.m_nFileSize));
+                        }
+
                         folders[mod.Workshop] = folder;
                         break;
                     }
@@ -373,6 +437,43 @@ internal static class ModFetch
                     line = "emp_ui_mods_fetching".Loc(i + 1, queue.Count, ModList.Name(mod), percent);
                     yield return null;
                 }
+            }
+
+            // the code of these runs at the restart: asked about now that the files say it (nothing of them is
+            // loaded yet, they are switched off in the player's list), unless the trusted host had them accepted
+            if (fetchedCode.Count > 0 && !(IsTrusted(host) && fetchedCode.All(c => Approved(host).Contains(c.Workshop)))) {
+                kill();
+                kill = () => { };
+                var text = new System.Text.StringBuilder();
+                text.AppendLine((friend ? "emp_ui_mods_ask_code_found" : "emp_ui_mods_ask_code_found_stranger").Loc(hostName));
+                text.AppendLine();
+                foreach (var c in fetchedCode) {
+                    text.AppendLine("  " + Row(c.Title.Length > 0 ? c.Title : c.Workshop, c.Author, c.Size) + "  " +
+                                    "emp_ui_mods_ask_has_code".lang().TagColor(_colorCode));
+                }
+
+                text.AppendLine();
+                text.Append((friend ? "emp_ui_mods_ask_warning".lang() : "emp_ui_mods_ask_warning".lang().TagColor(_colorCode)));
+                var choice = Choice.None;
+                Ask(text.ToString(), friend, false, "emp_ui_mods_ask_restart", c => choice = c);
+                while (choice == Choice.None) {
+                    yield return null;
+                }
+
+                EmpLog.Information("Code mods {Mods} downloaded for the host {Host} ({HostId}, friend {Friend}): the player chose {Choice}",
+                    string.Join(", ", fetchedCode.Select(c => c.Workshop)), hostName, host, friend, choice);
+                if (choice is Choice.Without or Choice.Cancel) {
+                    failure = "";
+                    Decline(choice, reference, returnTo);
+                    yield break;
+                }
+
+                if (IsTrusted(host)) {
+                    Trust(host, fetchedCode.Select(c => c.Workshop));
+                }
+
+                line = "emp_ui_mods_fetching".Loc(queue.Count, queue.Count, "", 100);
+                kill = EGui.CreatePopup(() => new(line), _ => !_busy).Kill;
             }
 
             // (Elin is about to close: never under a game the player started meanwhile)
@@ -446,6 +547,163 @@ internal static class ModFetch
                 Return(returnTo);
             }
         });
+    }
+
+    private enum Choice
+    {
+        None,
+        Accept,
+        Trust,
+        Without,
+        Cancel,
+    }
+
+    private static readonly Color _colorCode = new(0.6f, 0.05f, 0.05f);
+    private const int AskRows = 12;
+
+    // the mods the player chose to join without: not asked about again in this run (the join goes on as when
+    // the setting FetchMods is off, where the host's own rules say whether a game with other mods is allowed)
+    private static string? _declined;
+
+    /// <summary>
+    ///     The game's own box, never answered by a timer. Closed any other way (Escape, a click outside) is
+    ///     Cancel. For a host that is not a Steam friend, Cancel comes first (where the selection starts)
+    /// </summary>
+    private static void Ask(string text, bool friend, bool canTrust, string accept, Action<Choice> chose)
+    {
+        var picked = Choice.None;
+        var buttons = new List<(string Label, Choice Choice)> { (accept.lang(), Choice.Accept) };
+        if (canTrust) {
+            buttons.Add(("emp_ui_mods_ask_trust".lang(), Choice.Trust));
+        }
+
+        buttons.Add(("emp_ui_mods_ask_without".lang(), Choice.Without));
+        buttons.Add(("emp_ui_mods_ask_cancel".lang(), Choice.Cancel));
+        if (!friend) {
+            buttons.Reverse();
+        }
+
+        var box = Dialog.Choice(text, d => {
+            foreach (var (label, choice) in buttons) {
+                d.AddButton(label, () => picked = choice);
+            }
+        });
+        box.SetOnKill(() => chose(picked == Choice.None ? Choice.Cancel : picked));
+    }
+
+    private static string AskText(string hostName, bool friend, List<Mod> queue, List<Mod> onDisk, List<string> knownCode,
+        Dictionary<ulong, SteamUGCDetails_t> details)
+    {
+        var code = EmpConfig.Client.FetchCodeMods.Value;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine(friend ? "emp_ui_mods_ask_friend".Loc(hostName) : "emp_ui_mods_ask_stranger".Loc(hostName).TagColor(_colorCode));
+        sb.AppendLine();
+        sb.AppendLine((friend ? "emp_ui_mods_ask_warning".lang() : "emp_ui_mods_ask_warning".lang().TagColor(_colorCode)));
+        sb.AppendLine();
+
+        var rows = new List<string>();
+        foreach (var mod in queue) {
+            var item = details[ulong.Parse(mod.Workshop)];
+            var title = ModListFile.Clean(item.m_rgchTitle ?? "");
+            rows.Add(Row(title.Length > 0 ? title : ModList.Name(mod), Author(item.m_ulSteamIDOwner), item.m_nFileSize) + "  " +
+                     (code ? "emp_ui_mods_ask_code_later" : "emp_ui_mods_ask_code_later_blocked").lang().TagColor(Color.gray));
+        }
+
+        foreach (var mod in onDisk) {
+            var has = knownCode.Contains(mod.Workshop);
+            rows.Add(ModList.Name(mod) + "  " + "emp_ui_mods_ask_on_pc".lang().TagColor(Color.gray) +
+                     (has ? "  " + (code ? "emp_ui_mods_ask_has_code" : "emp_ui_mods_ask_has_code_blocked").lang().TagColor(_colorCode) : ""));
+        }
+
+        foreach (var row in rows.Take(AskRows)) {
+            sb.Append("  ").AppendLine(row);
+        }
+
+        if (rows.Count > AskRows) {
+            sb.Append("  ... ").AppendLine("emp_ui_source_mismatch_more".Loc(rows.Count - AskRows).TagColor(Color.gray));
+        }
+
+        if (rows.Count == 0) {
+            sb.AppendLine("emp_ui_mods_ask_nothing".lang());
+        }
+
+        sb.AppendLine();
+        sb.Append((code ? "emp_ui_mods_ask_code_on" : "emp_ui_mods_ask_code_off").lang());
+        return sb.ToString();
+    }
+
+    private static string Row(string title, string author, long size)
+    {
+        return "emp_ui_mods_ask_row".Loc(title, author.Length > 0 ? author : "?",$"{size / 1048576.0:0.0}");
+    }
+
+    /// <summary>
+    ///     Join without them: the game is joined again as without this (once, the host's rules decide).
+    ///     Cancel: nothing more, the player is where it was
+    /// </summary>
+    private static void Decline(Choice choice, string reference, string returnTo)
+    {
+        _busy = false;
+        if (choice != Choice.Without) {
+            return;
+        }
+
+        _declined = reference;
+        EClass.core.actionsNextFrame.Add(() => {
+            if (!EClass.core.IsGameStarted) {
+                Return(returnTo);
+            }
+        });
+    }
+
+    private static string HostName(ulong host, string given)
+    {
+        given = ModListFile.Clean(given ?? "");
+        return given.Length > 0 ? given : host != 0 && Author(host) is { Length: > 0 } name ? name : host.ToString();
+    }
+
+    private static bool IsFriend(ulong host)
+    {
+        try {
+            return host != 0 && SteamFriends.GetFriendRelationship(new(host)) == EFriendRelationship.k_EFriendRelationshipFriend;
+        } catch (Exception) {
+            return false;
+        }
+    }
+
+    // client setting TrustedHosts: "steamid:codemod,codemod;steamid:"
+    private static Dictionary<ulong, HashSet<string>> TrustedHosts()
+    {
+        var hosts = new Dictionary<ulong, HashSet<string>>();
+        foreach (var entry in (EmpConfig.Client.TrustedHosts.Value ?? "").Split([';'], StringSplitOptions.RemoveEmptyEntries)) {
+            var parts = entry.Split([':'], 2);
+            if (ulong.TryParse(parts[0].Trim(), out var id) && id != 0) {
+                hosts[id] = new(parts.ElementAtOrDefault(1)?.Split([','], StringSplitOptions.RemoveEmptyEntries)
+                    .Select(w => w.Trim()).Where(IsWorkshopId) ?? []);
+            }
+        }
+
+        return hosts;
+    }
+
+    private static bool IsTrusted(ulong host) => host != 0 && TrustedHosts().ContainsKey(host);
+
+    private static HashSet<string> Approved(ulong host) => TrustedHosts().TryGetValue(host, out var code) ? code : [];
+
+    private static void Trust(ulong host, IEnumerable<string> code)
+    {
+        if (host == 0) {
+            return;
+        }
+
+        var hosts = TrustedHosts();
+        if (!hosts.TryGetValue(host, out var approved)) {
+            hosts[host] = approved = [];
+            EmpLog.Information("The host {HostId} is trusted from now on: its mods are fetched without asking, but new code mods", host);
+        }
+
+        approved.UnionWith(code);
+        EmpConfig.Client.TrustedHosts.Value = string.Join(";", hosts.Select(h => $"{h.Key}:{string.Join(",", h.Value)}"));
     }
 
     /// <returns>null when the list of the session is written, else why not (and everything is as it was)</returns>
