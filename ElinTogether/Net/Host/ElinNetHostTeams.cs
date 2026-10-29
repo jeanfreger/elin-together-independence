@@ -33,6 +33,16 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Host box "Team banners" (<see cref="TeamBanner" />): team id -> [emblem, colour]. An older save has none
+    /// </summary>
+    [ElinGameIOProperty("team_banners")]
+    internal static Dictionary<int, int[]> TeamBanners
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Zone uid -> the team of the player who claimed it, none for a land claimed by a Wanderer
     /// </summary>
     [ElinGameIOProperty("zone_team")]
@@ -385,6 +395,7 @@ internal partial class ElinNetHost
             ZoneRules = new(ZoneRules),
             Bills = TeamBills.Told(),
             Story = TeamStory.Told(),
+            Banners = TeamBanner.Told(),
         });
     }
 }

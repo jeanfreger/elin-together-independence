@@ -1011,5 +1011,14 @@
     "LangGeneral.emp_ui_journal_filter.text": "显示",
     "LangGeneral.emp_ui_journal_f_all.text": "全部",
     "LangGeneral.emp_ui_journal_f_team.text": "队伍",
-    "LangGeneral.emp_ui_journal_f_mine.text": "我的"
+    "LangGeneral.emp_ui_journal_f_mine.text": "我的",
+    "LangGeneral.emp_ui_team_banner.text": "队伍旗帜",
+    "LangGeneral.emp_ui_team_banner_tool.text": "旗帜",
+    "LangGeneral.emp_ui_team_banner_emblem.text": "徽记",
+    "LangGeneral.emp_ui_team_banner_color.text": "颜色",
+    "LangGeneral.emp_ui_team_lands_map.text": "领地地图",
+    "LangGeneral.emp_ui_team_lands_none.text": "还没有领地",
+    "LangGeneral.emp_ui_team_lands_hover.text": "将鼠标移到圆点上查看领地名称",
+    "LangGeneral.emp_ui_team_journal.text": "队伍日志",
+    "LangGeneral.emp_ui_team_journal_none.text": "暂无内容"
 }

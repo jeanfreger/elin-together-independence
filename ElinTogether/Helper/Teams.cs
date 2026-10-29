@@ -64,6 +64,7 @@ internal static class Teams
         ElinNetHost.TeamInvites.Clear();
         _bills = [];
         _story = [];
+        TeamBanner.Forget();
         _told = false;
         ElinNetHost.TeamRequests.Clear();
     }
@@ -84,6 +85,7 @@ internal static class Teams
         _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
+        TeamBanner.Learn(delta.Banners);
         // (not the book told on joining: nothing changed then)
         if (known) {
             Notice(team, asked);
@@ -897,6 +899,9 @@ internal static class Teams
                 EmpLog.Information("Team {TeamId} joining is now {Open}", opener, id == 1 ? "open" : "closed");
                 Tell();
                 break;
+            case TeamAsk.Banner when TeamBanner.Set(chara, id, zoneUid):
+                Tell();
+                break;
             case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
                 Invites.Remove(chara.uid);
                 Join(chara, id);
@@ -1096,6 +1101,7 @@ internal static class Teams
 
         TeamList.Remove(teamId);
         Names.Remove(teamId);
+        TeamBanner.Remove(teamId);
         foreach (var zone in Zones.Where(z => z.Value == teamId).Select(z => z.Key).ToArray()) {
             Zones.Remove(zone);
             ZoneRules.Remove(zone);

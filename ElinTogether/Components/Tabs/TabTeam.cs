@@ -160,6 +160,11 @@ internal class TabTeam : TabEmpBase
 
         // the header: the team's name, then its facts as the character sheet lists them
         var card = left.Card(Teams.NameOf(mine));
+        if (TeamBanner.Of(mine) != null) {
+            var banner = card.Row();
+            TeamBanner.Draw(banner, mine);
+            banner.Text(Teams.NameOf(mine)).LayoutElement().flexibleWidth = 1f;
+        }
         card.KeyValue("emp_ui_kv_leader".lang(), Teams.PlayerName(leader));
         card.KeyValue("emp_ui_kv_members".lang(), members.Count.ToString());
         card.KeyValue("emp_ui_kv_joining".lang(), (Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
@@ -215,6 +220,39 @@ internal class TabTeam : TabEmpBase
         }
 
         BuildTools(right, mine, leads, manages);
+        if (TeamBanner.On) {
+            BuildBannerCard(right, mine, leads);
+        }
+    }
+
+    // the banner picker is open (kept over reopenings)
+    private static bool _bannerPicker;
+
+    /// <summary>
+    ///     Host box "Team banners": the leader's "Banner" tool and its picker, the map of the team's lands and the
+    ///     team journal. The host checks that the asker leads the team
+    /// </summary>
+    private static void BuildBannerCard(YKLayout page, int mine, bool leads)
+    {
+        var card = page.Card("emp_ui_team_banner".lang());
+        var tool = card.ButtonRow().RowButton("emp_ui_team_banner_tool".lang(), () => {
+            _bannerPicker = !_bannerPicker;
+            LayerElinTogether.Instance?.Reopen();
+        });
+        tool.interactable = leads;
+        if (!leads) {
+            card.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
+        } else if (_bannerPicker) {
+            TeamBanner.BuildPicker(card, mine);
+        }
+
+        var lands = page.Card("emp_ui_team_lands_map".lang());
+        TeamBanner.BuildLandMap(lands, mine);
+
+        var journal = page.Card("emp_ui_team_journal".lang());
+        // HOOK (PLAN_hub_features B): once Helper/ActivityJournal.cs is in main and the box "Activity journal" is on, list
+        // here the entries whose Team is `mine` (read-only). Until then the box only says it is empty
+        journal.TextSmall("emp_ui_team_journal_none".lang(), FontColor.Gray);
     }
 
     /// <summary>
@@ -330,6 +368,7 @@ internal class TabTeam : TabEmpBase
             var row = list.Row();
             var element = row.LayoutElement();
             element.minHeight = element.preferredHeight = TeamRowHeight;
+            TeamBanner.Draw(row, team, 22f);
             row.TextColumn(Clip(Teams.NameOf(team), 24),
                 "emp_ui_team_leader_short".Loc(Clip(Teams.PlayerName(Teams.LeaderOf(team)), 16), Teams.MembersOfTeam(team).Count()));
             var id = team;
