@@ -99,6 +99,13 @@ internal static class CharaImport
     {
         var instance = Game.Instance;
         var fallback = new Dictionary<string, string>(ModUtil.fallbackTypes);
+        // the list holds the saves made of another game's world too (world_*, PeerMapPatch): any type their text
+        // names would be made (security audit 2026-10-29)
+        var binder = GameIO.jsReadGame.SerializationBinder;
+        if (Patches.PeerMapPatch.IsPeerSave(index.id, index.path)) {
+            GameIO.jsReadGame.SerializationBinder = Models.NetTypeBinder.Lenient;
+        }
+
         try {
             foreach (var (type, other) in index.fallbackTypes) {
                 ModUtil.fallbackTypes[type] = other;
@@ -116,6 +123,7 @@ internal static class CharaImport
             EmpLog.Warning(ex, "Could not read the character of save {Id}", index.id);
             return null;
         } finally {
+            GameIO.jsReadGame.SerializationBinder = binder;
             Game.Instance = instance;
             ModUtil.fallbackTypes.Clear();
             foreach (var (type, other) in fallback) {
