@@ -656,11 +656,11 @@ internal partial class ElinNetClient
             return false;
         }
 
+        // only what the things on the floor hold differs: still theirs. Kept, our copy went back whole with our next
+        // release and wrote over the chests of the world (lease audit 2026-10-29, #3)
         if (ZoneLeaseState.SameFloor(ours, theirs)) {
-            // only what the things on the floor hold: told, not a reason to load the map under the player
-            EmpLog.Information("Taking over {ZoneFullName} from {From}: the content of a container differs, our copy is kept (here {Local} | there {Host})",
+            EmpLog.Information("Taking over {ZoneFullName} from {From}: the content of a container differs, loading theirs (here {Local} | there {Host})",
                 zone.ZoneFullName, from, ZoneLeaseState.TellSums(ours), ZoneLeaseState.TellSums(theirs));
-            return false;
         }
 
         // ponytail: what we did in the last round trip and the keeper never saw is not in its copy. A thing put
