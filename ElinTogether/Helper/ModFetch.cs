@@ -702,13 +702,20 @@ internal static class ModFetch
         }
     }
 
+    private static readonly HashSet<string> CodeExtensions = new(StringComparer.OrdinalIgnoreCase) {
+        ".dll", ".cs", ".csx", ".lua", ".py", ".js", ".exe", ".bat", ".cmd", ".ps1", ".vbs", ".sh", ".jar"
+    };
+
     /// <summary>
-    ///     The mod has code the game would run: a DLL anywhere in its folder. In doubt (unreadable), it has
+    ///     The mod has code the game or a loader would run: a DLL, a source file the game compiles (.cs), a script
+    ///     another loader runs (.lua, .py, .js, .csx) or a program (.exe, .bat, .cmd, .ps1, .vbs), anywhere in its
+    ///     folder. In doubt (unreadable), it has
     /// </summary>
     private static bool HasCode(string folder)
     {
         try {
-            return Directory.EnumerateFiles(folder, "*.dll", SearchOption.AllDirectories).Any();
+            return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                .Any(f => CodeExtensions.Contains(Path.GetExtension(f)));
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Could not read the files of {Folder}", folder);
             return true;
