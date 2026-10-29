@@ -44,6 +44,7 @@ public class CardSettingDelta : ElinDelta
     public const byte StockUse = 21;
     public const byte CharaSkin = 22;
     public const byte MailOwner = 23;
+    public const byte Important = 24;
 
     [Key(0)]
     public required RemoteCard Card { get; init; }
@@ -107,6 +108,7 @@ public class CardSettingDelta : ElinDelta
                 Well => card.c_charges,
                 AutoRefuel => card.autoRefuel ? 1 : 0,
                 StockUse => card.c_isDisableStockUse ? 1 : 0,
+                Important => card.c_isImportant ? 1 : 0,
                 CharaSkin => card.idSkin,
                 MailOwner => card.GetInt(TeamMail.OwnerKey),
                 _ => 0,
@@ -245,7 +247,7 @@ public class CardSettingDelta : ElinDelta
             (Kind == Teleporter && thing.trait is not TraitTeleporter) || (Kind == Door && thing.trait is not TraitDoor) ||
             (Kind == HouseBoard && thing.trait is not TraitHouseBoard) ||
             (Kind == Painting && (thing.trait is not TraitCanvas || Blob is not { Length: <= 1 << 20 } || !ImageGuard.IsSafe(Blob))) ||
-            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > MailOwner) {
+            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > Important) {
             return;
         }
 
@@ -352,6 +354,9 @@ public class CardSettingDelta : ElinDelta
                 break;
             case AutoRefuel:
                 thing.autoRefuel = Value != 0;
+                break;
+            case Important:
+                thing.c_isImportant = Value != 0;
                 break;
             case StockUse:
                 thing.c_isDisableStockUse = Value != 0;

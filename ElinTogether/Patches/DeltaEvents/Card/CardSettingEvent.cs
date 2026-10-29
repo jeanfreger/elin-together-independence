@@ -214,6 +214,26 @@ internal static class CardSettingEvent
     }
 
     /// <summary>
+    ///     The "important" mark of an item (never sold, thrown, used as an ingredient): the host's code on a guest's bag
+    ///     honours it
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.c_isImportant), MethodType.Setter)]
+    internal static void OnImportant(Card __instance, out bool __state)
+    {
+        __state = __instance.c_isImportant;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Card), nameof(Card.c_isImportant), MethodType.Setter)]
+    internal static void OnImportantSet(Card __instance, bool __state)
+    {
+        if (__instance is Thing && __instance.c_isImportant != __state) {
+            Tell(__instance, CardSettingDelta.Important);
+        }
+    }
+
+    /// <summary>
     ///     "Turn on/off automatically" of a light (shift menu of the tile)
     /// </summary>
     [HarmonyPrefix]
