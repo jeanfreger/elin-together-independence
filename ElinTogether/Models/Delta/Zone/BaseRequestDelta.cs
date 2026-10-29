@@ -214,12 +214,12 @@ public class BaseRequestDelta : ElinDelta
     ///     <see cref="RemoteResidentPatch" />), the maid is the one field they do not touch
     /// </summary>
     // the game hands the god artifacts of whoever is sent away to "the player", the host here: they go to the
-    // companion's owner (an untagged one is the host's), before the game looks for them; to the player who sends it
-    // away when that owner is unknown
+    // companion's owner when it has one, else to the player who sends it away, before the game looks for them
     private static void HandArtifacts(Chara from, Chara sender)
     {
-        var to = from.CompanionOwnerUid is var uid and not 0 ? game.cards.globalCharas.Find(uid) ?? sender
-            : ServerAvatar.Is(pc) ? sender : pc;
+        // (an untagged resident's artifact goes to the player who sends it away, as before: given to the host it was
+        // lost, the game destroys the resident with what it still carries — oct10_suite)
+        var to = from.CompanionOwnerUid is var uid and not 0 ? game.cards.globalCharas.Find(uid) ?? sender : sender;
         if (to == pc) {
             return;
         }
