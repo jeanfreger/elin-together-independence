@@ -130,3 +130,34 @@ internal static class TileStatePlantEvent
         }
     }
 }
+
+/// <summary>
+///     Fire burning a floor or a bridge (Map.Burn writes _floor / _bridge = 49 without a setter), and what lies on a
+///     cell: fire, puddles (cell.effect), blood and stains (cell.decal). Marked so that <see cref="TileStateDelta" />
+///     tells them
+/// </summary>
+[HarmonyPatch]
+internal static class TileStateEffectEvent
+{
+    internal static IEnumerable<MethodBase> TargetMethods()
+    {
+        return [
+            AccessTools.Method(typeof(Map), nameof(Map.Burn)),
+            AccessTools.Method(typeof(Map), nameof(Map.ModFire)),
+            AccessTools.Method(typeof(Map), nameof(Map.ModLiquid)),
+            AccessTools.Method(typeof(Map), nameof(Map.SetEffect)),
+            AccessTools.Method(typeof(Map), nameof(Map.SetLiquid), [typeof(int), typeof(int), typeof(CellEffect)]),
+            AccessTools.Method(typeof(Map), nameof(Map.SetLiquid), [typeof(int), typeof(int), typeof(int), typeof(int)]),
+            AccessTools.Method(typeof(Map), nameof(Map.AddDecal)),
+            AccessTools.Method(typeof(Map), nameof(Map.SetDecal)),
+        ];
+    }
+
+    [HarmonyPostfix]
+    internal static void OnXz(Map __instance, int x, int z)
+    {
+        if (x >= 0 && z >= 0 && x < __instance.Size && z < __instance.Size) {
+            TileStateDelta.Mark(__instance, x, z);
+        }
+    }
+}

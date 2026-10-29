@@ -46,6 +46,7 @@ public class CardSettingDelta : ElinDelta
     public const byte MailOwner = 23;
     public const byte Important = 24;
     public const byte Hidden = 25;
+    public const byte Generator = 26;
 
     [Key(0)]
     public required RemoteCard Card { get; init; }
@@ -111,6 +112,8 @@ public class CardSettingDelta : ElinDelta
                 StockUse => card.c_isDisableStockUse ? 1 : 0,
                 Important => card.c_isImportant ? 1 : 0,
                 Hidden => card.isHidden ? 1 : 0,
+                // a generator shorted out or recovered: hp * 2 + broken
+                Generator => card.hp * 2 + (card.isBroken ? 1 : 0),
                 CharaSkin => card.idSkin,
                 MailOwner => card.GetInt(TeamMail.OwnerKey),
                 _ => 0,
@@ -362,6 +365,14 @@ public class CardSettingDelta : ElinDelta
                 thing.isHidden = Value != 0;
                 if (thing.ExistsOnMap) {
                     thing.pos.cell.Refresh();
+                }
+
+                break;
+            case Generator when thing.trait is TraitGenerator:
+                thing.hp = Value >> 1;
+                thing.isBroken = (Value & 1) != 0;
+                if (thing.ExistsOnMap) {
+                    EClass._zone?.RefreshElectricity();
                 }
 
                 break;
