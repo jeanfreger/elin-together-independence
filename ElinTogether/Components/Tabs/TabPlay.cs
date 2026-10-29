@@ -23,6 +23,10 @@ internal class TabPlay : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         var pages = new List<(string, System.Action<YKVertical>)> { ("emp_ui_tab_play".lang(), BuildPlay) };
 #if DEBUG
         // the bot tools of the debug build, out of the player's way (coordinator, 2026-10-28)

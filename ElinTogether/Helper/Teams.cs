@@ -759,6 +759,7 @@ internal static class Teams
         TeamKnowledge.Moved(chara, from, id);
         TeamOwnStory.Moved(chara, from, id);
         GiveDeed(chara, id);
+        TeamBanner.Inherit(chara.uid, id);
         Tell();
         return id;
     }
@@ -1186,8 +1187,9 @@ internal static class Teams
     /// </summary>
     private static void Redraw()
     {
-        if (LayerElinTogether.Instance is { } page) {
-            page.Reopen();
+        // (marked, not redrawn now: many team changes in one frame, as players are sorted into teams, redraw once)
+        if (LayerElinTogether.Instance != null) {
+            SettingsTable.MarkDirty();
         }
     }
 }

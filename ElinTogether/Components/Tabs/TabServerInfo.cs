@@ -23,6 +23,10 @@ internal class TabServerInfo : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_info_motd".lang(), page => BuildNote(page, "motd.txt", "emp_info_motd", ServerInfo.Motd)),
             ("emp_ui_sub_rules".lang(), page => BuildNote(page, "rules.txt", "emp_info_rules", ServerInfo.RulesText)),

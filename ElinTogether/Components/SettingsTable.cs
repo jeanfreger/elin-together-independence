@@ -873,15 +873,19 @@ internal static class SettingsTable
 
     internal static void MarkDirty() => _dirty = true;
 
+    private static float _lastRedraw = -10f;
+
     internal static void Update()
     {
         FlushNotice();
         TabServerConfiguration.Tick();
-        if (!_dirty) {
+        // (one redraw a second at most: on a busy server the teams and the rules change many times a minute)
+        if (!_dirty || UnityEngine.Time.unscaledTime - _lastRedraw < 1f) {
             return;
         }
 
         _dirty = false;
+        _lastRedraw = UnityEngine.Time.unscaledTime;
         LayerElinTogether.Instance?.Reopen();
         ModConfigPage.Refresh();
     }

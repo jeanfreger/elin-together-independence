@@ -96,6 +96,10 @@ internal class TabServerConfiguration : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         _instance = this;
         _guest = NetSession.Instance.Transport is ElinNetClient;
         _src = _guest ? SettingsTable.FromRules(NetSession.Instance.Rules) : RuleSource.Current;

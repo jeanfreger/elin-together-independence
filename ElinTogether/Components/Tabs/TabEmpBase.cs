@@ -19,6 +19,47 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         return new Vector2(Screen.width / 2f / constraint, 45f) / scaler;
     }
 
+    // ---------------------------------------------------------------- built when first shown
+
+    /// <summary>
+    ///     The id of the one tab the window builds when it opens; the others wait for their first showing. Opening
+    ///     built all eight, about a second each with 50 players, and every team change opened the window again (user
+    ///     2026-10-29 "il ralentit beaucoup le jeu"). Null: every tab is built at once
+    /// </summary>
+    internal static string? BuildOnly;
+
+    private bool _waiting;
+
+    /// <summary>
+    ///     The first line of each tab's OnLayout: true when this tab is not the one shown and waits to be built
+    /// </summary>
+    protected bool Waits()
+    {
+        if (BuildOnly is null || BuildOnly == gameObject.name) {
+            return false;
+        }
+
+        _waiting = true;
+        return true;
+    }
+
+    /// <summary>
+    ///     Builds a waiting tab, now that it is shown
+    /// </summary>
+    internal void BuildIfWaiting()
+    {
+        if (!_waiting) {
+            return;
+        }
+
+        _waiting = false;
+        OnLayout();
+        UIHelper.WrapTexts(this);
+        Relayout();
+    }
+
+    private void OnEnable() => BuildIfWaiting();
+
     // ---------------------------------------------------------------- sub-tabs
 
     // the sub-tab each page was left on, kept over reopenings while the game runs (never stored)

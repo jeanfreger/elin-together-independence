@@ -42,6 +42,10 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Window.setting.tabAfterCaption = true;
 
+        // only the tab the window opens on is built now (TabEmpBase.BuildOnly)
+        var opening = !string.IsNullOrEmpty(Data.StartingTab) ? Data.StartingTab : _lastOpenedTab;
+        TabEmpBase.BuildOnly = string.IsNullOrEmpty(opening) ? TabPlay.TabName : opening;
+
         // Play and Players: always there, the same for everyone
         _tabs.Add(CreateTab<TabPlay>("emp_ui_tab_play", TabPlay.TabName));
         DecorateLastTab("icon_LayerTravel", "emp_tip_tab_play");
@@ -68,6 +72,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_m_system", "emp_tip_tab_client");
 
+        TabEmpBase.BuildOnly = null;
         foreach (var tab in _tabs) {
             UIHelper.WrapTexts(tab);
             tab.RebuildLayout(true);
@@ -83,6 +88,12 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         }
 
         Window.SwitchContent(_lastOpenedTab);
+        // (a tab the window shows without switching to it, as the first one, is built here)
+        foreach (var tab in _tabs) {
+            if (tab.gameObject.activeInHierarchy) {
+                tab.BuildIfWaiting();
+            }
+        }
 
         Window.transform.localPosition = _browsedPosition;
         try {
@@ -322,6 +333,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
                     button.icon.rectTransform.localScale = new(-1f, 1f, 1f);
                 }
             }
+
+            AlignIconAndLabel(button);
         }
 
         strip.anchorMin = strip.anchorMax = new(0f, 1f);
@@ -336,11 +349,65 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)Window.transform);
     }
 
+    private const float TabIconSize = 28f;
+    private const float TabIconLeft = 14f;
+    private const float TabLabelLeft = TabIconLeft + TabIconSize + 8f;
+
+    /// <summary>
+    ///     Every tab's icon in the same square at the same place, its label starting at the same line after it (each
+    ///     icon was centred with its label at its own size: "les icones des onglets sont dans tous les sens", user
+    ///     2026-10-29). The button is mirrored (see above): its local right edge is the bookmark's outer, left edge
+    /// </summary>
+    private static void AlignIconAndLabel(UIButton button)
+    {
+        if (button.mainText is not { } label) {
+            return;
+        }
+
+        foreach (var group in button.GetComponents<UnityEngine.UI.HorizontalOrVerticalLayoutGroup>()) {
+            group.enabled = false;
+        }
+
+        if (button.icon is { } icon && icon.sprite != null) {
+            var rt = icon.rectTransform;
+            rt.SetParent(button.transform, false);
+            if (rt.GetComponent<UnityEngine.UI.LayoutElement>() is { } own) {
+                own.ignoreLayout = true;
+            }
+
+            rt.anchorMin = rt.anchorMax = new(1f, 0.5f);
+            rt.pivot = new(0.5f, 0.5f);
+            rt.sizeDelta = new(TabIconSize, TabIconSize);
+            rt.anchoredPosition = new(-(TabIconLeft + TabIconSize / 2f), 0f);
+            rt.localScale = new(-1f, 1f, 1f);
+            // (cut to its drawn pixels: the game's icons sit in squares of different empty margins)
+            icon.sprite = TeamBanner.Cropped(icon.sprite) ?? icon.sprite;
+            icon.preserveAspect = true;
+        }
+
+        var text = label.rectTransform;
+        if (text.GetComponent<UnityEngine.UI.LayoutElement>() is { } textElement) {
+            textElement.ignoreLayout = true;
+        }
+
+        foreach (var fitter in label.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
+            fitter.enabled = false;
+        }
+
+        // (mirrored twice, by the button and by itself: its local left offset is the visual right margin)
+        text.anchorMin = new(0f, 0f);
+        text.anchorMax = new(1f, 1f);
+        text.pivot = new(0.5f, 0.5f);
+        text.offsetMin = new(8f, 0f);
+        text.offsetMax = new(-TabLabelLeft, 0f);
+        label.alignment = TextAnchor.MiddleLeft;
+    }
+
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>
     private void DecorateLastTab(string spriteId, string tipId)
     {
         var tab = Window.setting.tabs[^1];
-        tab.sprite = SpriteSheet.Get(spriteId);
+        tab.sprite = TeamBanner.Cropped(SpriteSheet.Get(spriteId));
         tab.langTooltip = tipId;
     }
 

@@ -21,6 +21,10 @@ internal class TabLands : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         if (!TabTeam.TeamsOn) {
             TabTeam.BuildOff(this, "emp_ui_tab_lands");
             return;

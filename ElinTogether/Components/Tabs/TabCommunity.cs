@@ -33,6 +33,10 @@ internal class TabCommunity : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         SubTabs(SubKey, [
             ("emp_ui_tab_journal".lang(), TabJournal.Build),
             ("emp_ui_tab_leaderboard".lang(), page => TabLeaderboard.Build(page, Relayout)),

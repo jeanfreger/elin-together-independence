@@ -18,6 +18,10 @@ internal class TabClientConfiguration : TabEmpBase
 {
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         // three pages that each fit the window (one long page ran far under it): controls then mods, the
         // depot, then the friends and the ignored
         SubTabs("client", [

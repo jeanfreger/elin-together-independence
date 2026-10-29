@@ -25,6 +25,10 @@ internal class TabPlayers : TabEmpBase
 
     public override void OnLayout()
     {
+        if (Waits()) {
+            return;
+        }
+
         // sub-tabs: who is here, then for the host the characters of this world and the bans
         var pages = new List<(string, Action<YKVertical>)> { ("emp_ui_sub_online".lang(), BuildPlayerList) };
         if (HostLists) {
@@ -350,7 +354,7 @@ internal class TabPlayers : TabEmpBase
         var inTeam = NetSession.Instance.Rules.UseTeams && teamId != Teams.Wanderers;
         var team = inTeam ? Teams.NameOf(teamId) : null;
         parent.PickRow(new(name, detail, chara, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null,
-            inTeam ? TeamBanner.EmblemSprite(teamId) : null), picked, onPick);
+            TeamBanner.EmblemSprite(inTeam ? teamId : -chara.uid)), picked, onPick);
     }
 
     /// <summary>

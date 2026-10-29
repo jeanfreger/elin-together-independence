@@ -153,13 +153,19 @@ internal static class TeamBanner
     internal static (int Icon, int Color)? Of(int teamId) => On && Book.TryGetValue(teamId, out var banner) ? banner : null;
 
     /// <summary>
-    ///     In the game that keeps the book: this leader sets the banner of its team. False when the rule is off, the asker
-    ///     leads no team or the emblem or colour is not one offered
+    ///     Where a player's emblem is kept: its team's, or, for a player in no team, its own under minus its uid (user
+    ///     2026-10-29: a solo player has its own emblem; team ids are 1 and up, so the two never meet)
+    /// </summary>
+    internal static int KeyOf(int charaUid) => Teams.TeamOf(charaUid) is var team && team != Teams.Wanderers ? team : -charaUid;
+
+    /// <summary>
+    ///     In the game that keeps the book: this leader sets the banner of its team, or a player in no team its own.
+    ///     False when the rule is off, the asker is a member but not the leader, or the emblem or colour is not one offered
     /// </summary>
     internal static bool Set(Chara chara, int icon, int color, string thing = "")
     {
-        var team = Teams.TeamOf(chara.uid);
-        if (!KeepsBook || !On || team == Teams.Wanderers || Teams.LeaderOf(team) != chara.uid) {
+        var team = KeyOf(chara.uid);
+        if (!KeepsBook || !On || team > 0 && Teams.LeaderOf(team) != chara.uid) {
             return false;
         }
 
@@ -222,6 +228,21 @@ internal static class TeamBanner
     }
 
     /// <summary>The team's baked emblem sprite, for small marks such as the players' team chip; null when none</summary>
+    /// <summary>
+    ///     A player who founds a team gives it the emblem it made alone, unless the team already has one
+    /// </summary>
+    internal static void Inherit(int charaUid, int teamId)
+    {
+        if (!KeepsBook || ElinNetHost.TeamThings.ContainsKey(teamId) || !ElinNetHost.TeamThings.TryGetValue(-charaUid, out var own)) {
+            return;
+        }
+
+        ElinNetHost.TeamThings[teamId] = own;
+        if (ElinNetHost.TeamBanners.TryGetValue(-charaUid, out var banner)) {
+            ElinNetHost.TeamBanners[teamId] = [..banner];
+        }
+    }
+
     internal static Sprite? EmblemSprite(int teamId) => EmblemOf(teamId) is { } emblem ? TeamEmblemBaker.Get(emblem) : null;
 
     internal static void Remove(int teamId)
@@ -305,7 +326,7 @@ internal static class TeamBanner
     private static readonly Dictionary<Sprite, Sprite> _cropped = [];
 
     /// <summary>The sprite cut to its opaque pixels, point filtered (cached per sprite); itself when it cannot be read</summary>
-    private static Sprite? Cropped(Sprite? sprite)
+    internal static Sprite? Cropped(Sprite? sprite)
     {
         if (sprite == null) {
             return null;
