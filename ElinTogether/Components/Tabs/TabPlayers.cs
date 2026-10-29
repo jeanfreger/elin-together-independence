@@ -343,8 +343,10 @@ internal class TabPlayers : TabEmpBase
 
         // (the host's own line has no ping: index 0)
         var ping = player.Index == 0 ? -1 : EmpUi.PingBarsFor(player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs);
-        var team = NetSession.Instance.Rules.UseTeams ? Teams.NameOf(Teams.TeamOf(chara.uid)) : null;
-        parent.PickRow(new(name, detail, chara, team, ping, badges), picked, onPick);
+        var teamId = Teams.TeamOf(chara.uid);
+        var inTeam = NetSession.Instance.Rules.UseTeams && teamId != Teams.Wanderers;
+        var team = inTeam ? Teams.NameOf(teamId) : null;
+        parent.PickRow(new(name, detail, chara, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null), picked, onPick);
     }
 
     /// <summary>

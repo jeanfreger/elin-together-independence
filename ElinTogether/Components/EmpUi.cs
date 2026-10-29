@@ -30,7 +30,8 @@ internal record PlayerRowInfo(
     Chara? Chara = null,
     string? Team = null,
     int PingBars = -1,
-    PlayerBadge Badges = PlayerBadge.None);
+    PlayerBadge Badges = PlayerBadge.None,
+    Color? TeamColor = null);
 
 /// <summary>
 ///     Vanilla-looking pieces for the Elin Together layer: they reuse the game's own prefabs (UINote texts, headers,
@@ -326,12 +327,12 @@ internal static class EmpUi
     /// <summary>
     ///     A small label such as "Open to all": the game's own tag chip ("Tag General", as on a character's job)
     /// </summary>
-    public static void Chip(this YKLayout parent, string text, FontColor color = FontColor.Default)
+    public static void Chip(this YKLayout parent, string text, FontColor color = FontColor.Default, Color? tint = null)
     {
-        Chip(parent.transform, parent, text, color);
+        Chip(parent.transform, parent, text, color, tint);
     }
 
-    private static void Chip(Transform into, YKLayout fallback, string text, FontColor color)
+    private static void Chip(Transform into, YKLayout fallback, string text, FontColor color, Color? tint = null)
     {
         if (Util.Instantiate<HintIcon>("UI/Element/Item/Tag General", into) is not { } chip) {
             fallback.TextSmall(text, color);
@@ -339,6 +340,10 @@ internal static class EmpUi
         }
 
         chip.text.SetText(text, color);
+        if (tint is { } c && chip.text.GetComponentInChildren<UnityEngine.UI.Text>() is { } label) {
+            label.color = c;
+        }
+
         chip.transform.RebuildLayout(true);
     }
 
@@ -388,7 +393,7 @@ internal static class EmpUi
         }
 
         if (!string.IsNullOrEmpty(info.Team)) {
-            row.Chip(info.Team!);
+            row.Chip(info.Team!, tint: info.TeamColor);
         }
 
         foreach (var badge in new[] { PlayerBadge.Idle, PlayerBadge.Admin, PlayerBadge.Moderator, PlayerBadge.Frozen }) {

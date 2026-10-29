@@ -75,6 +75,11 @@ internal static class TeamBanner
 
     internal static Color ColorOf(int index) => ToColor(Palette[Mathf.Clamp(index, 0, ColorCount - 1)]);
 
+    /// <summary>
+    ///     The colour of a team's chip: its banner colour, else a stable one from the team id in the same palette
+    /// </summary>
+    internal static Color ChipColor(int teamId) => Of(teamId) is { } banner ? ColorOf(banner.Color) : ColorOf(((teamId % ColorCount) + ColorCount) % ColorCount);
+
     private static Color ToColor(int rgb) => new Color32((byte)((rgb >> 16) & 0xFF), (byte)((rgb >> 8) & 0xFF), (byte)(rgb & 0xFF), 255);
 
     private static Dictionary<int, (int Icon, int Color)> Book =>
