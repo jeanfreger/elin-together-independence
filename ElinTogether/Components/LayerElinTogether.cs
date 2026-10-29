@@ -9,9 +9,9 @@ namespace ElinTogether.Components;
 
 internal class LayerElinTogether : YKLayer<LayerCreationData>
 {
-    // First opening: a little right and down of the centre, so the window clears the debug box that the game's popup
-    // stack draws at the top left (it hid the first tab and the caption); later openings keep where the player left it
-    private static Vector2 _browsedPosition = new(120f, -30f);
+    // First opening: centred on the screen (an offset pushed the right side past the edge at 1280x720); later openings
+    // keep where the player left it, clamped so the whole window stays on screen (ClampOnScreen)
+    private static Vector2 _browsedPosition = Vector2.zero;
     private static string _lastOpenedTab = "";
     private readonly bool _resetHyp = Lang.setting.hyphenation;
 
@@ -77,7 +77,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Window.SwitchContent(_lastOpenedTab);
 
-        Window.transform.localPosition = _browsedPosition;
+        Window.transform.localPosition = ClampOnScreen(_browsedPosition);
         try {
             MoveTabsToLeft();
         }
@@ -228,9 +228,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
             buttons.Add(tab.button);
             var text = tab.button.mainText;
-            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + 26f + 28f);
+            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + LabelLeft + 10f);
         }
 
+        // (never narrower than a short label needs: preferredWidth can read 0 before the font is ready)
+        width = Mathf.Max(width, 140f);
         const float Gap = 4f, Margin = 10f, ButtonHeight = 30f;
         strip.SetParent(bodyRect, false);
         strip.SetAsFirstSibling();
@@ -265,33 +267,95 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             element.minWidth = element.preferredWidth = width;
             element.minHeight = element.preferredHeight = ButtonHeight;
             element.flexibleWidth = element.flexibleHeight = 0f;
-            if (button.icon != null) {
-                // icon at the left edge, label to its right
-                var ir = button.icon.rectTransform;
-                ir.anchorMin = ir.anchorMax = new(0f, 0.5f);
-                ir.pivot = new(0f, 0.5f);
-                ir.anchoredPosition = new(6f, 0f);
-                ir.sizeDelta = new(22f, 22f);
-                button.icon.preserveAspect = true;
-            }
-
-            if (button.mainText != null) {
-                if (button.mainText.TryGetComponent<UnityEngine.UI.ContentSizeFitter>(out var f)) {
-                    DestroyImmediate(f);
-                }
-
-                button.mainText.horizontalOverflow = HorizontalWrapMode.Overflow;
-                button.mainText.alignment = TextAnchor.MiddleLeft;
-                var tr = button.mainText.rectTransform;
-                tr.anchorMin = Vector2.zero;
-                tr.anchorMax = Vector2.one;
-                tr.offsetMin = new(34f, 0f);
-                tr.offsetMax = new(-4f, 0f);
-            }
+            LayOutTabButton(button);
         }
 
         // (the window shows the strip only for 2+ tabs: always the case here)
         UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
+    }
+
+    // where the label starts inside a tab button: 6 margin + 22 icon + 6 gap
+    private const float IconLeft = 6f, IconSize = 22f, LabelLeft = IconLeft + IconSize + 6f;
+
+    /// <summary>
+    ///     One vanilla tab button (Window.BuildTabs instantiates the window's moldTab or
+    ///     "UI/Window/Base/Element/ButtonTab") laid out for a vertical column. The only children relied on are the two
+    ///     the game itself fills through UIButton: <c>mainText</c> (the label, SetLang(tab.idLang)) and <c>icon</c>
+    ///     (tab.sprite); the button's own Image stays the background. The prefab is built for a horizontal strip: a
+    ///     layout group and size fitters size the button to its label and line the children up in a row, which in a
+    ///     fixed-width column pushed the icon to the right end and squeezed the label (or its holder) to zero width.
+    ///     So those layout components are switched off on the button and its children, the label and the icon are
+    ///     re-parented straight under the button (if the prefab nests them in a holder) and placed by hand:
+    ///     icon 22 px at the left, label stretched from the icon to the right edge, left aligned, the game's font size.
+    /// </summary>
+    private static void LayOutTabButton(UIButton button)
+    {
+        var root = (RectTransform)button.transform;
+        // children the root's row placed (a background or highlight image): once the row is off they would keep the
+        // horizontal strip's size, so they fill the button instead
+        if (root.GetComponent<UnityEngine.UI.LayoutGroup>() != null) {
+            foreach (Transform child in root) {
+                if (child is RectTransform cr && (button.icon == null || cr != button.icon.rectTransform && !button.icon.transform.IsChildOf(cr))
+                    && (button.mainText == null || cr != button.mainText.rectTransform && !button.mainText.transform.IsChildOf(cr))) {
+                    cr.anchorMin = Vector2.zero;
+                    cr.anchorMax = Vector2.one;
+                    cr.offsetMin = cr.offsetMax = Vector2.zero;
+                }
+            }
+        }
+
+        foreach (var group in button.GetComponentsInChildren<UnityEngine.UI.LayoutGroup>(true)) {
+            group.enabled = false;
+        }
+
+        foreach (var fitter in button.GetComponentsInChildren<UnityEngine.UI.ContentSizeFitter>(true)) {
+            fitter.enabled = false;
+        }
+
+        if (button.icon != null) {
+            var ir = button.icon.rectTransform;
+            if (ir.parent != root) {
+                ir.SetParent(root, false);
+            }
+
+            IgnoreLayout(ir);
+            ir.anchorMin = ir.anchorMax = new(0f, 0.5f);
+            ir.pivot = new(0f, 0.5f);
+            ir.anchoredPosition = new(IconLeft, 0f);
+            ir.sizeDelta = new(IconSize, IconSize);
+            ir.localScale = Vector3.one;
+            button.icon.preserveAspect = true;
+            button.icon.gameObject.SetActive(button.icon.sprite != null);
+        }
+
+        if (button.mainText != null) {
+            var text = button.mainText;
+            var tr = text.rectTransform;
+            if (tr.parent != root) {
+                tr.SetParent(root, false);
+            }
+
+            IgnoreLayout(tr);
+            tr.anchorMin = Vector2.zero;
+            tr.anchorMax = Vector2.one;
+            tr.pivot = new(0f, 0.5f);
+            tr.offsetMin = new(button.icon != null ? LabelLeft : IconLeft, 0f);
+            tr.offsetMax = new(-6f, 0f);
+            tr.localScale = Vector3.one;
+            // (font size left as the prefab sets it: the game's tab size)
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.alignment = TextAnchor.MiddleLeft;
+            text.gameObject.SetActive(true);
+            text.enabled = true;
+            tr.SetAsLastSibling();
+        }
+    }
+
+    private static void IgnoreLayout(RectTransform rect)
+    {
+        var element = rect.GetComponent<UnityEngine.UI.LayoutElement>() ?? rect.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+        element.ignoreLayout = true;
     }
 
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>
@@ -302,11 +366,31 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         tab.langTooltip = tipId;
     }
 
-    /// <summary>A vanilla-like fixed window (the character sheet's footprint), shrunk only on a small screen.</summary>
+    /// <summary>
+    ///     The screen in canvas units: raw pixels divided by the canvas scaler's factor (the game's UI scale option),
+    ///     the units every RectTransform of the window is laid out in
+    /// </summary>
+    private static Vector2 CanvasSize()
+    {
+        var scale = ui.canvasScaler != null && ui.canvasScaler.scaleFactor > 0f ? ui.canvasScaler.scaleFactor : 1f;
+        return new Vector2(Screen.width, Screen.height) / scale;
+    }
+
+    /// <summary>
+    ///     A vanilla-like fixed window sized from the screen: at most 1120 x 620 canvas units, never more than 90 % of
+    ///     the width and 85 % of the height, so the close ornament and every page's right column stay on screen
+    /// </summary>
     private static Rect FixedWindow()
     {
-        var scaler = ui.canvasScaler.scaleFactor;
-        var screen = new Vector2(Screen.width, Screen.height) / scaler;
-        return new(Vector2.zero, new(Mathf.Min(1180f, screen.x * 0.95f), Mathf.Min(620f, screen.y * 0.85f)));
+        var screen = CanvasSize();
+        return new(Vector2.zero, new(Mathf.Min(1120f, screen.x * 0.9f), Mathf.Min(620f, screen.y * 0.85f)));
+    }
+
+    /// <summary>The window's centre offset (local position, origin = screen centre) moved so no edge leaves the screen.</summary>
+    private static Vector2 ClampOnScreen(Vector2 position)
+    {
+        var room = (CanvasSize() - FixedWindow().size) * 0.5f;
+        room = Vector2.Max(room, Vector2.zero);
+        return new(Mathf.Clamp(position.x, -room.x, room.x), Mathf.Clamp(position.y, -room.y, room.y));
     }
 }
