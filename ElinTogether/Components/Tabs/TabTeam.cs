@@ -73,7 +73,7 @@ internal class TabTeam : TabEmpBase
         row.Layout.childAlignment = TextAnchor.MiddleCenter;
         var button = row.Button(buttonText, act);
         var element = button.LayoutElement();
-        element.preferredWidth = Mathf.Max(160f, (button.mainText != null ? button.mainText.preferredWidth : 0f) + 48f);
+        element.preferredWidth = Mathf.Max(UIHelper.ButtonWidth, (button.mainText != null ? button.mainText.preferredWidth : 0f) + 48f);
         element.flexibleWidth = 0f;
     }
 
@@ -103,6 +103,22 @@ internal class TabTeam : TabEmpBase
             }));
         }
 
+        // a member's page holds the team and its tools: the other teams, and the team's map and journal, have their
+        // own pages so each fits the window (they ran under its bottom edge)
+        if (mine != Teams.Wanderers) {
+            pages.Add(("emp_ui_team_others".lang(), page => {
+                var (left, right) = page.Book();
+                BuildOtherTeams(left, mine);
+                BuildTeamLines(right);
+            }));
+            if (TeamBanner.On) {
+                pages.Add(("emp_ui_team_journal".lang(), page => {
+                    var (left, right) = page.Book();
+                    BuildBannerCard(left, right, mine);
+                }));
+            }
+        }
+
         SubTabs("team", pages);
     }
 
@@ -112,12 +128,11 @@ internal class TabTeam : TabEmpBase
         BuildInvitation(left, me);
         if (mine == Teams.Wanderers) {
             BuildFound(left);
-            BuildOtherTeams(right, mine);
-            BuildTeamLines(right);
+            // (both on the right page: a few rows of each, scrolled inside their cards)
+            BuildOtherTeams(right, mine, 3);
+            BuildTeamLines(right, 4);
         } else {
             BuildOwnTeam(left, right, mine, me);
-            BuildOtherTeams(left, mine);
-            BuildTeamLines(left);
         }
     }
 
@@ -131,13 +146,11 @@ internal class TabTeam : TabEmpBase
     /// </summary>
     private static void AnswerRow(YKLayout card, string text, System.Action accept, System.Action refuse)
     {
-        var row = card.Row();
-        row.Text(text).LayoutElement().flexibleWidth = 1f;
-        foreach (var (label, act) in new[] { ("emp_ui_team_invite_accept".lang(), accept), ("emp_ui_team_invite_refuse".lang(), refuse) }) {
-            var element = row.Button(label, act).LayoutElement();
-            element.preferredWidth = 130f;
-            element.flexibleWidth = 0f;
-        }
+        // (the words on their own line, the two answers under them: beside two buttons they had a third of the page)
+        card.Text(text);
+        var row = card.ButtonRow();
+        row.RowButton("emp_ui_team_invite_accept".lang(), accept);
+        row.RowButton("emp_ui_team_invite_refuse".lang(), refuse);
     }
 
     /// <summary>
@@ -176,26 +189,37 @@ internal class TabTeam : TabEmpBase
 
         // the header: the team's name, then its facts as the character sheet lists them
         var card = left.Card(Teams.NameOf(mine));
+        // (the emblem beside the facts, as a portrait beside a sheet's: not on a line of its own over them)
+        YKLayout facts = card;
         if (TeamBanner.Of(mine) != null) {
-            var banner = card.Row();
-            TeamBanner.Draw(banner, mine);
-            banner.Text(Teams.NameOf(mine)).LayoutElement().flexibleWidth = 1f;
+            var head = card.Row();
+            head.Layout.childAlignment = TextAnchor.UpperLeft;
+            head.Layout.spacing = 14f;
+            head.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            TeamBanner.Draw(head, mine);
+            var column = head.Vertical();
+            column.Layout.childControlHeight = false;
+            column.Layout.childForceExpandHeight = false;
+            column.Layout.spacing = 2f;
+            column.LayoutElement().flexibleWidth = 1f;
+            facts = column;
         }
-        card.KeyValue("emp_ui_kv_leader".lang(), Teams.PlayerName(leader));
-        card.KeyValue("emp_ui_kv_members".lang(), members.Count.ToString());
-        card.KeyValue("emp_ui_kv_joining".lang(), (Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
+        facts.KeyValue("emp_ui_kv_leader".lang(), Teams.PlayerName(leader));
+        facts.KeyValue("emp_ui_kv_members".lang(), members.Count.ToString());
+        facts.KeyValue("emp_ui_kv_joining".lang(), (Teams.IsOpen(mine) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
         if (TeamBoxes.TeamBankGold() is { } bank) {
-            card.KeyValue("emp_ui_kv_bank".lang(), bank.ToString());
+            facts.KeyValue("emp_ui_kv_bank".lang(), bank.ToString());
         }
         if (TeamBills.On) {
-            card.KeyValue("emp_ui_kv_bills".lang(), TeamBills.UnpaidOf(mine).ToString());
+            facts.KeyValue("emp_ui_kv_bills".lang(), TeamBills.UnpaidOf(mine).ToString());
         }
         if (TeamStory.On) {
-            card.KeyValue("emp_ui_kv_story".lang(), TeamStory.ChapterOf(mine).ToString());
+            facts.KeyValue("emp_ui_kv_story".lang(), TeamStory.ChapterOf(mine).ToString());
         }
 
-        // the members: a row each; a click opens the member's page on the right
-        var list = left.Card("emp_ui_kv_members".lang());
+        // the members: a row each (scrolled past three); a click opens the member's page on the right
+        var card2 = left.Card("emp_ui_kv_members".lang());
+        var list = card2.ListArea(members.Count, 3, MemberRowHeight);
         var picked = members.Contains(_picked) ? _picked : me;
         foreach (var member in members) {
             var chara = CharaOf(member);
@@ -218,49 +242,49 @@ internal class TabTeam : TabEmpBase
             }
         }
 
-        list.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
+        card2.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
 
-        BuildMemberPage(right, picked, leader, me, manages);
-
-        // the leader answers who asks (the choices of the player list moved here)
+        // the leader answers who asks (the choices of the player list moved here), at the top of the right page
         if (leads) {
             var asking = Teams.Asking(mine).ToList();
             if (asking.Count > 0) {
-                var requests = left.Card("emp_ui_team_requests".lang());
+                var requests = right.Card("emp_ui_team_requests".lang());
+                var area = requests.ListArea(asking.Count, 2, 70f);
                 foreach (var asker in asking) {
                     var target = asker;
-                    AnswerRow(requests, "emp_ui_team_asks_row".Loc(Teams.PlayerName(asker)),
+                    AnswerRow(area, "emp_ui_team_asks_row".Loc(Teams.PlayerName(asker)),
                         () => Teams.Ask(TeamAsk.Accept, target), () => Teams.Ask(TeamAsk.Refuse, target));
                 }
             }
         }
 
+        BuildMemberPage(right, picked, leader, me, manages);
         BuildTools(right, mine, leads, manages);
-        if (TeamBanner.On) {
-            BuildBannerCard(right, mine, leads);
-        }
     }
 
+    private const float MemberRowHeight = 60f;
+
     /// <summary>
-    ///     Host box "Team banners": the map of the team's lands and the
-    ///     team journal. The host checks that the asker leads the team
+    ///     Host box "Team banners": the map of the team's lands on the left page, the team journal on the right one
+    ///     (scrolled inside its card)
     /// </summary>
-    private static void BuildBannerCard(YKLayout page, int mine, bool leads)
+    private static void BuildBannerCard(YKLayout left, YKLayout right, int mine)
     {
-        var lands = page.Card("emp_ui_team_lands_map".lang());
+        var lands = left.Card("emp_ui_team_lands_map".lang());
         TeamBanner.BuildLandMap(lands, mine);
 
-        var journal = page.Card("emp_ui_team_journal".lang());
+        var journal = right.Card("emp_ui_team_journal".lang());
         // the activity journal's entries of this team, newest first (box "Activity journal")
         var lines = ActivityJournal.On
-            ? ActivityJournal.Entries().Where(e => e.Team == mine).Reverse().Take(20).ToList()
+            ? ActivityJournal.Entries().Where(e => e.Team == mine).Reverse().Take(50).ToList()
             : [];
         if (lines.Count == 0) {
             journal.TextSmall("emp_ui_team_journal_none".lang(), FontColor.Gray);
         }
 
+        var list = journal.ListArea(lines.Count, 16, 18f);
         foreach (var entry in lines) {
-            journal.TextSmall(ActivityJournal.Line(entry));
+            list.TextSmall(ActivityJournal.Line(entry));
         }
     }
 
@@ -271,25 +295,34 @@ internal class TabTeam : TabEmpBase
     {
         var chara = CharaOf(member);
         var card = page.Card(Teams.PlayerName(member));
+        // the portrait on the left, the facts beside it (the Players page's head): one block, not two
+        var head = card.Row();
+        head.Layout.childAlignment = TextAnchor.UpperLeft;
+        head.Layout.spacing = 14f;
+        head.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         if (chara != null) {
-            // the portrait on top, the facts under it across the page, as the character sheet lays them out
-            card.Row().Portrait(chara);
+            head.Portrait(chara);
         }
-        card.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
-        card.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
-        card.KeyValue("emp_ui_kv_state".lang(), Cap((Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang()));
-        card.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
+        var facts = head.Vertical();
+        facts.Layout.childControlHeight = false;
+        facts.Layout.childForceExpandHeight = false;
+        facts.Layout.spacing = 2f;
+        facts.LayoutElement().flexibleWidth = 1f;
+        facts.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
+        facts.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
+        facts.KeyValue("emp_ui_kv_state".lang(), Cap((Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang()));
+        facts.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
 
+        // what can be done, as wide as the labels, side by side
+        var actions = new List<(string, System.Action)>();
         if (TeamSheet.On) {
-            card.ButtonRow().RowButton("emp_ui_team_sheet".lang(), () => TeamSheet.Ask(member));
+            actions.Add(("emp_ui_team_sheet".lang(), () => TeamSheet.Ask(member)));
         }
-
         if (manages && member != me) {
-            card.Divider();
-            var buttons = card.ButtonRow();
-            buttons.RowButton("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member));
-            buttons.RowButton("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member));
+            actions.Add(("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member)));
+            actions.Add(("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member)));
         }
+        card.ButtonFlow(actions);
     }
 
     private static string MemberLine(Chara? chara, int member)
@@ -325,45 +358,72 @@ internal class TabTeam : TabEmpBase
             card.TextSmall((leads ? "emp_ui_team_tools_host_off" : "emp_ui_team_tools_leader_only").lang(), FontColor.Gray);
         }
 
-        void Tool(UIButton button) => button.interactable = manages;
+        card.ToggleRow("emp_ui_team_joining".lang(), "emp_ui_team_joining_desc".lang(), Teams.IsOpen(mine),
+            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !manages, setByHostText: "emp_ui_team_leader_only_chip".lang(), ownLines: true);
 
-        Tool(card.ButtonRow().RowButton("emp_ui_team_rename".lang(), () => {
+        // (a player in the game, in no team and not yet asked: the host checks the same again)
+        var open = manages
+            ? NetSession.Instance.CurrentPlayers.Select(p => p.CharaUid).Distinct()
+                .Where(uid => Teams.TeamOf(uid) != mine && Teams.InviteOf(uid) == Teams.Wanderers).ToList()
+            : [];
+        // the invitations not yet answered, on one line
+        var invited = manages ? Teams.InvitedBy(mine).ToList() : [];
+        if (invited.Count > 0) {
+            card.TextSmall("emp_ui_team_invited_line".Loc(string.Join(", ", invited.Select(Teams.PlayerName))), FontColor.Gray);
+        }
+
+        // rename and invite side by side, as wide as their labels; one Invite button opens the list of who may be asked
+        var buttons = card.ButtonRow();
+        buttons.RowButton("emp_ui_team_rename".lang(), () => {
             Dialog.InputName("emp_ui_team_rename_ask", Teams.NameOf(mine), (cancel, text) => {
                 if (!cancel) {
                     Teams.Ask(TeamAsk.Rename, text: text);
                 }
             }).input.field.characterLimit = Teams.NameMax;
-        }));
-
-        card.ToggleRow("emp_ui_team_joining".lang(), "emp_ui_team_joining_desc".lang(), Teams.IsOpen(mine),
-            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !manages, setByHostText: "emp_ui_team_leader_only_chip".lang(), ownLines: true);
-
-        if (manages) {
-            foreach (var invited in Teams.InvitedBy(mine)) {
-                card.TextSmall("emp_ui_team_invited_line".Loc(Teams.PlayerName(invited)), FontColor.Gray);
-            }
-
-            // (a player in the game, in no team and not yet asked: the host checks the same again)
-            var open = NetSession.Instance.CurrentPlayers.Select(p => p.CharaUid).Distinct()
-                .Where(uid => Teams.TeamOf(uid) != mine && Teams.InviteOf(uid) == Teams.Wanderers).ToList();
-            if (open.Count == 0) {
-                card.TextSmall("emp_ui_team_invite_none".lang(), FontColor.Gray);
-            }
-
-            foreach (var player in open) {
-                var target = player;
-                card.ButtonRow().RowButton("emp_ui_team_invite".Loc(Teams.PlayerName(player)), () => Teams.Ask(TeamAsk.Invite, target));
-            }
-        } else {
-            Tool(card.ButtonRow().RowButton("emp_ui_team_invite_any".lang(), () => { }));
+        }).interactable = manages;
+        UIButton? invite = null;
+        invite = buttons.RowButton("emp_ui_team_invite_any".lang(), () => InvitePicker(invite, open));
+        invite.interactable = manages && open.Count > 0;
+        if (manages && open.Count == 0) {
+            invite.SetTooltipLang("emp_ui_team_invite_none");
         }
 
-        Tool(card.ButtonRow().RowButton("emp_ui_team_disband".lang(), () => {
+        card.ButtonRow().RowButton("emp_ui_team_disband".lang(), () => {
             Dialog.YesNo("emp_ui_team_disband_confirm".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Disband));
-        }));
+        }).interactable = manages;
     }
 
-    private static void BuildOtherTeams(YKLayout page, int mine)
+    /// <summary>
+    ///     The players who may be invited, in the game's own context menu under the button (by groups of fifteen in
+    ///     sub-menus when there are more: one long menu would run off the screen)
+    /// </summary>
+    private static void InvitePicker(UIButton? anchor, List<int> players)
+    {
+        if (players.Count == 0) {
+            return;
+        }
+
+        var menu = EClass.ui.CreateContextMenuInteraction();
+        if (anchor != null) {
+            menu.SetHighlightTarget(anchor);
+        }
+
+        var sorted = players.Select(uid => (Uid: uid, Name: Teams.PlayerName(uid)))
+            .OrderBy(p => p.Name, System.StringComparer.OrdinalIgnoreCase).ToList();
+        const int group = 15;
+        for (var i = 0; i < sorted.Count; i += group) {
+            var chunk = sorted.Skip(i).Take(group).ToList();
+            var into = sorted.Count <= group ? menu : menu.AddChild($"{chunk[0].Name} - {chunk[chunk.Count - 1].Name}");
+            foreach (var (uid, name) in chunk) {
+                var target = uid;
+                into.AddButton(name, () => Teams.Ask(TeamAsk.Invite, target));
+            }
+        }
+
+        menu.Show();
+    }
+
+    private static void BuildOtherTeams(YKLayout page, int mine, int maxRows = 6)
     {
         // (never the player's own team; a team with nobody left in it is a ghost of the book, not one to join)
         var others = Teams.Ids().Where(id => id != Teams.Wanderers && id != mine && Teams.MembersOfTeam(id).Any()).ToList();
@@ -373,7 +433,7 @@ internal class TabTeam : TabEmpBase
 
         var card = page.Card("emp_ui_team_others".lang());
         // more than a few teams: a frame of a fixed height that scrolls, not a page that grows
-        YKLayout list = others.Count > MaxTeamRows ? ScrollFrame(card, MaxTeamRows * TeamRowHeight) : card;
+        var list = card.ListArea(others.Count, maxRows, TeamRowHeight);
         foreach (var team in others) {
             var row = list.Row();
             var element = row.LayoutElement();
@@ -394,60 +454,36 @@ internal class TabTeam : TabEmpBase
     // the leader's character, or the first member's when the book names none
     private static int LeaderOrFirst(int team) => Teams.LeaderOf(team) is var l && l != 0 ? l : Teams.MembersOfTeam(team).FirstOrDefault();
 
-    private const int MaxTeamRows = 5;
     private const float TeamRowHeight = 54f;
 
     /// <summary>
-    ///     A clipped frame of a fixed height holding a list that scrolls by wheel or drag; returns the list to fill
-    /// </summary>
-    private static YKVertical ScrollFrame(YKLayout parent, float height)
-    {
-        var frame = new GameObject("TeamScroll", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
-        frame.transform.SetParent(parent.transform, false);
-        var element = frame.GetComponent<LayoutElement>();
-        element.minHeight = element.preferredHeight = height;
-        element.flexibleWidth = 1f;
-        frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.001f);
-
-        var content = parent.Vertical();
-        content.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        content.Layout.spacing = UIHelper.RowSpacing;
-        content.transform.SetParent(frame.transform, false);
-        var rt = (RectTransform)content.transform;
-        rt.anchorMin = new(0f, 1f);
-        rt.anchorMax = new(1f, 1f);
-        rt.pivot = new(0.5f, 1f);
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-
-        var scroll = frame.GetComponent<ScrollRect>();
-        scroll.content = rt;
-        scroll.viewport = (RectTransform)frame.transform;
-        scroll.horizontal = false;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = 30f;
-        return content;
-    }
-
-    /// <summary>
     ///     The bills and story chapter of every team (host options "Teams pay their own land" and "Teams keep their own
-    ///     story journal"), moved here from the session page
+    ///     story journal"), moved here from the session page: the name, its figures in grey under it (one line each,
+    ///     it wrapped to two), scrolled past a few
     /// </summary>
-    private static void BuildTeamLines(YKLayout page)
+    private static void BuildTeamLines(YKLayout page, int maxRows = 8)
     {
         if (!TeamBills.On && !TeamStory.On) {
             return;
         }
 
         var card = page.Card("emp_ui_teams_title".lang());
-        foreach (var team in Teams.Ids()) {
-            var line = Teams.NameOf(team);
+        var ids = Teams.Ids().ToList();
+        var list = card.ListArea(ids.Count, maxRows, TeamLineHeight);
+        foreach (var team in ids) {
+            var parts = new List<string>();
             if (TeamBills.On) {
-                line += "  " + "emp_ui_team_bills".Loc(TeamBills.UnpaidOf(team));
+                parts.Add("emp_ui_team_bills".Loc(TeamBills.UnpaidOf(team)));
             }
             if (TeamStory.On) {
-                line += "  " + "emp_ui_team_story".Loc(TeamStory.ChapterOf(team));
+                parts.Add("emp_ui_team_story".Loc(TeamStory.ChapterOf(team)));
             }
-            card.Text(line);
+
+            var row = list.Row();
+            row.LayoutElement().minHeight = row.LayoutElement().preferredHeight = TeamLineHeight;
+            row.TextColumn(Teams.NameOf(team), string.Join("  ·  ", parts));
         }
     }
+
+    private const float TeamLineHeight = 40f;
 }

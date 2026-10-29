@@ -18,17 +18,24 @@ internal class TabClientConfiguration : TabEmpBase
 {
     public override void OnLayout()
     {
-        // one page: every setting of this player, a section header each, as the other tabs
+        // three pages that each fit the window (one long page ran far under it): controls and mods side by side, the
+        // depot, then the friends and the ignored side by side
         SubTabs("client", [
-            ("emp_ui_cl_sec_controls".lang(), page => {
-                BuildControls(page);
-                BuildMods(page);
-                BuildDepot(page);
-                BuildFriends(page);
-                BuildIgnored(page);
+            (Both("emp_ui_cl_sec_controls", "emp_ui_cl_sec_mods"), page => {
+                var (left, right) = page.Columns();
+                BuildControls(left);
+                BuildMods(right);
+            }),
+            ("emp_ui_cl_sec_depot".lang(), BuildDepot),
+            (Both("emp_info_friends", "emp_info_ignored"), page => {
+                var (left, right) = page.Columns();
+                BuildFriends(left);
+                BuildIgnored(right);
             }),
         ]);
     }
+
+    private static string Both(string a, string b) => a.lang() + " & " + b.lang();
 
     private static void BuildControls(YKVertical page)
     {
@@ -118,21 +125,17 @@ internal class TabClientConfiguration : TabEmpBase
     {
         var card = page.Card("emp_info_friends".lang());
         var online = NetSession.Instance.CurrentPlayers.Where(p => !p.User.IsMe && PlayerSocial.IsFriend(p.User)).ToList();
+        // the others are known by the name they had when they were added
+        var offline = PlayerSocial.FriendList.Where(f => online.All(p => (ulong)p.User != f.Key)).ToList();
+        var list = card.ListArea(online.Count + offline.Count, 7, 44f);
         foreach (var player in online) {
             var user = (ulong)player.User;
             var name = player.User.Name;
-            card.ButtonSetting(name, "emp_hub_online".Loc(player.FindChara()?.Name ?? "?"), "emp_ui_unfriend".lang(), () => {
-                PlayerSocial.SetFriend(user, name, false);
-                LayerElinTogether.Instance?.Reopen();
-            });
+            PersonRow(list, name, "emp_hub_online".Loc(player.FindChara()?.Name ?? "?"), "emp_ui_unfriend", () => PlayerSocial.SetFriend(user, name, false));
         }
 
-        // the others are known by the name they had when they were added
-        foreach (var (user, name) in PlayerSocial.FriendList.Where(f => online.All(p => (ulong)p.User != f.Key)).ToList()) {
-            card.ButtonSetting(name.IsEmpty(user.ToString()), "emp_hub_offline".lang(), "emp_ui_unfriend".lang(), () => {
-                PlayerSocial.SetFriend(user, name, false);
-                LayerElinTogether.Instance?.Reopen();
-            });
+        foreach (var (user, name) in offline) {
+            PersonRow(list, name.IsEmpty(user.ToString()), "emp_hub_offline".lang(), "emp_ui_unfriend", () => PlayerSocial.SetFriend(user, name, false));
         }
 
         if (PlayerSocial.FriendList.Count == 0) {
@@ -144,11 +147,24 @@ internal class TabClientConfiguration : TabEmpBase
     {
         var card = page.Card("emp_info_ignored".lang());
         card.TextSmall("emp_info_ignored_note".lang(), FontColor.Gray);
-        foreach (var (user, name) in PlayerSocial.IgnoredList.ToList()) {
-            card.ButtonSetting(name.IsEmpty(user.ToString()), null, "emp_ui_unignore".lang(), () => {
-                PlayerSocial.SetIgnored(user, name, false);
-                LayerElinTogether.Instance?.Reopen();
-            });
+        var ignored = PlayerSocial.IgnoredList.ToList();
+        var list = card.ListArea(ignored.Count, 7, 44f);
+        foreach (var (user, name) in ignored) {
+            PersonRow(list, name.IsEmpty(user.ToString()), null, "emp_ui_unignore", () => PlayerSocial.SetIgnored(user, name, false));
         }
+    }
+
+    /// <summary>
+    ///     A person of a list: the name and a grey line, then the game's small trash button (its word as the hover
+    ///     text) instead of a wide button on every row
+    /// </summary>
+    private static void PersonRow(YKLayout list, string name, string? detail, string removeLang, Action remove)
+    {
+        var row = list.Row();
+        row.TextColumn(name, detail);
+        row.IconButton(EmpUi.GameIcons?.trash, "x", () => {
+            remove();
+            LayerElinTogether.Instance?.Reopen();
+        }, removeLang);
     }
 }

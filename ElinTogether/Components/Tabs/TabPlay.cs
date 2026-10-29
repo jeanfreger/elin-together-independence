@@ -48,11 +48,14 @@ internal class TabPlay : TabEmpBase
             // join from here would drop the first), only where it stands and the way out
             BuildJoining(page);
         } else {
+            // the journal's two pages: the official game, hosting and joining on the left, the public games on the
+            // right, scrolled inside their card (four cards one under the other ran under the window's edge)
+            var (left, right) = page.Book();
             // the project's own public game first: its card is the most visible thing of the page
-            var official = BuildOfficialCard(page);
-            BuildHost(page);
-            BuildJoin(page);
-            BuildPublicServers(page, official);
+            var official = BuildOfficialCard(left);
+            BuildHost(left);
+            BuildJoin(left);
+            BuildPublicServers(right, official);
         }
     }
 
@@ -302,8 +305,7 @@ internal class TabPlay : TabEmpBase
     {
         var card = page.Card("emp_ui_play_public_title".lang());
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
-        var list = card.Vertical();
-        list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var list = card.ScrollList(380f);
         list.Layout.spacing = UIHelper.RowSpacing * 2f;
 
         NetSession.Instance.Lobby.GetOnlineLobbies(SetupLobbyDisplay);
@@ -347,7 +349,15 @@ internal class TabPlay : TabEmpBase
     /// </summary>
     private static void BuildLobbyEntry(YKLayout parent, LobbyData lobby, bool isOfficial)
     {
-        var game = parent.RowGroup();
+        // the game's words on the left, a Join as wide as its word on the right (a "Join <name>" bar under each game
+        // made the list twice as long)
+        var line = parent.Row();
+        line.Layout.childAlignment = TextAnchor.UpperLeft;
+        var game = line.Vertical();
+        game.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        game.Layout.spacing = 0f;
+        game.LayoutElement().flexibleWidth = 1f;
+        game.LayoutElement().minWidth = 0f;
         if (isOfficial) {
             game.Chip("emp_ui_lobby_official".lang(), FontColor.Good);
         }
@@ -369,10 +379,13 @@ internal class TabPlay : TabEmpBase
 
         if (!EClass.core.IsGameStarted) {
             var target = lobby;
-            game.ButtonRow().RowButton(isOfficial ? "emp_ui_lobby_official_join".lang() : "emp_ui_depot_join_btn".Loc(lobby.Name), () => {
+            var join = line.Button("emp_ui_team_join_short".lang(), () => {
                 LayerElinTogether.Instance?.Close();
                 NetSession.Instance.Lobby.ConnectLobby(target);
             });
+            var element = join.LayoutElement();
+            element.preferredWidth = 90f;
+            element.flexibleWidth = 0f;
         }
     }
 

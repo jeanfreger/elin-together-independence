@@ -135,9 +135,12 @@ internal class TabPlayers : TabEmpBase
         _page = Mathf.Clamp(_page, 0, pages - 1);
         var picked = all.FirstOrDefault(p => (ulong)p.User == _picked) ?? all.FirstOrDefault(p => p.User.IsMe) ?? all.FirstOrDefault();
         var card = left.Card("emp_ui_players_title".Loc(players.Count));
-        foreach (var player in players.Skip(_page * PageSize).Take(PageSize)) {
+        // (five rows in the page under the search and the sort: more scroll inside the card)
+        var shown = players.Skip(_page * PageSize).Take(PageSize).ToList();
+        var rows = card.ListArea(shown.Count, 5, 60f);
+        foreach (var player in shown) {
             var target = player;
-            BuildPlayerLine(card, player, player == picked, () => {
+            BuildPlayerLine(rows, player, player == picked, () => {
                 _picked = target.User;
                 FillBook(left, right);
             });
@@ -148,15 +151,16 @@ internal class TabPlayers : TabEmpBase
         }
         if (pages > 1) {
             var nav = card.ButtonRow();
-            nav.RowButton("<", () => {
+            nav.Layout.childAlignment = TextAnchor.MiddleCenter;
+            nav.SignButton("<", () => {
                 _page = (_page + pages - 1) % pages;
                 FillBook(left, right);
-            });
+            }, 44f);
             nav.Text("emp_ui_pl_page".Loc(_page + 1, pages));
-            nav.RowButton(">", () => {
+            nav.SignButton(">", () => {
                 _page = (_page + 1) % pages;
                 FillBook(left, right);
-            });
+            }, 44f);
         }
 
         if (picked is not null) {
@@ -228,11 +232,8 @@ internal class TabPlayers : TabEmpBase
             return;
         }
 
-        var buttons = page.Card("emp_ui_pl_actions".lang());
-        foreach (var (label, act) in actions) {
-            var action = act;
-            buttons.ButtonRow().RowButton(label, () => action());
-        }
+        // as wide as their labels, two to a line where they fit (one full-width bar each ran off the page)
+        page.Card("emp_ui_pl_actions".lang()).ButtonFlow(actions);
     }
 
     private static string RoleOf(NetPeerState player)
@@ -262,9 +263,10 @@ internal class TabPlayers : TabEmpBase
             return;
         }
 
+        var list = body.ListArea(saved.Count, 8, 40f);
         foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
             var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
-            var row = body.Row();
+            var row = list.Row();
             row.TextColumn("emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV) + (chara.isDead ? " †" : ""),
                 playing ? "emp_ui_saved_chars_playing".lang() : null);
             if (playing) {
@@ -272,12 +274,13 @@ internal class TabPlayers : TabEmpBase
             }
 
             var target = chara;
-            row.RowButton("emp_ui_saved_chars_delete".lang(), () => {
+            // the game's trash icon, its word as the hover text
+            row.IconButton(EmpUi.GameIcons?.trash, "x", () => {
                 Dialog.YesNo("emp_ui_saved_chars_confirm".Loc(target.Name, account), () => {
                     host.HostDeletes(user, target.uid);
                     LayerElinTogether.Instance?.Reopen();
                 });
-            });
+            }, "emp_ui_saved_chars_delete");
         }
     }
 
@@ -292,13 +295,15 @@ internal class TabPlayers : TabEmpBase
             return;
         }
 
-        foreach (var (user, why) in ElinNetHost.Bans.ToList()) {
-            var row = body.Row();
+        var bans = ElinNetHost.Bans.ToList();
+        var list = body.ListArea(bans.Count, 10, UIHelper.RowHeight);
+        foreach (var (user, why) in bans) {
+            var row = list.Row();
             row.Text(why.Length > 0 ? $"{user}  ({why})" : user.ToString()).LayoutElement().flexibleWidth = 1f;
-            row.RowButton("emp_ui_unban".lang(), () => {
+            row.IconButton(EmpUi.GameIcons?.trash, "x", () => {
                 ElinNetHost.Unban(user);
                 LayerElinTogether.Instance?.Reopen();
-            });
+            }, "emp_ui_unban");
         }
     }
 

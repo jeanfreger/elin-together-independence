@@ -25,6 +25,7 @@ internal static class TabLeaderboard
     // the board shown (a dropdown picks it: the Community tab's pills are taken by Journal / Leaderboards)
     private static int _board;
     private static YKVertical? _list;
+    private static YKVertical? _you;
     private static Action? _relayout;
 
     public static bool Enabled => NetSession.Instance is { HasActiveConnection: true, Rules.Leaderboards: true };
@@ -45,8 +46,10 @@ internal static class TabLeaderboard
             Redraw();
             Leaderboards.Ask(i);
         }, _board);
-        _list = card.Vertical();
-        _list.Layout.spacing = UIHelper.RowSpacing;
+        // the top ten scroll inside the card (seven in view); the player's own rank stays under them
+        _list = card.ScrollList(7 * (RowH + UIHelper.RowSpacing) - UIHelper.RowSpacing);
+        _you = card.Vertical();
+        _you.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
         Leaderboards.Changed = b => {
             if (b == _board) {
                 Redraw();
@@ -60,6 +63,7 @@ internal static class TabLeaderboard
     {
         Leaderboards.Changed = null;
         _list = null;
+        _you = null;
         _relayout = null;
     }
 
@@ -74,6 +78,12 @@ internal static class TabLeaderboard
 
         foreach (Transform child in page.transform) {
             UnityEngine.Object.Destroy(child.gameObject);
+        }
+        var you = _you ?? page;
+        if (_you != null) {
+            foreach (Transform child in _you.transform) {
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
         }
 
         var answer = Leaderboards.Of(board);
@@ -97,8 +107,8 @@ internal static class TabLeaderboard
                 row.Text(answer.Scores[i].ToString("N0"), mine ? FontColor.Good : FontColor.Default);
             }
 
-            page.Divider();
-            page.KeyValue("emp_ui_lb_you".lang(),
+            you.Divider();
+            you.KeyValue("emp_ui_lb_you".lang(),
                 answer.OwnRank > 0 ? "emp_ui_lb_rank".Loc(answer.OwnRank, Mathf.Max(answer.Names.Length, answer.Total), answer.OwnScore.ToString("N0")) : "emp_ui_lb_unranked".lang());
         }
 

@@ -328,8 +328,9 @@ internal static class TeamBanner
         return done;
     }
 
-    private const int PageSize = 30;
-    private const int PerRow = 10;
+    private const int PageSize = 24;
+    // (eight 30 px things and their gaps fit in a page of the book)
+    private const int PerRow = 8;
     private static string _query = "";
     private static int _page;
 
@@ -436,15 +437,15 @@ internal static class TeamBanner
         }
 
         var bar = list.ButtonRow();
-        bar.RowButton("<", () => {
+        bar.SignButton("<", () => {
             _page--;
             FillThings(list, colour, onPick);
-        });
+        }, 44f);
         bar.Text($"{_page + 1} / {pages}");
-        bar.RowButton(">", () => {
+        bar.SignButton(">", () => {
             _page++;
             FillThings(list, colour, onPick);
-        });
+        }, 44f);
     }
 
     /// <summary>

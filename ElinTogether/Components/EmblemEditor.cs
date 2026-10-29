@@ -18,7 +18,9 @@ internal static class EmblemEditor
 {
     private const int UndoMax = 20;
     private const int Step = 2;
-    private const float PreviewSize = TeamEmblem.Grid * 4f;
+    private const float PreviewSize = TeamEmblem.Grid * 3f;
+    // (twelve swatches and their gaps in a page's width)
+    private const float SwatchSize = 20f;
 
     private static int _team = -1;
     private static Emblem _draft = new(0, 0, []);
@@ -82,10 +84,14 @@ internal static class EmblemEditor
         var right = _right;
         _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _draft.Layers.Count - 1));
 
-        // the left page: the preview, as big as the page allows
+        // the left page: the preview, centred, with air above it (it touched the page's top edge)
         var view = left.Horizontal();
         view.Layout.childAlignment = TextAnchor.MiddleCenter;
         view.Layout.childForceExpandWidth = false;
+        view.Layout.childControlHeight = false;
+        view.Layout.padding = new(0, 0, 10, 6);
+        view.LayoutElement().minHeight = view.LayoutElement().preferredHeight = PreviewSize + 16f;
+        view.LayoutElement().flexibleWidth = 1f;
         _preview = TeamEmblemBaker.Place(view.transform, TeamEmblemBaker.Get(_draft), PreviewSize);
 
         if (!_leads) {
@@ -100,10 +106,10 @@ internal static class EmblemEditor
 
         // the background
         left.TextSmall("emp_ui_emblem_background".lang(), FontColor.Gray);
-        var colours = left.Row();
+        var colours = Swatches(left);
         for (var c = 0; c < TeamBanner.ColorCount; c++) {
             var index = c;
-            TeamBanner.Swatch(colours, TeamBanner.ColorOf(c), 24f, 24f, c == _draft.Background, () => {
+            TeamBanner.Swatch(colours, TeamBanner.ColorOf(c), SwatchSize, SwatchSize, c == _draft.Background, () => {
                 Change(_draft with { Background = index });
                 Fill();
             });
@@ -117,8 +123,16 @@ internal static class EmblemEditor
                 }
             });
 
+        // (three buttons in the page's width: each a third of it, widened only by a longer label)
         var bar = left.ButtonRow();
-        bar.RowButton("emp_ui_emblem_undo".lang(), () => {
+        bar.Layout.childAlignment = TextAnchor.MiddleCenter;
+        UIButton Third(UIButton button)
+        {
+            button.LayoutElement().preferredWidth = (EmpUi.PageInner - 20f) / 3f;
+            return button;
+        }
+
+        Third(bar.RowButton("emp_ui_emblem_undo".lang(), () => {
             if (_undo.Count == 0) {
                 return;
             }
@@ -126,14 +140,14 @@ internal static class EmblemEditor
             _draft = _undo[_undo.Count - 1];
             _undo.RemoveAt(_undo.Count - 1);
             Fill();
-        }).interactable = _undo.Count > 0;
-        bar.RowButton("emp_ui_emblem_reset".lang(), () => {
+        })).interactable = _undo.Count > 0;
+        Third(bar.RowButton("emp_ui_emblem_reset".lang(), () => {
             Change(Saved(_team));
             Fill();
-        });
-        bar.RowButton("emp_ui_emblem_save".lang(), () => {
+        }));
+        Third(bar.RowButton("emp_ui_emblem_save".lang(), () => {
             Teams.Ask(TeamAsk.Banner, 0, _draft.Background, TeamEmblem.Format(_draft));
-        }).interactable = _draft.Layers.Count > 0;
+        })).interactable = _draft.Layers.Count > 0;
 
         // the right page: the layers, then the picker or the selected layer's tools
         if (_picking) {
@@ -152,16 +166,20 @@ internal static class EmblemEditor
                 Fill();
             });
         } else {
-            right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
-            for (var i = 0; i < _draft.Layers.Count; i++) {
-                LayerRow(right, i);
-            }
-
-            var add = right.ButtonRow().RowButton("emp_ui_emblem_add".lang(), () => {
+            // the count and Add on one line, the layers under it (scrolled past four)
+            var head = right.Row();
+            head.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray)
+                .LayoutElement().flexibleWidth = 1f;
+            var add = head.RowButton("emp_ui_emblem_add".lang(), () => {
                 _picking = true;
                 Fill();
             });
             add.interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
+            var layers = right.ListArea(_draft.Layers.Count, 4, UIHelper.RowHeight);
+            for (var i = 0; i < _draft.Layers.Count; i++) {
+                LayerRow(layers, i);
+            }
+
             if (_draft.Layers.Count > 0) {
                 LayerTools(right);
             }
@@ -184,15 +202,66 @@ internal static class EmblemEditor
             });
         var name = NameOf(layer.Thing);
         row.Text(index == _selected ? "> " + name : name).LayoutElement().flexibleWidth = 1f;
-        Small(row, "^", () => Move(index, -1)).interactable = index > 0;
-        Small(row, "v", () => Move(index, 1)).interactable = index < _draft.Layers.Count - 1;
-        Small(row, "x", () => {
+        // the game's own small list buttons (its playlist's up and down, the inventory's trash)
+        var icons = EmpUi.GameIcons;
+        row.IconButton(icons?.up, "^", () => Move(index, -1), "emp_ui_emblem_up", index > 0, size: 26f);
+        row.IconButton(icons?.down, "v", () => Move(index, 1), "emp_ui_emblem_down", index < _draft.Layers.Count - 1, size: 26f);
+        row.IconButton(icons?.trash, "x", () => {
             Change(_draft with { Layers = _draft.Layers.Where((_, i) => i != index).ToList() });
             if (_selected >= index && _selected > 0) {
                 _selected--;
             }
             Fill();
-        });
+        }, "emp_ui_emblem_remove", size: 26f);
+    }
+
+    /// <summary>A line of small swatches, packed close so twelve fit in a page</summary>
+    private static YKHorizontal Swatches(YKLayout parent)
+    {
+        var row = parent.Row();
+        row.Layout.spacing = 4f;
+        return row;
+    }
+
+    /// <summary>The move pad: the four nudges as a 3x3 cross of small arrows</summary>
+    private static void MovePad(YKLayout parent)
+    {
+        var icons = EmpUi.GameIcons;
+        var pad = parent.Vertical();
+        pad.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        pad.Layout.spacing = 2f;
+        pad.Layout.childForceExpandWidth = false;
+        pad.LayoutElement().flexibleWidth = 0f;
+        // (the game's up arrow turned: 90 points left, -90 right)
+        var cells = new (string Sign, float Angle, int Dx, int Dy)?[] {
+            null, ("^", 0f, 0, -1), null,
+            ("<", 90f, -1, 0), null, (">", -90f, 1, 0),
+            null, ("v", 180f, 0, 1), null,
+        };
+        YKHorizontal? line = null;
+        for (var i = 0; i < cells.Length; i++) {
+            if (i % 3 == 0) {
+                line = pad.Horizontal();
+                line.Layout.spacing = 2f;
+                line.Layout.childForceExpandWidth = false;
+                line.Layout.childControlWidth = line.Layout.childControlHeight = true;
+                line.LayoutElement().minHeight = line.LayoutElement().preferredHeight = 28f;
+            }
+
+            if (cells[i] is not { } cell) {
+                var gap = new GameObject("Gap", typeof(RectTransform), typeof(LayoutElement));
+                gap.transform.SetParent(line!.transform, false);
+                var le = gap.GetComponent<LayoutElement>();
+                le.minWidth = le.preferredWidth = 28f;
+                continue;
+            }
+
+            var (dx, dy) = (cell.Dx, cell.Dy);
+            line!.IconButton(icons?.up, cell.Sign, () => Edit(l => l with {
+                X = Mathf.Clamp(l.X + dx * Step, 0, TeamEmblem.Grid),
+                Y = Mathf.Clamp(l.Y + dy * Step, 0, TeamEmblem.Grid),
+            }), null, true, cell.Angle, 28f);
+        }
     }
 
     /// <summary>The selected layer: nudges, size, quarter turn, flips, tint</summary>
@@ -201,17 +270,33 @@ internal static class EmblemEditor
         var layer = _draft.Layers[_selected];
         root.TextSmall("emp_ui_emblem_selected".Loc(NameOf(layer.Thing)), FontColor.Gray);
 
-        var move = root.ButtonRow();
-        move.Text("emp_ui_emblem_move".lang());
-        Small(move, "<", () => Edit(l => l with { X = Mathf.Clamp(l.X - Step, 0, TeamEmblem.Grid) }));
-        Small(move, ">", () => Edit(l => l with { X = Mathf.Clamp(l.X + Step, 0, TeamEmblem.Grid) }));
-        Small(move, "^", () => Edit(l => l with { Y = Mathf.Clamp(l.Y - Step, 0, TeamEmblem.Grid) }));
-        Small(move, "v", () => Edit(l => l with { Y = Mathf.Clamp(l.Y + Step, 0, TeamEmblem.Grid) }));
+        // the move pad beside the turn and the flips (one block instead of three rows of wide buttons)
+        var block = root.Horizontal();
+        block.Layout.childForceExpandWidth = false;
+        block.Layout.childAlignment = TextAnchor.MiddleLeft;
+        block.Layout.spacing = 12f;
+        MovePad(block);
+        var turn = block.Vertical();
+        turn.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        turn.Layout.spacing = 2f;
+        turn.Layout.childForceExpandWidth = false;
+        foreach (var (label, change) in new (string, System.Func<EmblemLayer, EmblemLayer>)[] {
+                     ("emp_ui_emblem_rotate", l => l with { Rotation = (l.Rotation + 1) % 4 }),
+                     ("emp_ui_emblem_flip_h", l => l with { Flip = l.Flip ^ 1 }),
+                     ("emp_ui_emblem_flip_v", l => l with { Flip = l.Flip ^ 2 }),
+                 }) {
+            var edit = change;
+            var button = turn.Button(label.lang(), () => Edit(edit));
+            var element = button.LayoutElement();
+            element.minHeight = element.preferredHeight = 28f;
+            element.preferredWidth = UIHelper.ButtonWidth;
+            element.flexibleWidth = 0f;
+        }
 
-        var size = root.ButtonRow();
+        var size = root.Row();
         size.Text("emp_ui_emblem_size".lang());
         Slider? slider = null;
-        Small(size, "-", () => {
+        size.SignButton("-", () => {
             Edit(l => l with { Size = Mathf.Clamp(l.Size - 10, TeamEmblem.MinSize, TeamEmblem.MaxSize) });
             slider?.SetValueWithoutNotify(_draft.Layers[_selected].Size);
         });
@@ -225,30 +310,29 @@ internal static class EmblemEditor
             Edit(l => l with { Size = value }, true);
         }, TeamEmblem.MinSize, TeamEmblem.MaxSize, v => Mathf.RoundToInt(v) + " %");
         slider.LayoutElement().flexibleWidth = 1f;
-        Small(size, "+", () => {
+        size.SignButton("+", () => {
             Edit(l => l with { Size = Mathf.Clamp(l.Size + 10, TeamEmblem.MinSize, TeamEmblem.MaxSize) });
             slider.SetValueWithoutNotify(_draft.Layers[_selected].Size);
         });
 
-        var turn = root.ButtonRow();
-        turn.RowButton("emp_ui_emblem_rotate".lang(), () => Edit(l => l with { Rotation = (l.Rotation + 1) % 4 }));
-        turn.RowButton("emp_ui_emblem_flip_h".lang(), () => Edit(l => l with { Flip = l.Flip ^ 1 }));
-        turn.RowButton("emp_ui_emblem_flip_v".lang(), () => Edit(l => l with { Flip = l.Flip ^ 2 }));
-
-        root.TextSmall("emp_ui_emblem_tint".lang(), FontColor.Gray);
-        var tints = root.Row();
+        // the tint: "None" on the title's line, the swatches under it
+        var tintHead = root.Row();
+        tintHead.TextSmall("emp_ui_emblem_tint".lang(), FontColor.Gray).LayoutElement().flexibleWidth = 1f;
+        var none = tintHead.Button("emp_ui_emblem_tint_none".lang(), () => {
+            Edit(l => l with { Tint = TeamEmblem.OwnColours });
+            Fill();
+        });
+        none.LayoutElement().preferredWidth = 90f;
+        none.LayoutElement().flexibleWidth = 0f;
+        none.interactable = layer.Tint != TeamEmblem.OwnColours;
+        var tints = Swatches(root);
         for (var c = 0; c < TeamBanner.ColorCount; c++) {
             var index = c;
-            TeamBanner.Swatch(tints, TeamBanner.ColorOf(c), 24f, 24f, layer.Tint == c, () => {
+            TeamBanner.Swatch(tints, TeamBanner.ColorOf(c), SwatchSize, SwatchSize, layer.Tint == c, () => {
                 Edit(l => l with { Tint = index });
                 Fill();
             });
         }
-
-        Small(tints, "emp_ui_emblem_tint_none".lang(), () => {
-            Edit(l => l with { Tint = TeamEmblem.OwnColours });
-            Fill();
-        }, 0f).interactable = layer.Tint != TeamEmblem.OwnColours;
     }
 
     private static void Move(int index, int by)
@@ -314,13 +398,4 @@ internal static class EmblemEditor
         return EClass.sources.things.map.TryGetValue(id, out var row) ? row.GetName() ?? id : id;
     }
 
-    /// <summary>A narrow game button for one sign (or a short word when <paramref name="width" /> is 0)</summary>
-    private static UIButton Small(YKLayout row, string label, System.Action act, float width = 44f)
-    {
-        var button = row.Button(label, act);
-        var element = button.LayoutElement();
-        element.preferredWidth = width > 0f ? width : (button.mainText != null ? button.mainText.preferredWidth + 32f : 80f);
-        element.flexibleWidth = 0f;
-        return button;
-    }
 }

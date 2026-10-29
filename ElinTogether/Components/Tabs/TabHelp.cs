@@ -28,18 +28,58 @@ internal static class TabHelp
     public static List<(string, System.Action<YKVertical>)> Pages()
     {
         return [
-            ("emp_ui_sub_how".lang(), page => {
-                foreach (var (id, tab, label) in Topics) {
-                    var card = page.Card($"emp_help_{id}_t".lang());
-                    card.Text($"emp_help_{id}".lang());
-                    var target = tab;
-                    card.ButtonRow().RowButton("emp_ui_help_open".Loc(label.lang()),
-                        () => LayerElinTogether.Instance?.Window.SwitchContent(target));
-                }
-            }),
+            ("emp_ui_sub_how".lang(), BuildHow),
             ("emp_help_about".lang(), BuildAbout),
             ("emp_help_report".lang(), BuildReport),
         ];
+    }
+
+    // the topic open on the right page
+    private static int _topic;
+
+    /// <summary>
+    ///     The journal's two pages: the topics on the left (a click opens one), the picked topic's words and the button
+    ///     to its page on the right (six cards one under the other ran under the window's edge)
+    /// </summary>
+    private static void BuildHow(YKVertical page)
+    {
+        var (left, right) = page.Book();
+        var list = left.Card("emp_ui_sub_how".lang());
+        var text = right.Vertical();
+        text.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        text.Layout.spacing = UIHelper.RowSpacing;
+        var rows = new List<YKHorizontal>();
+
+        void Show(int index, bool relayout = true)
+        {
+            _topic = index;
+            foreach (Transform child in text.transform) {
+                Object.Destroy(child.gameObject);
+            }
+
+            var (id, tab, label) = Topics[index];
+            var card = text.Card($"emp_help_{id}_t".lang());
+            card.Text($"emp_help_{id}".lang());
+            card.ButtonRow().RowButton("emp_ui_help_open".Loc(label.lang()),
+                () => LayerElinTogether.Instance?.Window.SwitchContent(tab));
+            for (var i = 0; i < rows.Count; i++) {
+                if (rows[i].GetComponent<UnityEngine.UI.Image>() is { } shade) {
+                    shade.color = i == index ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
+                }
+            }
+
+            UIHelper.WrapTexts(text);
+            if (relayout) {
+                page.GetComponentInParent<TabEmpBase>()?.Relayout();
+            }
+        }
+
+        for (var i = 0; i < Topics.Length; i++) {
+            var index = i;
+            rows.Add(list.PickLine($"emp_help_{Topics[i].Id}_t".lang(), null, i == _topic, () => Show(index)));
+        }
+
+        Show(Mathf.Clamp(_topic, 0, Topics.Length - 1), false);
     }
 
     private static void BuildAbout(YKVertical page)

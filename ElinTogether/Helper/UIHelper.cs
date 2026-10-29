@@ -15,7 +15,7 @@ public static class UIHelper
     public const float RowHeight = 32f;
     public const float RowSpacing = 6f;
     public const float ControlWidth = 320f;
-    public const float ButtonWidth = 220f;
+    public const float ButtonWidth = 150f;
     public const int SubIndent = 32;
 
     public static RectOffset CardPadding => new(20, 20, 12, 12);

@@ -47,8 +47,10 @@ internal static class TabJournal
             return;
         }
 
+        // (the newest in the window, the older ones scrolled inside the card)
+        var list = card.ListArea(entries.Count, 12, 26f);
         foreach (var entry in entries) {
-            card.Text(ActivityJournal.Line(entry));
+            list.Text(ActivityJournal.Line(entry));
         }
     }
 }

@@ -1066,5 +1066,8 @@
     "LangGeneral.emp_ui_mods_ask_without.text": "不使用这些模组加入",
     "LangGeneral.emp_ui_mods_ask_cancel.text": "取消",
     "LangGeneral.emp_ui_mods_ask_code_found.text": "为 {0} 的游戏下载的这些模组含有代码。Elin 重启时，这些代码将以你的全部权限在本机运行：",
-    "LangGeneral.emp_ui_mods_ask_code_found_stranger.text": "警告：{0} 不是你的 Steam 好友，且为其游戏下载的这些模组含有代码。Elin 重启时，这些代码将以你的全部权限在本机运行："
+    "LangGeneral.emp_ui_mods_ask_code_found_stranger.text": "警告：{0} 不是你的 Steam 好友，且为其游戏下载的这些模组含有代码。Elin 重启时，这些代码将以你的全部权限在本机运行：",
+    "LangGeneral.emp_ui_emblem_up.text": "上移",
+    "LangGeneral.emp_ui_emblem_down.text": "下移",
+    "LangGeneral.emp_ui_emblem_remove.text": "删除图层"
 }

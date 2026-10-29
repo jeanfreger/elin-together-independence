@@ -31,21 +31,36 @@ internal class TabLands : TabEmpBase
         if (mine == Teams.Wanderers) {
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
-            BuildBoxes(mine);
+            BuildBoxes(this, mine);
             return;
         }
 
         var lands = Teams.LandsOf(mine).ToList();
         if (lands.Count == 0) {
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
+            BuildBoxes(this, mine);
+            return;
         }
 
+        // the journal's two pages: the lands (scrolled past five) and the boxes on the left, the picked land's rules
+        // on the right (a card per land ran under the window's bottom edge)
+        var (left, right) = this.Book();
+        var picked = lands.Contains(_picked) ? _picked : lands[0];
+        var list = left.Card("emp_ui_tab_lands".lang()).ListArea(lands.Count, 5, 44f);
         foreach (var land in lands) {
-            BuildLand(land, Teams.LeaderOf(mine) == me);
+            var target = land;
+            list.PickLine(Teams.ZoneName(land), Where(land), land == picked, () => {
+                _picked = target;
+                LayerElinTogether.Instance?.Reopen();
+            });
         }
 
-        BuildBoxes(mine);
+        BuildBoxes(left, mine);
+        BuildLand(right, picked, Teams.LeaderOf(mine) == me);
     }
+
+    // the land whose rules are open on the right, kept over reopenings
+    private static int _picked;
 
     private static string Level(int level) => $"emp_ui_team_rule_{level}".lang();
 
@@ -58,9 +73,9 @@ internal class TabLands : TabEmpBase
         return spatial?.parent is { } parent && parent.Name is { Length: > 0 } name ? "emp_ui_land_where".Loc(name) : "";
     }
 
-    private void BuildLand(int land, bool leads)
+    private static void BuildLand(YKLayout page, int land, bool leads)
     {
-        var card = this.Box(Teams.ZoneName(land));
+        var card = page.Card(Teams.ZoneName(land));
         if (Where(land) is { Length: > 0 } where) {
             card.TextSmall(where, FontColor.Gray);
         }
@@ -70,15 +85,14 @@ internal class TabLands : TabEmpBase
         } else {
             var rule = Teams.RuleOf(land);
             var (mineLevel, others) = (Teams.MineLevel(rule), Teams.OthersLevel(rule));
+            // (each dropdown under its title, the page's width: beside it, a fixed-width dropdown ran off the page)
             // (the team keeps at least Visit: a land closed to its own team would shut its owners out)
             var own = new List<string> { Level(Teams.Visit), Level(Teams.Use), Level(Teams.Build) };
-            var dropdown = card.DropdownRow("emp_ui_team_rule_mine".lang(), own,
-                i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(i + 1, others, Teams.OfflineClosed(rule)), land), mineLevel - 1);
-            dropdown.interactable = leads;
+            card.DropdownSettingRow("emp_ui_team_rule_mine".lang(), null, own, mineLevel - 1,
+                i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(i + 1, others, Teams.OfflineClosed(rule)), land), readOnly: !leads);
             var all = new List<string> { Level(Teams.Closed), Level(Teams.Visit), Level(Teams.Use), Level(Teams.Build) };
-            dropdown = card.DropdownRow("emp_ui_team_rule_others".lang(), all,
-                i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mineLevel, i, Teams.OfflineClosed(rule)), land), others);
-            dropdown.interactable = leads;
+            card.DropdownSettingRow("emp_ui_team_rule_others".lang(), null, all, others,
+                i => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mineLevel, i, Teams.OfflineClosed(rule)), land), readOnly: !leads);
             // offline protection: while nobody of the team is in the game, the land is closed to everyone else
             card.ToggleRow("emp_ui_team_rule_offline".lang(), null, Teams.OfflineClosed(rule),
                 on => Teams.Ask(TeamAsk.LandRule, Teams.PackRule(mineLevel, others, on), land),
@@ -97,7 +111,7 @@ internal class TabLands : TabEmpBase
     /// <summary>
     ///     The team bank and the player's delivery box, with the game's own icons for them
     /// </summary>
-    private void BuildBoxes(int mine)
+    private static void BuildBoxes(YKLayout page, int mine)
     {
         var bank = mine == Teams.Wanderers ? null : TeamBoxes.TeamBankBox();
         var delivery = TeamBoxes.DeliveryBox();
@@ -107,7 +121,7 @@ internal class TabLands : TabEmpBase
 
         // (the header says what is shown: both boxes, or the one there is)
         var header = bank is not null && delivery is not null ? "emp_ui_land_boxes" : bank is not null ? "emp_ui_land_team_bank" : "emp_ui_land_delivery";
-        var card = this.Card(header.lang(), EmpUi.Icon("icon_container"));
+        var card = page.Card(header.lang(), EmpUi.Icon("icon_container"));
         if (bank is not null) {
             BoxRow(card, bank, "emp_ui_land_team_bank".lang(), "emp_ui_land_bank_line".Loc(bank.GetCurrency(), bank.things.Count));
         }

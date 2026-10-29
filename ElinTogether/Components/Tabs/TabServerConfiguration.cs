@@ -273,10 +273,12 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var diff = rows.Where(r => r.Under is null && IsChanged(r, _src, RuleSource.Defaults)).ToList();
         var card = page.Card("emp_ui_sv_diff_title".Loc(diff.Count));
+        // (under the banner and the preset cards: six lines in view, the others scrolled inside the card)
+        var list = card.ListArea(diff.Count, 6, 24f);
         foreach (var row in diff) {
             var id = row.Id;
             // a compact link row, not a full-width button: "Combat pace: Custom (recommended: Each own pace)"
-            var link = card.Text("> " + "emp_ui_sv_diff_line".Loc(row.Label, ValueText(row, _src), ValueText(row, RuleSource.Defaults)));
+            var link = list.Text("> " + "emp_ui_sv_diff_line".Loc(row.Label, ValueText(row, _src), ValueText(row, RuleSource.Defaults)));
             link.SetSize(UIHelper.LabelSize);
             link.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => Jump(id));
         }

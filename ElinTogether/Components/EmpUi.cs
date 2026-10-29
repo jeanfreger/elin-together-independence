@@ -296,15 +296,7 @@ internal static class EmpUi
         IReadOnlyList<(string Label, Action Act)>? actions = null)
     {
         var row = parent.PlayerRow(info, actions ?? []);
-        var shade = row.gameObject.AddComponent<Image>();
-        shade.color = picked ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
-        var button = row.gameObject.AddComponent<Button>();
-        button.targetGraphic = shade;
-        button.transition = Selectable.Transition.None;
-        button.onClick.AddListener(() => {
-            SE.ClickGeneral();
-            onPick();
-        });
+        Pickable(row, picked, onPick);
         return row;
     }
 
@@ -449,20 +441,24 @@ internal static class EmpUi
         col.Layout.spacing = 0f;
         col.LayoutElement().flexibleWidth = 1f;
         // one line each, cut with an ellipsis; the row keeps one height whatever the names
+        // (the width the row leaves the words in a page of the book: a team chip with its name took the most of it and
+        // the names broke over two lines; the team is now one small mark, its name on the player's page)
+        var words = string.IsNullOrEmpty(info.Team) ? 200f : 170f;
         var nameText = col.Text(info.Name);
         nameText.SetSize(UIHelper.LabelSize);
-        OneLine(nameText, info.Name, string.IsNullOrEmpty(info.Team) ? 200f : 150f);
+        OneLine(nameText, info.Name, words);
         if (info.Detail.Length > 0) {
-            OneLine(GreyLine(col, info.Detail), info.Detail, string.IsNullOrEmpty(info.Team) ? 200f : 150f);
+            OneLine(GreyLine(col, info.Detail), info.Detail, words);
         }
 
         if (!string.IsNullOrEmpty(info.Team)) {
-            // a mini emblem before the team chip (box "Team banners")
+            // the team's mini emblem (box "Team banners"), or a small square of its colour
             if (info.TeamEmblem != null) {
                 Helper.TeamEmblemBaker.Place(row.transform, info.TeamEmblem, 24f);
+            } else {
+                var mark = NewBox(row.transform, "TeamMark", 16f, 16f);
+                Stretch(NewImage(mark, "Colour", info.TeamColor ?? Unlit).rectTransform);
             }
-
-            row.Chip(info.Team!, tint: info.TeamColor);
         }
 
         foreach (var badge in new[] { PlayerBadge.Idle, PlayerBadge.Admin, PlayerBadge.Moderator, PlayerBadge.Frozen }) {
@@ -508,6 +504,8 @@ internal static class EmpUi
         }
 
         line.SetText(full.Substring(0, n).TrimEnd() + "...");
+        // (SetText puts the prefab's wrapping back: the cut name then broke over two lines, Players 2026-10-29)
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
         var element = line.LayoutElement();
         element.preferredWidth = width;
         element.minWidth = 0f;
@@ -629,6 +627,166 @@ internal static class EmpUi
         element.minWidth = 40f;
         element.preferredWidth = 40f;
         element.flexibleWidth = 0f;
+    }
+
+    // ---------------------------------------------------------------- compact controls
+
+    /// <summary>
+    ///     The inner width of a page of the book at the window's normal size (1280x720: 380 per page, less the page's
+    ///     and the card's margins); what a row of buttons or swatches must fit in
+    /// </summary>
+    public const float PageInner = 320f;
+
+    /// <summary>
+    ///     A small square button with one of the game's own icons (the "SubButton" of its list rows: the up and down
+    ///     arrows of the playlist, the trash of the inventory), the action said by its hover text. Without the prefab
+    ///     or the icon, a narrow game button with a sign. <paramref name="angle" /> turns the icon (an "up" arrow
+    ///     turned by 90 points left)
+    /// </summary>
+    public static UIButton IconButton(this YKLayout row, Sprite? icon, string sign, Action act, string? tipLang = null,
+        bool enabled = true, float angle = 0f, float size = 30f)
+    {
+        UIButton? button = null;
+        if (icon != null && Util.Instantiate<UIButton>("UI/Element/Button/SubButton", row.transform) is { } sub) {
+            button = sub;
+            if (button.icon != null) {
+                button.icon.sprite = icon;
+                button.icon.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                if (!enabled) {
+                    button.icon.color = new(1f, 1f, 1f, 0.3f);
+                }
+            }
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => {
+                SE.ClickGeneral();
+                act();
+            });
+        }
+
+        button ??= row.Button(sign, act);
+        var element = button.GetOrCreate<LayoutElement>();
+        element.minWidth = element.preferredWidth = size;
+        element.minHeight = element.preferredHeight = size;
+        element.flexibleWidth = 0f;
+        button.Rect().sizeDelta = new(size, size);
+        button.interactable = enabled;
+        if (tipLang != null) {
+            button.SetTooltipLang(tipLang);
+        }
+        return button;
+    }
+
+    /// <summary>The game's list icons (CoreRef.Icons), or null before the game has loaded them</summary>
+    public static CoreRef.Icons? GameIcons => EClass.core?.refs?.icons;
+
+    /// <summary>
+    ///     A narrow game button holding one sign ("+", "-"), as wide as it needs and no wider
+    /// </summary>
+    public static UIButton SignButton(this YKLayout row, string sign, Action act, float width = 34f)
+    {
+        var button = row.Button(sign, act);
+        var element = button.LayoutElement();
+        element.minWidth = element.preferredWidth = width;
+        element.flexibleWidth = 0f;
+        return button;
+    }
+
+    /// <summary>
+    ///     Buttons as wide as their labels (the FixedWidth width), packed into as few lines as fit in
+    ///     <paramref name="width" />: a page of actions without one full-width bar per action
+    /// </summary>
+    public static void ButtonFlow(this YKLayout parent, IReadOnlyList<(string Label, Action Act)> buttons, float width = PageInner)
+    {
+        YKHorizontal? line = null;
+        var used = 0f;
+        foreach (var (label, act) in buttons) {
+            var wanted = Mathf.Max(UIHelper.ButtonWidth, MeasureLabel(label) + 48f);
+            if (line == null || used + 10f + wanted > width) {
+                line = parent.ButtonRow();
+                used = -10f;
+            }
+
+            var action = act;
+            line.RowButton(label, () => action());
+            used += 10f + wanted;
+        }
+    }
+
+    // the width of a label at the game's button font size (the buttons' own text reads 0 before the first layout)
+    private static float MeasureLabel(string label)
+    {
+        var size = UIHelper.LabelSize > 0 ? UIHelper.LabelSize : 15;
+        // (a Japanese or Chinese sign is about as wide as the font is tall, a Latin letter about half)
+        return label.Sum(c => c >= '⺀' ? size : size * 0.55f);
+    }
+
+    /// <summary>
+    ///     A clipped frame of a fixed height holding a list that scrolls by wheel or drag (the Other teams list); returns
+    ///     the list to fill
+    /// </summary>
+    public static YKVertical ScrollList(this YKLayout parent, float height)
+    {
+        var frame = new GameObject("ScrollList", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
+        frame.transform.SetParent(parent.transform, false);
+        var element = frame.GetComponent<LayoutElement>();
+        element.minHeight = element.preferredHeight = height;
+        element.flexibleWidth = 1f;
+        frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.001f);
+
+        var content = parent.Vertical();
+        content.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        content.Layout.spacing = UIHelper.RowSpacing;
+        content.transform.SetParent(frame.transform, false);
+        var rt = (RectTransform)content.transform;
+        rt.anchorMin = new(0f, 1f);
+        rt.anchorMax = new(1f, 1f);
+        rt.pivot = new(0.5f, 1f);
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+        var scroll = frame.GetComponent<ScrollRect>();
+        scroll.content = rt;
+        scroll.viewport = (RectTransform)frame.transform;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
+        return content;
+    }
+
+    /// <summary>
+    ///     Where a list of <paramref name="count" /> rows goes: the card itself while they fit, else a scrolled frame
+    ///     of <paramref name="maxRows" /> rows
+    /// </summary>
+    public static YKLayout ListArea(this YKLayout parent, int count, int maxRows, float rowHeight)
+    {
+        return count > maxRows ? parent.ScrollList(maxRows * (rowHeight + UIHelper.RowSpacing) - UIHelper.RowSpacing) : parent;
+    }
+
+    /// <summary>
+    ///     A row picked by a click, the picked one shaded as the journal's
+    /// </summary>
+    public static void Pickable(YKHorizontal row, bool picked, Action onPick)
+    {
+        var shade = row.gameObject.AddComponent<Image>();
+        shade.color = picked ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
+        var button = row.gameObject.AddComponent<Button>();
+        button.targetGraphic = shade;
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(() => {
+            SE.ClickGeneral();
+            onPick();
+        });
+    }
+
+    /// <summary>
+    ///     A line of a list on the left page: a title and a grey line, picked by a click
+    /// </summary>
+    public static YKHorizontal PickLine(this YKLayout parent, string title, string? detail, bool picked, Action onPick)
+    {
+        var row = parent.Row();
+        row.Layout.padding = new(6, 6, 2, 2);
+        row.TextColumn(title, detail);
+        Pickable(row, picked, onPick);
+        return row;
     }
 
     // ---------------------------------------------------------------- (f) Box and columns (the options window)

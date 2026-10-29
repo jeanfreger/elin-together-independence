@@ -63,8 +63,11 @@ internal class TabServerInfo : TabEmpBase
             return;
         }
 
-        foreach (var line in ServerInfo.Lines(text)) {
-            card.Text(line);
+        // (a long text scrolls inside the card; the host's buttons stay under it, in the window)
+        var lines = ServerInfo.Lines(text).ToList();
+        var list = card.ListArea(lines.Count, 12, 26f);
+        foreach (var line in lines) {
+            list.Text(line);
         }
 
         if (IsHost) {
