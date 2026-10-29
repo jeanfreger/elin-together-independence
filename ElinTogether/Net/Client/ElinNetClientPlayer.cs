@@ -20,6 +20,10 @@ internal partial class ElinNetClient
     {
         EmpLog.Information("Received character choice, {Count} character(s)", request.Charas.Count);
 
+        // the host is back and waits for the player's pick: joining again has done its job. Left running, its hard end
+        // (45 s after a host that left) reset the session under the choice screen (hostdrop_away_check H2, 2026-10-29)
+        NetReconnect.Stop();
+
         // PreparePlayerJoin
         AdvanceHandshake(NetHandshakePhase.Joined);
 
