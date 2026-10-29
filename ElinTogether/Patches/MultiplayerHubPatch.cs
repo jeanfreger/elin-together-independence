@@ -1,3 +1,4 @@
+using System.Linq;
 using ElinTogether.Components;
 using HarmonyLib;
 using UnityEngine;
@@ -84,6 +85,33 @@ internal static class MultiplayerHubPatch
         _ = Icon;
         bar.SetItem(new HotItemLayer { id = LayerId });
         // (vanilla already rebuilt the row once, before this item existed)
+        if (bar.actor != null) {
+            bar.actor.Rebuild();
+        }
+    }
+
+    // a save made before this mod (or before this button) keeps the row it was saved with: ResetHotbar only runs for a
+    // new game, so the button is put in the row's first free slot when the game loads
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Player), nameof(Player.OnLoad))]
+    private static void AddButtonOnLoad(Player __instance)
+    {
+        if (__instance.hotbars?.bars is not { } bars || bars.Length <= Hotbar.IDMainMenu || bars[Hotbar.IDMainMenu] is not { } bar) {
+            return;
+        }
+
+        foreach (var page in bar.pages) {
+            if (page.items.Any(i => i is HotItemLayer { id: LayerId })) {
+                return;
+            }
+        }
+
+        _ = Icon;
+        bar.SetItem(new HotItemLayer { id = LayerId });
+        if (!bar.pages.Any(p => p.items.Any(i => i is HotItemLayer { id: LayerId }))) {
+            EmpLog.Warning("No free slot in the main menu bar for the Multiplayer button");
+        }
+
         if (bar.actor != null) {
             bar.actor.Rebuild();
         }
