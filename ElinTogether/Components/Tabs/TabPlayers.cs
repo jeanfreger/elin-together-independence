@@ -44,7 +44,80 @@ internal class TabPlayers : TabEmpBase
     private static void BuildPlayerList(YKVertical page)
     {
         var (left, right) = page.Book();
-        FillBook(left, right);
+        // search, sort and filter stay put (a typed text must keep its focus); only the list under them is rebuilt
+        var controls = left.Vertical();
+        controls.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        controls.Layout.spacing = UIHelper.RowSpacing;
+        var list = left.Vertical();
+        list.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        list.Layout.spacing = UIHelper.RowSpacing;
+
+        var search = controls.InputText(_search);
+        search.field.characterLimit = 40;
+        if (search.field.placeholder is UnityEngine.UI.Text hint) {
+            hint.text = "emp_ui_pl_search".lang();
+        }
+        search.field.onValueChanged.AddListener(text => {
+            _search = text.Trim();
+            _page = 0;
+            FillBook(list, right);
+        });
+        var bar = controls.ButtonRow();
+        UIButton? sortButton = null;
+        sortButton = bar.RowButton("emp_ui_pl_sort".Loc(SortName()), () => {
+            _sort = (_sort + 1) % SortKeys.Length;
+            _page = 0;
+            sortButton!.mainText.SetText("emp_ui_pl_sort".Loc(SortName()));
+            FillBook(list, right);
+        });
+        if (NetSession.Instance.Rules.UseTeams) {
+            UIButton? teamButton = null;
+            teamButton = bar.RowButton(TeamLabel(), () => {
+                _myTeam = !_myTeam;
+                _page = 0;
+                teamButton!.mainText.SetText(TeamLabel());
+                FillBook(list, right);
+            });
+        }
+
+        FillBook(list, right);
+    }
+
+    private static readonly string[] SortKeys = ["name", "level", "ping", "team"];
+    private static string _search = "";
+    private static int _sort;
+    private static bool _myTeam;
+    private static int _page;
+    private const int PageSize = 20;
+
+    private static string SortName() => ("emp_ui_pl_sort_" + SortKeys[_sort]).lang();
+
+    private static string TeamLabel() => (_myTeam ? "[x] " : "") + "emp_ui_pl_myteam".lang();
+
+    private static string NameOfPlayer(NetPeerState p) =>
+        string.IsNullOrWhiteSpace(p.User.Name) ? p.FindChara()?.Name ?? "?" : p.User.Name;
+
+    private static List<NetPeerState> Visible(List<NetPeerState> all)
+    {
+        IEnumerable<NetPeerState> q = all;
+        if (_search.Length > 0) {
+            q = q.Where(p => NameOfPlayer(p).IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             (p.FindChara()?.Name ?? "").IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+        if (_myTeam && EClass.pc is { } pc) {
+            var mine = Teams.TeamOf(pc.uid);
+            q = q.Where(p => p.FindChara() is { } c && Teams.TeamOf(c.uid) == mine);
+        }
+
+        float Ping(NetPeerState p) => p.AvgPingMs > 0 ? p.AvgPingMs : p.LastPingMs;
+        // (the host and you first, whatever the order)
+        var ordered = q.OrderBy(p => p.Index == 0 ? 0 : p.User.IsMe ? 1 : 2);
+        return (SortKeys[_sort] switch {
+            "level" => ordered.ThenByDescending(p => p.FindChara()?.LV ?? 0),
+            "ping" => ordered.ThenBy(Ping),
+            "team" => ordered.ThenBy(p => p.FindChara() is { } c ? Teams.NameOf(Teams.TeamOf(c.uid)) : ""),
+            _ => ordered,
+        }).ThenBy(NameOfPlayer, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static void FillBook(YKVertical left, YKVertical right)
@@ -58,13 +131,32 @@ internal class TabPlayers : TabEmpBase
             Destroy(child.gameObject);
         }
 
-        var players = NetSession.Instance.CurrentPlayers.ToList();
-        var picked = players.FirstOrDefault(p => (ulong)p.User == _picked) ?? players.FirstOrDefault(p => p.User.IsMe) ?? players.FirstOrDefault();
+        var all = NetSession.Instance.CurrentPlayers.ToList();
+        var players = Visible(all);
+        var pages = Mathf.Max(1, (players.Count + PageSize - 1) / PageSize);
+        _page = Mathf.Clamp(_page, 0, pages - 1);
+        var picked = all.FirstOrDefault(p => (ulong)p.User == _picked) ?? all.FirstOrDefault(p => p.User.IsMe) ?? all.FirstOrDefault();
         var card = left.Card("emp_ui_players_title".Loc(players.Count));
-        foreach (var player in players) {
+        foreach (var player in players.Skip(_page * PageSize).Take(PageSize)) {
             var target = player;
             BuildPlayerLine(card, player, player == picked, () => {
                 _picked = target.User;
+                FillBook(left, right);
+            });
+        }
+
+        if (players.Count == 0 && all.Count > 0) {
+            card.EmptyText("emp_ui_pl_none".lang());
+        }
+        if (pages > 1) {
+            var nav = card.ButtonRow();
+            nav.RowButton("<", () => {
+                _page = (_page + pages - 1) % pages;
+                FillBook(left, right);
+            });
+            nav.Text("emp_ui_pl_page".Loc(_page + 1, pages));
+            nav.RowButton(">", () => {
+                _page = (_page + 1) % pages;
                 FillBook(left, right);
             });
         }
@@ -74,7 +166,7 @@ internal class TabPlayers : TabEmpBase
         }
 
         // nobody else: say so, and the one click that helps (invite when in a game, else the Play page)
-        if (players.Count <= 1) {
+        if (all.Count <= 1) {
             if (NetSession.Instance.HasActiveConnection) {
                 card.EmptyState("emp_ui_players_alone".lang(), "emp_ui_players_alone_btn".lang(),
                     NetSession.Instance.Lobby.InviteSteamOverlay);
@@ -125,8 +217,12 @@ internal class TabPlayers : TabEmpBase
         if (NetSession.Instance.Rules.UseTeams) {
             lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(Teams.TeamOf(chara.uid)));
         }
-        var ms = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
-        lines.KeyValue("emp_ui_kv_ping".lang(), player.Index == 0 || ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
+        lines.KeyValue("emp_ui_kv_where".lang(), chara.currentZone?.NameWithLevel);
+        // (no ping for yourself, nor for the host's own line)
+        if (player.Index != 0 && !player.User.IsMe) {
+            var ms = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
+            lines.KeyValue("emp_ui_kv_ping".lang(), ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
+        }
         lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
 
         var actions = ActionsFor(player, chara);
@@ -221,7 +317,7 @@ internal class TabPlayers : TabEmpBase
         }
 
         // (a player whose Steam name is empty is shown by the name of the character)
-        var name = (string.IsNullOrWhiteSpace(player.User.Name) ? chara.Name : player.User.Name).TagColor(PeerColorizer.GetColor(player.Index));
+        var name = (string.IsNullOrWhiteSpace(player.User.Name) ? chara.Name : player.User.Name);
         if (player.User.IsMe) {
             name += "  " + "emp_ui_player_you".lang();
         }

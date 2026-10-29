@@ -958,5 +958,17 @@
     "LangGeneral.emp_ui_sv_desc_fast_joins.text": "适用于大型世界：玩家加入和定期保存时，所有人的游戏卡顿时间更短。世界和地图的副本仍在游戏中制作，其压缩、发送以及存档文件的写入在旁边完成。关闭：全部在游戏中完成。",
     "LangGeneral.emp_ui_cl_code_mods.text": "也下载代码模组（DLL）：仅限信任的主机",
     "LangGeneral.emp_ui_cl_desc_code_mods.text": "模组的代码会以你的全部权限在本机运行，主机可以指定任何创意工坊模组。关闭时：游戏的模组含有代码则不下载，并告诉你是哪个模组。",
-    "LangGeneral.emp_ui_mods_code_refused.text": "未加载游戏的模组：{0} 含有代码（DLL）。仅在信任此主机时，才在客户端设置中勾选“也下载代码模组（DLL）”。"
+    "LangGeneral.emp_ui_mods_code_refused.text": "未加载游戏的模组：{0} 含有代码（DLL）。仅在信任此主机时，才在客户端设置中勾选“也下载代码模组（DLL）”。",
+    "LangGeneral.emp_ui_pl_search.text": "按名称搜索",
+    "LangGeneral.emp_ui_pl_sort.text": "排序：{0}",
+    "LangGeneral.emp_ui_pl_sort_name.text": "名称",
+    "LangGeneral.emp_ui_pl_sort_level.text": "等级",
+    "LangGeneral.emp_ui_pl_sort_ping.text": "延迟",
+    "LangGeneral.emp_ui_pl_sort_team.text": "队伍",
+    "LangGeneral.emp_ui_pl_myteam.text": "我的队伍",
+    "LangGeneral.emp_ui_pl_none.text": "没有符合的玩家。",
+    "LangGeneral.emp_ui_pl_page.text": "{0} / {1}",
+    "LangGeneral.emp_ui_rules_summary.text": "共 {0} 条规则生效，此处显示前几条。",
+    "LangGeneral.emp_ui_rules_open.text": "编辑规则",
+    "LangGeneral.emp_ui_help_open.text": "打开：{0}"
 }

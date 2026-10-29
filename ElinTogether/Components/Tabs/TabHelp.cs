@@ -13,14 +13,26 @@ internal class TabHelp : TabEmpBase
 {
     private const string Repo = "https://github.com/jeanfreger/elin-together-independence";
 
-    private static readonly string[] Topics = ["hosting", "joining", "teams", "lands", "trading", "duels"];
+    // topic, the tab where it is done (tab name, its label id)
+    private static readonly (string Id, string Tab, string Label)[] Topics = [
+        ("hosting", TabPlay.TabName, "emp_ui_tab_play"),
+        ("joining", TabPlay.TabName, "emp_ui_tab_play"),
+        ("teams", "emp_tab_team", "emp_ui_tab_team"),
+        ("lands", "emp_tab_lands", "emp_ui_tab_lands"),
+        ("trading", TabPlayers.TabName, "emp_ui_tab_players"),
+        ("duels", "emp_tab_server", "emp_ui_tab_server"),
+    ];
 
     public override void OnLayout()
     {
         SubTabs("help", [
             ("emp_ui_sub_how".lang(), page => {
-                foreach (var id in Topics) {
-                    page.Card($"emp_help_{id}_t".lang()).Text($"emp_help_{id}".lang());
+                foreach (var (id, tab, label) in Topics) {
+                    var card = page.Card($"emp_help_{id}_t".lang());
+                    card.Text($"emp_help_{id}".lang());
+                    var target = tab;
+                    card.ButtonRow().RowButton("emp_ui_help_open".Loc(label.lang()),
+                        () => LayerElinTogether.Instance?.Window.SwitchContent(target));
                 }
             }),
             ("emp_help_about".lang(), BuildAbout),
