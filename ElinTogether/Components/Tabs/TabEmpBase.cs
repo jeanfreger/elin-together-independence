@@ -25,6 +25,9 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     private static readonly Dictionary<string, int> LastSubTab = [];
     private const float PillRowHeight = 40f;
 
+    /// <summary>Chooses the sub-tab a page opens on (before it is built)</summary>
+    internal static void SetSubTab(string key, int index) => LastSubTab[key] = index;
+
     private readonly List<GameObject> _subPages = [];
     private string _subKey = "";
 

@@ -47,11 +47,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
         DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
-        // journal and rankings (PLAN_hub_features): always there, saying so when their box is off
-        _tabs.Add(CreateTab<TabJournal>("emp_ui_tab_journal", TabJournal.TabName));
-        DecorateLastTab("icon_book", "emp_tip_tab_journal");
-        _tabs.Add(CreateTab<TabLeaderboard>("emp_ui_tab_leaderboard", TabLeaderboard.TabName));
-        DecorateLastTab("icon_medal", "emp_tip_tab_leaderboard");
+        // journal and rankings (PLAN_hub_features): one tab with two sub-tabs, so the strip keeps the game's own label size
+        _tabs.Add(CreateTab<TabCommunity>("emp_ui_tab_community", TabCommunity.TabName));
+        DecorateLastTab("icon_medal", "emp_tip_tab_community");
 
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
         // reads the host's (the tab's own guest view)
@@ -62,8 +60,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         DecorateLastTab("icon_book", "emp_tip_tab_info");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_m_system", "emp_tip_tab_client");
-        _tabs.Add(CreateTab<TabHelp>("emp_ui_tab_help", "emp_tab_help"));
-        DecorateLastTab("icon_LayerHelp", "emp_tip_tab_help");
 
         foreach (var tab in _tabs) {
             UIHelper.WrapTexts(tab);
@@ -83,7 +79,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Window.transform.localPosition = _browsedPosition;
         Decorate();
-        FitTabs();
 #if DEBUG
         // the debug box (Ping/Delta/Snap/Dump) sits over the window: hidden while the menu is open
         if (NetSession.Instance.Transport is { IsDebugGuiActive: true } net) {
@@ -96,55 +91,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 #if DEBUG
     private bool _debugHidden;
 #endif
-
-    /// <summary>
-    ///     The tab strip must end before the close ornament: tighter spacing, then a smaller label until it fits
-    /// </summary>
-    private void FitTabs()
-    {
-        try {
-            var strip = Window.rectTab;
-            if (strip == null) {
-                return;
-            }
-
-            if (strip.GetComponent<UnityEngine.UI.HorizontalOrVerticalLayoutGroup>() is { } group) {
-                group.spacing = 0f;
-            }
-
-            var available = Bound.width - 150f;
-            var texts = strip.GetComponentsInChildren<UnityEngine.UI.Text>(true);
-            for (var size = 16; size >= 9; size--) {
-                foreach (var tab in Window.setting.tabs) {
-                    tab.button?.mainText?.SetSize(size);
-                }
-
-                // (the labels' own components too: a best-fit text ignores the size set above)
-                foreach (var text in texts) {
-                    text.resizeTextForBestFit = false;
-                    text.fontSize = size;
-                }
-
-                UnityEngine.Canvas.ForceUpdateCanvases();
-                strip.RebuildLayout(true);
-                if (UnityEngine.UI.LayoutUtility.GetPreferredWidth(strip) <= available) {
-                    return;
-                }
-            }
-
-            // still too wide at the smallest label: shrink the whole strip from its left edge so it ends before the ornament
-            var width = UnityEngine.UI.LayoutUtility.GetPreferredWidth(strip);
-            if (width > available && width > 1f) {
-                var before = strip.pivot;
-                strip.pivot = new(0f, before.y);
-                strip.anchoredPosition += new Vector2(-before.x * strip.rect.width * strip.localScale.x, 0f);
-                strip.localScale = new(available / width, available / width, 1f);
-            }
-        }
-        catch (System.Exception e) {
-            EmpLog.Debug(e, "The tab strip could not be fitted");
-        }
-    }
 
     /// <summary>
     ///     The character sheet's window art on this window: the ornament at the top right and the faint drawing in the
@@ -228,7 +174,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
     public static void OpenPanelSesame(string targetTab = "")
     {
-        YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(targetTab));
+        YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(TabCommunity.Redirect(targetTab)));
     }
 
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>

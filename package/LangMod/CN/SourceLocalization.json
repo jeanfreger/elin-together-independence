@@ -1021,5 +1021,11 @@
     "LangGeneral.emp_ui_team_lands_hover.text": "将鼠标移到圆点上查看领地名称",
     "LangGeneral.emp_ui_team_journal.text": "队伍日志",
     "LangGeneral.emp_ui_team_journal_none.text": "暂无内容",
-    "LangGeneral.emp_ui_team_banner_search.text": "按名称或ID搜索任意物品"
+    "LangGeneral.emp_ui_team_banner_search.text": "按名称或ID搜索",
+    "LangGeneral.emp_ui_tab_community.text": "社区",
+    "LangGeneral.emp_tab_community.text": "社区",
+    "LangGeneral.emp_tip_tab_community.text": "世界日志与排行榜",
+    "LangGeneral.emp_ui_lb_board.text": "榜单",
+    "LangGeneral.emp_ui_team_banner_items.text": "物品",
+    "LangGeneral.emp_ui_team_banner_monsters.text": "怪物"
 }

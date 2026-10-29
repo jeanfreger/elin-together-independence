@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
@@ -14,57 +15,62 @@ namespace ElinTogether.Components;
 ///     team wealth), the top ten of each and the player's own rank under it. A board is asked from the host when its
 ///     sub-tab opens
 /// </summary>
-internal class TabLeaderboard : TabEmpBase
+internal static class TabLeaderboard
 {
-    public const string TabName = "emp_tab_leaderboard";
-
     private static readonly string[] Icons = ["icon_medal", "icon_influence"];
     private static readonly string[] Keys = ["emp_ui_lb_level", "emp_ui_lb_deepest", "emp_ui_lb_duels", "emp_ui_lb_wealth"];
 
     private const float RowH = 44f;
 
-    private readonly YKVertical?[] _lists = new YKVertical?[Leaderboards.BoardCount];
+    // the board shown (a dropdown picks it: the Community tab's pills are taken by Journal / Leaderboards)
+    private static int _board;
+    private static YKVertical? _list;
+    private static Action? _relayout;
 
-    public override void OnLayout()
+    public static bool Enabled => NetSession.Instance is { HasActiveConnection: true, Rules.Leaderboards: true };
+
+    public static int Board => _board;
+
+    public static void Build(YKVertical page, Action relayout)
     {
-        var card = this.Card("emp_ui_tab_leaderboard".lang());
-        if (NetSession.Instance is not { HasActiveConnection: true, Rules.Leaderboards: true }) {
+        var card = page.Card("emp_ui_tab_leaderboard".lang());
+        if (!Enabled) {
             TabTeam.EmptyPage(card, Icons, "emp_ui_leaderboard_off".lang());
             return;
         }
 
-        var pages = new List<(string, Action<YKVertical>)>();
-        for (var i = 0; i < Leaderboards.BoardCount; i++) {
-            var board = i;
-            pages.Add((Keys[board].lang(), page => _lists[board] = page));
-        }
-
-        SubTabs("leaderboard", pages);
-        Leaderboards.Changed = Redraw;
-        for (var i = 0; i < Leaderboards.BoardCount; i++) {
-            Redraw(i);
-        }
-
-        Leaderboards.Ask(SubTab);
+        _relayout = relayout;
+        card.DropdownRow("emp_ui_lb_board".lang(), Keys.Select(k => k.lang()).ToList(), i => {
+            _board = i;
+            Redraw();
+            Leaderboards.Ask(i);
+        }, _board);
+        _list = card.Vertical();
+        _list.Layout.spacing = UIHelper.RowSpacing;
+        Leaderboards.Changed = b => {
+            if (b == _board) {
+                Redraw();
+            }
+        };
+        Redraw();
+        Leaderboards.Ask(_board);
     }
 
-    protected override void OnSubTabShown(int index)
-    {
-        if (NetSession.Instance is { HasActiveConnection: true, Rules.Leaderboards: true }) {
-            Leaderboards.Ask(index);
-        }
-    }
-
-    private void OnDestroy()
+    public static void Release()
     {
         Leaderboards.Changed = null;
+        _list = null;
+        _relayout = null;
     }
 
-    private void Redraw(int board)
+    private static void Redraw()
     {
-        if (_lists[board] is not { } page) {
+        if (_list == null) {
             return;
         }
+
+        var page = _list;
+        var board = _board;
 
         foreach (Transform child in page.transform) {
             UnityEngine.Object.Destroy(child.gameObject);
@@ -96,6 +102,6 @@ internal class TabLeaderboard : TabEmpBase
                 answer.OwnRank > 0 ? "emp_ui_lb_rank".Loc(answer.OwnRank, Mathf.Max(answer.Names.Length, answer.Total), answer.OwnScore.ToString("N0")) : "emp_ui_lb_unranked".lang());
         }
 
-        Relayout();
+        _relayout?.Invoke();
     }
 }

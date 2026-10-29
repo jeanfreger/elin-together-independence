@@ -92,7 +92,39 @@ internal static class TeamBanner
     ///     The id of the game's thing the leader chose as the emblem, when it chose one (else the old element emblem)
     /// </summary>
     internal static string? ThingOf(int teamId) =>
-        On && Things.TryGetValue(teamId, out var id) && EClass.sources.things.map.ContainsKey(id) ? id : null;
+        On && Things.TryGetValue(teamId, out var id) && Normalize(id) is { } typed ? typed : null;
+
+    /// <summary>
+    ///     The typed form of a stored emblem id: "t:sword" (a thing) or "c:putty" (a monster). An old untyped value is a
+    ///     thing. Null when the game has no such source row
+    /// </summary>
+    internal static string? Normalize(string value)
+    {
+        if (string.IsNullOrEmpty(value)) {
+            return null;
+        }
+
+        var monster = value.StartsWith("c:");
+        var id = value.StartsWith("t:") || monster ? value.Substring(2) : value;
+        if (monster) {
+            return EClass.sources.charas.map.ContainsKey(id) ? "c:" + id : null;
+        }
+
+        return EClass.sources.things.map.ContainsKey(id) ? "t:" + id : null;
+    }
+
+    /// <summary>
+    ///     The sprite of a typed emblem id: the thing's, or the monster's own pixel sprite
+    /// </summary>
+    internal static Sprite? SpriteOf(string typed)
+    {
+        if (Normalize(typed) is not { } value) {
+            return null;
+        }
+
+        var id = value.Substring(2);
+        return value[0] == 'c' ? EClass.sources.charas.map[id].GetSprite() : EClass.sources.things.map[id].GetSprite();
+    }
 
     internal static (int Icon, int Color)? Of(int teamId) => On && Book.TryGetValue(teamId, out var banner) ? banner : null;
 
@@ -112,11 +144,12 @@ internal static class TeamBanner
         }
 
         if (thing.Length > 0) {
-            // any thing of the game; an id the game does not know is refused
-            if (!EClass.sources.things.map.ContainsKey(thing)) {
+            // any thing or monster of the game; an id the game does not know is refused
+            if (Normalize(thing) is not { } typed) {
                 return false;
             }
 
+            thing = typed;
             ElinNetHost.TeamThings[team] = thing;
             ElinNetHost.TeamBanners[team] = [ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2 ? old[0] : 0, color];
             EmpLog.Information("Team {TeamId} banner: thing {Thing}, colour {Color}", team, thing, color);
@@ -175,7 +208,7 @@ internal static class TeamBanner
 
         var color = ColorOf(banner.Color);
         if (ThingOf(teamId) is { } thing) {
-            Frame(row, color, EClass.sources.things.map[thing].GetSprite(), size, true, null);
+            Frame(row, color, SpriteOf(thing), size, true, null);
         } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
             // the emblem on a square of the colour, like an item (no detached colour bar beside it)
             Frame(row, color, sprite, size, true, null);
@@ -206,35 +239,86 @@ internal static class TeamBanner
     private static string _query = "";
     private static int _page;
 
-    private static List<SourceThing.Row> Search()
+    // 0 items, 1 monsters
+    private static int _kind;
+
+    private static List<(string Value, string Name, Sprite Sprite)> Search()
     {
         var q = _query.Trim().ToLowerInvariant();
+        bool Match(string id, string? name) => q.Length == 0 || id.ToLowerInvariant().Contains(q) || (name ?? "").ToLowerInvariant().Contains(q);
+        if (_kind == 1) {
+            return EClass.sources.charas.rows
+                .Where(r => !string.IsNullOrEmpty(r.id) && Match(r.id, r.GetName()))
+                .Select(r => (Value: "c:" + r.id, Name: r.GetName() ?? r.id, Sprite: r.GetSprite()))
+                .Where(r => r.Sprite != null)
+                .OrderBy(r => r.Name)
+                .ToList();
+        }
+
         return EClass.sources.things.rows
-            .Where(r => !string.IsNullOrEmpty(r.id) && (q.Length == 0 || r.id.ToLowerInvariant().Contains(q) ||
-                                                        (r.GetName() ?? "").ToLowerInvariant().Contains(q)))
-            .Where(r => r.GetSprite() != null)
-            .OrderBy(r => r.GetName() ?? r.id)
+            .Where(r => !string.IsNullOrEmpty(r.id) && Match(r.id, r.GetName()))
+            .Select(r => (Value: "t:" + r.id, Name: r.GetName() ?? r.id, Sprite: r.GetSprite()))
+            .Where(r => r.Sprite != null)
+            .OrderBy(r => r.Name)
             .ToList();
     }
 
     /// <summary>
-    ///     A search field over every thing of the game (name in the player's language, or id), results paged
+    ///     Two pills (Items / Monsters) over a search field over every thing or monster of the game (name in the
+    ///     player's language, or id), results paged
     /// </summary>
     private static void BuildThingPicker(YKLayout card, int teamId, (int Icon, int Color) current)
     {
-        var search = card.InputText(_query);
-        search.field.characterLimit = 40;
-        search.StyleAsSearch("emp_ui_team_banner_search".lang());
-
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         list.Layout.spacing = 4f;
+        BuildKindPills(card, list, teamId, current);
+
+        var search = card.InputText(_query);
+        search.field.characterLimit = 40;
+        search.StyleAsSearch("emp_ui_team_banner_search".lang());
+        // (the list follows the pills and the field)
+        list.transform.SetAsLastSibling();
         search.field.onValueChanged.AddListener(text => {
             _query = text;
             _page = 0;
             FillThings(list, teamId, current);
         });
         FillThings(list, teamId, current);
+    }
+
+    /// <summary>
+    ///     The Items / Monsters pills, the game's tab pills in a row of the card, in a selectable group like the page pills
+    /// </summary>
+    private static void BuildKindPills(YKLayout card, YKLayout list, int teamId, (int Icon, int Color) current)
+    {
+        if (EmpUiParts.Pill is not { } mold) {
+            return;
+        }
+
+        var row = card.Row();
+        var group = row.gameObject.AddComponent<UISelectableGroup>();
+        group.autoInitialize = false;
+        group.colorType = UISelectableGroup.ColorType.Tab;
+        group.colorWhenSelected = true;
+        group.useTransition = true;
+        group.fixRefreshButtons = true;
+        foreach (var label in new[] { "emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang() }) {
+            var pill = Util.Instantiate(mold, row.transform);
+            pill.mainText.SetText(label);
+            if (pill.icon != null) {
+                pill.icon.gameObject.SetActive(false);
+            }
+
+            pill.tooltip.enable = false;
+        }
+
+        group.SetColors();
+        group.Init(_kind, i => {
+            _kind = i;
+            _page = 0;
+            FillThings(list, teamId, current);
+        });
     }
 
     private static void FillThings(YKLayout list, int teamId, (int Icon, int Color) current)
@@ -255,8 +339,8 @@ internal static class TeamBanner
                 row = list.Row();
             }
 
-            var id = thing.id;
-            Frame(row!, colour, thing.GetSprite(), 30f, id == chosen, () => Teams.Ask(TeamAsk.Banner, current.Icon, current.Color, id));
+            var value = thing.Value;
+            Frame(row!, colour, thing.Sprite, 30f, value == chosen, () => Teams.Ask(TeamAsk.Banner, current.Icon, current.Color, value));
         }
 
         var bar = list.ButtonRow();

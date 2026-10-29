@@ -32,6 +32,8 @@ internal class TabServerInfo : TabEmpBase
             pages.Add(("emp_info_announce".lang(), BuildAnnounce));
         }
 
+        // (the Help pages close the row: the strip has one tab less)
+        pages.AddRange(TabHelp.Pages());
         SubTabs("info", pages);
     }
 

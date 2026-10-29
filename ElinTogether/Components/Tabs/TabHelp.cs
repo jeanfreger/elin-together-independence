@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using UnityEngine;
@@ -9,7 +10,7 @@ namespace ElinTogether.Components;
 ///     The "Help" page (hub step 7): short "how it works" cards, About (version, the GitHub page) and the bug report,
 ///     which used to hide at the bottom of the client settings
 /// </summary>
-internal class TabHelp : TabEmpBase
+internal static class TabHelp
 {
     private const string Repo = "https://github.com/jeanfreger/elin-together-independence";
 
@@ -23,9 +24,10 @@ internal class TabHelp : TabEmpBase
         ("duels", "emp_tab_server", "emp_ui_tab_server"),
     ];
 
-    public override void OnLayout()
+    /// <summary>The Help pages, shown as sub-tabs of the Server info tab</summary>
+    public static List<(string, System.Action<YKVertical>)> Pages()
     {
-        SubTabs("help", [
+        return [
             ("emp_ui_sub_how".lang(), page => {
                 foreach (var (id, tab, label) in Topics) {
                     var card = page.Card($"emp_help_{id}_t".lang());
@@ -37,7 +39,7 @@ internal class TabHelp : TabEmpBase
             }),
             ("emp_help_about".lang(), BuildAbout),
             ("emp_help_report".lang(), BuildReport),
-        ]);
+        ];
     }
 
     private static void BuildAbout(YKVertical page)

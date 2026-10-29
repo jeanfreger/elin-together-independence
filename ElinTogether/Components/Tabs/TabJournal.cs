@@ -10,18 +10,16 @@ namespace ElinTogether.Components;
 /// <summary>
 ///     The Journal page (PLAN_hub_features B): the world's activity journal, newest first. Filters: All, my Team, Mine
 /// </summary>
-internal class TabJournal : TabEmpBase
+internal static class TabJournal
 {
-    public const string TabName = "emp_tab_journal";
-
     private static readonly string[] Icons = ["icon_book", "icon_medal"];
 
     // 0 all, 1 my team, 2 mine
     private static int _filter;
 
-    public override void OnLayout()
+    public static void Build(YKVertical page)
     {
-        var card = this.Card("emp_ui_tab_journal".lang());
+        var card = page.Card("emp_ui_tab_journal".lang());
         if (NetSession.Instance is not { HasActiveConnection: true, Rules.ActivityJournal: true }) {
             TabTeam.EmptyPage(card, Icons, "emp_ui_journal_off".lang());
             return;
@@ -33,7 +31,7 @@ internal class TabJournal : TabEmpBase
             new List<string> { "emp_ui_journal_f_all".lang(), "emp_ui_journal_f_team".lang(), "emp_ui_journal_f_mine".lang() },
             i => {
                 _filter = i;
-                LayerElinTogether.Instance?.Window.SwitchContent(TabName);
+                LayerElinTogether.Instance?.Window.SwitchContent(TabCommunity.TabName);
             }, _filter);
 
         var entries = ActivityJournal.Entries()
