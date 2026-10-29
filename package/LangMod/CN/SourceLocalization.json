@@ -797,7 +797,7 @@
     "LangGeneral.emp_ui_sv_nomatch.text": "没有匹配的规则。",
     "LangGeneral.emp_ui_sv_preset_current.text": "当前",
     "LangGeneral.emp_ui_sv_diff_title.text": "与推荐设置的不同（{0} 处）",
-    "LangGeneral.emp_ui_sv_diff_all.text": "显示全部 {0} 项",
+    "LangGeneral.emp_ui_sv_diff_line.text": "{0}：{1}（推荐：{2}）",
     "LangGeneral.emp_ui_sv_fewer.text": "收起",
     "LangGeneral.emp_ui_sv_revert.text": "还原",
     "LangGeneral.emp_ui_sv_needs.text": "需要：{0}",

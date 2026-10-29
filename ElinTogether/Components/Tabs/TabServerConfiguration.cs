@@ -27,7 +27,6 @@ internal class TabServerConfiguration : TabEmpBase
 
     // the view of this page, kept over redraws (a change redraws the layer), never stored
     private static string _search = "";
-    private static bool _allDiffs;
     private static TabServerConfiguration? _instance;
     private static float _savedY;
     private static int _restore;
@@ -116,11 +115,15 @@ internal class TabServerConfiguration : TabEmpBase
                 }
             }),
         };
-        foreach (var id in SettingsTable.Cards) {
-            var inCard = rows.Where(r => r.Card == id).ToList();
-            if (inCard.Count > 0) {
-                pages.Add(($"emp_ui_sub_{id}".lang(), page => BuildGroup(page, id, inCard)));
-            }
+        // two groups of rules per pill (nine pills on two lines were not the game's look)
+        var filled = SettingsTable.Cards.Where(id => rows.Any(r => r.Card == id)).ToList();
+        for (var i = 0; i < filled.Count; i += 2) {
+            var ids = filled.Skip(i).Take(2).ToList();
+            pages.Add((string.Join(" & ", ids.Select(id => $"emp_ui_sub_{id}".lang())), page => {
+                foreach (var id in ids) {
+                    BuildGroup(page, id, rows.Where(r => r.Card == id).ToList());
+                }
+            }));
         }
 
         SubTabs("server", pages);
@@ -131,7 +134,7 @@ internal class TabServerConfiguration : TabEmpBase
     private static readonly int Custom = System.Array.IndexOf(SettingsTable.Presets, "custom");
 
     // the page of a group of rules: the presets page comes first
-    private int PageOf(Group group) => _groups.IndexOf(group) + 1;
+    private int PageOf(Group group) => _groups.IndexOf(group) / 2 + 1;
 
     protected override void OnSubTabShown(int index)
     {
@@ -203,6 +206,8 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var row = Vertical(page).Horizontal();
         row.Layout.childForceExpandWidth = true;
+        row.Layout.childControlHeight = true;
+        row.Layout.childForceExpandHeight = true;
         row.Layout.spacing = UIHelper.RowSpacing * 1.5f;
         row.Layout.childAlignment = TextAnchor.UpperLeft;
         for (var i = 0; i < SettingsTable.Presets.Length; i++) {
@@ -210,9 +215,16 @@ internal class TabServerConfiguration : TabEmpBase
             var card = Vertical(row, true);
             card.LayoutElement().flexibleWidth = 1f;
             card.LayoutElement().preferredWidth = 0f;
+            card.Fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+            card.LayoutElement().flexibleHeight = 1f;
             var selected = i == preset;
-            if (selected && card.Layout.TryGetComponent<Image>(out var bg)) {
-                bg.color = new(1f, 0.9f, 0.62f);
+            if (selected) {
+                // the selected card reads as a selected pill: tinted and framed
+                var bg = card.Layout.GetComponent<Image>() ?? card.Layout.gameObject.AddComponent<Image>();
+                bg.color = new(1f, 0.9f, 0.62f, 0.75f);
+                var frame = card.Layout.gameObject.AddComponent<Outline>();
+                frame.effectColor = new(0.45f, 0.32f, 0.12f, 0.9f);
+                frame.effectDistance = new(2f, -2f);
             }
 
             // the whole card is the choice (title, chip, paragraph): a selectable card, no button inside. The chip
@@ -261,22 +273,18 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var diff = rows.Where(r => r.Under is null && IsChanged(r, _src, RuleSource.Defaults)).ToList();
         var card = page.Card("emp_ui_sv_diff_title".Loc(diff.Count));
-        const int shown = 5;
-        foreach (var row in diff.Take(_allDiffs ? diff.Count : shown)) {
+        foreach (var row in diff) {
             var id = row.Id;
-            // a compact link row, not a full-width button
-            var link = card.Text("> " + row.Label);
+            // a compact link row, not a full-width button: "Combat pace: Custom (recommended: Each own pace)"
+            var link = card.Text("> " + "emp_ui_sv_diff_line".Loc(row.Label, ValueText(row, _src), ValueText(row, RuleSource.Defaults)));
             link.SetSize(UIHelper.LabelSize);
             link.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => Jump(id));
         }
-
-        if (diff.Count > shown) {
-            card.ButtonRow().RowButton((_allDiffs ? "emp_ui_sv_fewer" : "emp_ui_sv_diff_all").Loc(diff.Count), () => {
-                _allDiffs = !_allDiffs;
-                LayerElinTogether.Instance?.Reopen();
-            });
-        }
     }
+
+    private static string ValueText(SettingRow row, RuleSource src) => row.Choice is { } c
+        ? c.OptionLabel(c.Read(src))
+        : (row.Entry is { } e && src.Get(e) is true ? "emp_ui_rules_yes" : "emp_ui_rules_no").lang();
 
     /// <summary>
     ///     A group of rules on its own sub-tab, laid out as the game's options window: two framed boxes side by side,
@@ -286,7 +294,10 @@ internal class TabServerConfiguration : TabEmpBase
     private void BuildGroup(YKVertical page, string id, List<SettingRow> rows)
     {
         var group = new Group(id) { Title = $"emp_ui_sv_sec_{id}".lang() };
-        group.Card = page.gameObject;
+        // (a page holds two groups: each in a box of its own, so a search can hide one)
+        var holder = Vertical(page);
+        group.Card = holder.gameObject;
+        page = holder;
 
         // a row and the rows under it, as one block
         var blocks = new List<List<SettingRow>>();
