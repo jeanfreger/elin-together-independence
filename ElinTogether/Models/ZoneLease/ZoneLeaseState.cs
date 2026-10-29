@@ -75,6 +75,10 @@ internal static class ZoneLeaseState
             return;
         }
 
+        // a map of another game in the save: its maps are read with the types of the game and its mods only from
+        // then on, also when the save is played alone (PeerMapPatch)
+        Patches.PeerMapPatch.MarkCurrentSave();
+
         foreach (var (id, asset) in map.Take(64)) {
             if (!IsMapFileKey(id)) {
                 continue;

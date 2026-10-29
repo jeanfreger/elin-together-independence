@@ -10,7 +10,21 @@ namespace ElinTogether.Models;
 
 internal sealed class NetTypeBinder : DefaultSerializationBinder
 {
-    internal static readonly NetTypeBinder Instance = new();
+    internal static readonly NetTypeBinder Instance = new(false);
+
+    /// <summary>
+    ///     For the game's own loader (GameIO.jsReadGame): a type refused becomes the game's UnknownTypePlaceholder,
+    ///     which the game skips as it skips the type of a mod gone (GameIO.Init), so that one object is lost, not the
+    ///     whole save or map
+    /// </summary>
+    internal static readonly NetTypeBinder Lenient = new(true);
+
+    private readonly bool _lenient;
+
+    private NetTypeBinder(bool lenient)
+    {
+        _lenient = lenient;
+    }
 
     private static readonly HashSet<Type> _plainTypes = [
         typeof(object), typeof(string), typeof(decimal), typeof(DateTime), typeof(TimeSpan), typeof(Guid),
@@ -35,6 +49,10 @@ internal sealed class NetTypeBinder : DefaultSerializationBinder
         if (resolved is null || !IsAllowed(resolved)) {
             EmpLog.Warning("Rejected remote type {TypeName} from assembly {AssemblyName}",
                 typeName, assemblyName);
+            if (_lenient) {
+                return typeof(UnknownTypePlaceholder);
+            }
+
             throw new JsonSerializationException($"Type {typeName} is not allowed in net payloads");
         }
 
