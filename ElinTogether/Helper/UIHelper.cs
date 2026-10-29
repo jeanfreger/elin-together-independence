@@ -109,6 +109,17 @@ public static class UIHelper
         return _lookup[name] = sprite!;
     }
 
+    extension(UIInputText input)
+    {
+        // the game's text box prefab may filter what is typed (issue #29: no space in the bug report): free text
+        public void AllowAnyText()
+        {
+            input.field.contentType = InputField.ContentType.Standard;
+            input.field.inputType = InputField.InputType.Standard;
+            input.field.characterValidation = InputField.CharacterValidation.None;
+        }
+    }
+
     extension(YKLayout layout)
     {
         public UIInputText AddPair(string idLang, string text)
@@ -121,9 +132,7 @@ public static class UIHelper
 
             input.type = UIInputText.Type.Name;
             input.field.characterLimit = 150;
-            input.field.contentType = InputField.ContentType.Standard;
-            input.field.inputType = InputField.InputType.Standard;
-            input.field.characterValidation = InputField.CharacterValidation.None;
+            input.AllowAnyText();
 
             input.Text = text;
 

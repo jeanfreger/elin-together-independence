@@ -84,6 +84,7 @@ internal class TabServerInfo : TabEmpBase
     {
         var input = card.InputText(ServerInfo.ReadFile(file));
         input.field.characterLimit = ServerInfo.MaxLength;
+        input.AllowAnyText();
         input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
         input.LayoutElement().minHeight = 150f;
         input.LayoutElement().preferredHeight = 150f;

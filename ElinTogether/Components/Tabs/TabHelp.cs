@@ -58,6 +58,7 @@ internal class TabHelp : TabEmpBase
 
         var input = card.InputText("");
         input.field.characterLimit = 3000;
+        input.AllowAnyText();
         input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
         input.LayoutElement().minHeight = 120f;
         input.LayoutElement().preferredHeight = 120f;
