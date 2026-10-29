@@ -327,7 +327,7 @@ internal class TabServerConfiguration : TabEmpBase
             rightTitle = null;
         }
 
-        var (left, right) = page.Columns();
+        var (left, right) = page.Stacked();
         Fill(left.Box(group.Title), main);
         if (advanced.Count > 0) {
             Fill(right.Box(rightTitle), advanced);

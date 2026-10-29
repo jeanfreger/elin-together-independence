@@ -841,30 +841,22 @@ internal static class EmpUi
     }
 
     /// <summary>
-    ///     Two columns side by side, the same width, as the options window lays its groups out
+    ///     Two groups, the second under the first, each the page's full width. (They were two columns side by side
+    ///     until the tabs moved into the window: at half its width, titles and grey lines wrapped and ran over the
+    ///     next row, user 2026-10-29 "tout se chevauche")
     /// </summary>
-    public static (YKVertical Left, YKVertical Right) Columns(this YKLayout parent)
+    public static (YKVertical First, YKVertical Second) Stacked(this YKLayout parent)
     {
-        var row = parent.Horizontal();
-        row.Layout.childForceExpandWidth = true;
-        row.Layout.childControlWidth = true;
-        row.Layout.childAlignment = TextAnchor.UpperLeft;
-        row.Layout.spacing = 14f;
-        row.LayoutElement().flexibleWidth = 1f;
-
-        YKVertical Column()
+        YKVertical Part()
         {
-            var col = row.Vertical();
-            col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            col.Layout.spacing = 12f;
-            var element = col.LayoutElement();
-            element.flexibleWidth = 1f;
-            element.preferredWidth = 0f;
-            element.minWidth = 0f;
-            return col;
+            var part = parent.Vertical();
+            part.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            part.Layout.spacing = 12f;
+            part.LayoutElement().flexibleWidth = 1f;
+            return part;
         }
 
-        return (Column(), Column());
+        return (Part(), Part());
     }
 
     // ---------------------------------------------------------------- (b) SettingRow
