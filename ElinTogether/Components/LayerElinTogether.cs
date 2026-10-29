@@ -197,14 +197,10 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         }
 
         // a body row in the view's place: [tab column][pages]
-        var body = new GameObject("EmpBody", typeof(RectTransform), typeof(UnityEngine.UI.HorizontalLayoutGroup), typeof(UnityEngine.UI.LayoutElement));
+        var body = new GameObject("EmpBody", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
         var bodyRect = (RectTransform)body.transform;
         bodyRect.SetParent(view.parent, false);
         bodyRect.SetSiblingIndex(view.GetSiblingIndex());
-        var row = body.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-        row.childControlWidth = row.childControlHeight = true;
-        row.childForceExpandWidth = row.childForceExpandHeight = true;
-        row.spacing = 8f;
         var bodyElement = body.GetComponent<UnityEngine.UI.LayoutElement>();
         bodyElement.flexibleWidth = bodyElement.flexibleHeight = 1f;
         // (the view's own size hints carry over to the row, so the window gives it the same room)
@@ -222,25 +218,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DestroyImmediate(group);
         }
 
-        strip.SetParent(bodyRect, false);
-        strip.SetAsFirstSibling();
-        strip.anchorMin = Vector2.zero;
-        strip.anchorMax = Vector2.one;
-        strip.pivot = new(0f, 1f);
-        strip.anchoredPosition = Vector2.zero;
-        strip.gameObject.SetActive(true);
-        var column = strip.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
-        column.childAlignment = TextAnchor.UpperLeft;
-        column.childControlWidth = column.childControlHeight = true;
-        column.childForceExpandWidth = column.childForceExpandHeight = false;
-        column.spacing = 4f;
-
-        view.SetParent(bodyRect, false);
-        var viewElement = view.GetComponent<UnityEngine.UI.LayoutElement>() ?? view.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
-        viewElement.flexibleWidth = viewElement.flexibleHeight = 1f;
-
-        // every button the same size: the widest label (game font size, never shrunk) plus the icon and the margins
-        float width = 0f, height = 0f;
+        // sizes first: the column's width is the widest label (game font size) plus the icon and margins
+        float width = 0f;
         var buttons = new List<UIButton>();
         foreach (var tab in Window.setting.tabs) {
             if (tab.button == null) {
@@ -249,30 +228,68 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
             buttons.Add(tab.button);
             var text = tab.button.mainText;
-            var iconWidth = tab.button.icon != null ? Mathf.Max(tab.button.icon.rectTransform.rect.width, 24f) : 0f;
-            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + iconWidth + 40f);
-            height = Mathf.Max(height, tab.button.Rect().rect.height, text != null ? text.preferredHeight + 16f : 0f);
+            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + 26f + 28f);
         }
 
-        height = Mathf.Max(height, 40f);
+        const float Gap = 4f, Margin = 10f, ButtonHeight = 30f;
+        strip.SetParent(bodyRect, false);
+        strip.SetAsFirstSibling();
+        strip.anchorMin = new(0f, 0f);
+        strip.anchorMax = new(0f, 1f);
+        strip.pivot = new(0f, 1f);
+        strip.offsetMin = new(0f, 0f);
+        strip.offsetMax = new(width, 0f);
+        strip.gameObject.SetActive(true);
+        var column = strip.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+        column.childAlignment = TextAnchor.UpperLeft;
+        column.childControlWidth = column.childControlHeight = true;
+        column.childForceExpandWidth = true;
+        column.childForceExpandHeight = false;
+        column.spacing = Gap;
+
+        // the pages start to the right of the column: nothing under the tabs
+        view.SetParent(bodyRect, false);
+        foreach (var ignore in view.GetComponents<UnityEngine.UI.LayoutElement>()) {
+            ignore.ignoreLayout = true;
+        }
+
+        view.anchorMin = Vector2.zero;
+        view.anchorMax = Vector2.one;
+        view.pivot = new(0f, 1f);
+        view.offsetMin = new(width + Margin, 0f);
+        view.offsetMax = Vector2.zero;
+
         foreach (var button in buttons) {
             button.transform.SetParent(strip, false);
             var element = button.GetComponent<UnityEngine.UI.LayoutElement>() ?? button.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
             element.minWidth = element.preferredWidth = width;
-            element.minHeight = element.preferredHeight = height;
+            element.minHeight = element.preferredHeight = ButtonHeight;
             element.flexibleWidth = element.flexibleHeight = 0f;
+            if (button.icon != null) {
+                // icon at the left edge, label to its right
+                var ir = button.icon.rectTransform;
+                ir.anchorMin = ir.anchorMax = new(0f, 0.5f);
+                ir.pivot = new(0f, 0.5f);
+                ir.anchoredPosition = new(6f, 0f);
+                ir.sizeDelta = new(22f, 22f);
+                button.icon.preserveAspect = true;
+            }
+
             if (button.mainText != null) {
-                button.mainText.horizontalOverflow = HorizontalWrapMode.Overflow;
                 if (button.mainText.TryGetComponent<UnityEngine.UI.ContentSizeFitter>(out var f)) {
-                    f.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
+                    DestroyImmediate(f);
                 }
+
+                button.mainText.horizontalOverflow = HorizontalWrapMode.Overflow;
+                button.mainText.alignment = TextAnchor.MiddleLeft;
+                var tr = button.mainText.rectTransform;
+                tr.anchorMin = Vector2.zero;
+                tr.anchorMax = Vector2.one;
+                tr.offsetMin = new(34f, 0f);
+                tr.offsetMax = new(-4f, 0f);
             }
         }
 
-        var stripElement = strip.GetComponent<UnityEngine.UI.LayoutElement>() ?? strip.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
-        stripElement.minWidth = stripElement.preferredWidth = width;
-        stripElement.flexibleWidth = 0f;
-        stripElement.flexibleHeight = 1f;
         // (the window shows the strip only for 2+ tabs: always the case here)
         UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
     }
@@ -290,6 +307,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     {
         var scaler = ui.canvasScaler.scaleFactor;
         var screen = new Vector2(Screen.width, Screen.height) / scaler;
-        return new(Vector2.zero, new(Mathf.Min(1040f, screen.x * 0.95f), Mathf.Min(620f, screen.y * 0.85f)));
+        return new(Vector2.zero, new(Mathf.Min(1180f, screen.x * 0.95f), Mathf.Min(620f, screen.y * 0.85f)));
     }
 }
