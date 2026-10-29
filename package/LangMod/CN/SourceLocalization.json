@@ -998,5 +998,14 @@
     "LangGeneral.emp_ui_lb_wealth.text": "队伍财富",
     "LangGeneral.emp_ui_lb_you.text": "你",
     "LangGeneral.emp_ui_lb_rank.text": "第 {0} 名（{1}）",
-    "LangGeneral.emp_ui_lb_unranked.text": "未上榜"
+    "LangGeneral.emp_ui_lb_unranked.text": "未上榜",
+    "LangGeneral.emp_ui_team_banner.text": "队伍旗帜",
+    "LangGeneral.emp_ui_team_banner_tool.text": "旗帜",
+    "LangGeneral.emp_ui_team_banner_emblem.text": "徽记",
+    "LangGeneral.emp_ui_team_banner_color.text": "颜色",
+    "LangGeneral.emp_ui_team_lands_map.text": "领地地图",
+    "LangGeneral.emp_ui_team_lands_none.text": "还没有领地",
+    "LangGeneral.emp_ui_team_lands_hover.text": "将鼠标移到圆点上查看领地名称",
+    "LangGeneral.emp_ui_team_journal.text": "队伍日志",
+    "LangGeneral.emp_ui_team_journal_none.text": "暂无内容"
 }

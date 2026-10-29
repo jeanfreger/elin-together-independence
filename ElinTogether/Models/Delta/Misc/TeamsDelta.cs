@@ -64,6 +64,12 @@ public class TeamsDelta : ElinDelta
     [Key(8)]
     public Dictionary<int, int>? ZoneRules { get; init; }
 
+    /// <summary>
+    ///     Team id -> its banner, emblem and colour (<see cref="TeamBanner" />); none while the box is off
+    /// </summary>
+    [Key(9)]
+    public Dictionary<int, (int Icon, int Color)>? Banners { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

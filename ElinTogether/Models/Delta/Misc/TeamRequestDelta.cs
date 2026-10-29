@@ -85,6 +85,11 @@ public enum TeamAsk : byte
     ///     The leader opens (Id 1) or closes (Id 0) the joining of its team: open, anyone joins at once
     /// </summary>
     SetOpen,
+
+    /// <summary>
+    ///     The leader sets its team's banner (host box "Team banners"). Id is the emblem, ZoneUid the colour
+    /// </summary>
+    Banner,
 }
 
 /// <summary>
