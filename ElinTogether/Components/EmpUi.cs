@@ -334,26 +334,74 @@ internal static class EmpUi
 
     private static void Chip(Transform into, YKLayout fallback, string text, FontColor color, Color? tint = null)
     {
+        if (tint is { } c) {
+            TintedChip(into, fallback, text, c);
+            return;
+        }
+
         if (Util.Instantiate<HintIcon>("UI/Element/Item/Tag General", into) is not { } chip) {
             fallback.TextSmall(text, color);
             return;
         }
 
         chip.text.SetText(text, color);
-        if (tint is { } c) {
-            // a coloured chip: the tag's own background in the colour, the label in white or black for contrast
-            var label = chip.text.GetComponentInChildren<UnityEngine.UI.Text>();
-            var shape = chip.GetComponentsInChildren<Image>(true).FirstOrDefault(i => label == null || i.gameObject != label.gameObject);
-            if (shape != null) {
-                shape.color = c;
-            }
+        chip.transform.RebuildLayout(true);
+    }
 
-            if (label != null) {
-                label.color = c.grayscale > 0.55f ? Color.black : Color.white;
-            }
+    /// <summary>
+    ///     A team chip: a rounded box of the team colour (our own background, so it never depends on the tag prefab's
+    ///     parts) holding the tag's label in dark or light ink by the colour's luminance
+    /// </summary>
+    private static void TintedChip(Transform into, YKLayout fallback, string text, Color c)
+    {
+        var box = new GameObject("TeamChip", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup),
+            typeof(ContentSizeFitter), typeof(LayoutElement));
+        box.transform.SetParent(into, false);
+        var image = box.GetComponent<Image>();
+        image.color = c;
+        image.raycastTarget = false;
+        var layout = box.GetComponent<HorizontalLayoutGroup>();
+        layout.padding = new(10, 10, 2, 2);
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = layout.childControlHeight = true;
+        layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+        var fit = box.GetComponent<ContentSizeFitter>();
+        fit.horizontalFit = fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var element = box.GetComponent<LayoutElement>();
+        element.minWidth = 90f;
+        element.minHeight = 24f;
+        element.flexibleWidth = 0f;
+
+        if (Util.Instantiate<HintIcon>("UI/Element/Item/Tag General", box.transform) is not { } chip) {
+            UnityEngine.Object.Destroy(box);
+            fallback.TextSmall(text, FontColor.Default);
+            return;
         }
 
-        chip.transform.RebuildLayout(true);
+        chip.text.SetText(text);
+        var label = chip.text.GetComponentInChildren<UnityEngine.UI.Text>();
+        // the prefab's own shapes are hidden; the first of them lends its rounded sprite to our box
+        foreach (var shape in chip.GetComponentsInChildren<Image>(true)) {
+            if (label != null && shape.gameObject == label.gameObject) {
+                continue;
+            }
+
+            if (image.sprite == null && shape.sprite != null) {
+                image.sprite = shape.sprite;
+                image.type = shape.type == Image.Type.Simple ? Image.Type.Sliced : shape.type;
+            }
+
+            shape.enabled = false;
+        }
+
+        if (label != null) {
+            // Rec. 709 luminance: dark ink on pale colours, light ink on deep ones
+            var lum = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+            label.color = lum > 0.45f ? new(0.1f, 0.08f, 0.05f) : new(0.97f, 0.95f, 0.9f);
+            label.alignment = TextAnchor.MiddleCenter;
+        }
+
+        box.transform.RebuildLayout(true);
     }
 
     // ---------------------------------------------------------------- (d) EmptyState
@@ -695,7 +743,7 @@ internal static class EmpUi
     /// <summary>
     ///     The words of a setting: its title (with "set by the host" when the player only reads it) and a grey line
     /// </summary>
-    private static void SettingWords(YKVertical col, string title, string? description, bool readOnly, string setByHostText)
+    private static void SettingWords(YKVertical col, string title, string? description, bool readOnly, string setByHostText, bool ownLines = false)
     {
         if (readOnly && setByHostText.Length > 0) {
             col.Text(title).SetSize(UIHelper.LabelSize);
@@ -709,7 +757,15 @@ internal static class EmpUi
 
         // (the chip on a line of its own, after the hint: beside the title it ran over the next words)
         if (readOnly && setByHostText.Length > 0) {
-            Line(col, spacing: 8f).Chip(setByHostText);
+            var chipLine = Line(col, spacing: 8f);
+            chipLine.Chip(setByHostText);
+            if (ownLines) {
+                // (the column keeps each child's own height: this line sizes itself to its chip, with a floor)
+                chipLine.Layout.childControlHeight = true;
+                chipLine.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                chipLine.LayoutElement().minHeight = 26f;
+                chipLine.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 26f);
+            }
         }
     }
 
@@ -763,7 +819,7 @@ internal static class EmpUi
             words.Layout.childControlHeight = false;
             words.Layout.childForceExpandHeight = false;
         }
-        SettingWords(words, title, description, readOnly, setByHostText);
+        SettingWords(words, title, description, readOnly, setByHostText, ownLines);
         marks = AddMarks(row);
         Lock(toggle, readOnly);
         marks.SetRevert(() => {
