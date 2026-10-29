@@ -19,7 +19,8 @@ internal static class OwnArtifactPatch
     internal static void OnPurge(Card __instance, Thing af, out List<Thing>? __state)
     {
         __state = null;
-        if (NetSession.Instance.Connection is null) {
+        // (Transport, not Connection: the latter is null while a player is alone on an away zone)
+        if (NetSession.Instance.Transport is null) {
             return;
         }
 
