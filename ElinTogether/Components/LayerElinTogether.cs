@@ -77,6 +77,48 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Window.transform.localPosition = _browsedPosition;
         Decorate();
+        FitTabs();
+#if DEBUG
+        // the debug box (Ping/Delta/Snap/Dump) sits over the window: hidden while the menu is open
+        if (NetSession.Instance.Transport is { IsDebugGuiActive: true } net) {
+            net.StopDebugGui();
+            _debugHidden = true;
+        }
+#endif
+    }
+
+    private bool _debugHidden;
+
+    /// <summary>
+    ///     The tab strip must end before the close ornament: tighter spacing, then a smaller label until it fits
+    /// </summary>
+    private void FitTabs()
+    {
+        try {
+            var strip = Window.rectTab;
+            if (strip == null) {
+                return;
+            }
+
+            if (strip.GetComponent<UnityEngine.UI.HorizontalOrVerticalLayoutGroup>() is { } group) {
+                group.spacing = 0f;
+            }
+
+            var available = Bound.width - 150f;
+            for (var size = 16; size >= 10; size--) {
+                foreach (var tab in Window.setting.tabs) {
+                    tab.button?.mainText?.SetSize(size);
+                }
+
+                strip.RebuildLayout(true);
+                if (UnityEngine.UI.LayoutUtility.GetPreferredWidth(strip) <= available) {
+                    break;
+                }
+            }
+        }
+        catch (System.Exception e) {
+            EmpLog.Debug(e, "The tab strip could not be fitted");
+        }
     }
 
     /// <summary>
@@ -139,6 +181,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             Lang.setting.hyphenation = true;
         }
 
+#if DEBUG
+        if (_debugHidden && NetSession.Instance.Transport is { IsDebugGuiActive: false } net) {
+            net.StartDebugGui();
+        }
+#endif
         Instance = null;
     }
 

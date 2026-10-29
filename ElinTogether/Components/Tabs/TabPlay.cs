@@ -31,6 +31,12 @@ internal class TabPlay : TabEmpBase
         }
 #endif
         SubTabs("play", pages);
+        // content from the top edge, no centred empty band above it
+        if (GetComponent<VerticalLayoutGroup>() is { } root) {
+            root.childAlignment = TextAnchor.UpperLeft;
+            root.childForceExpandHeight = false;
+            root.padding.top = 0;
+        }
     }
 
     private void BuildPlay(YKVertical page)
@@ -84,17 +90,26 @@ internal class TabPlay : TabEmpBase
     /// </summary>
     private static void BuildRulesNote(YKVertical page)
     {
-        if (NetSession.Instance.Transport is not ElinNetClient) {
-            return;
+        var isGuest = NetSession.Instance.Transport is ElinNetClient;
+        var lines = SettingsTable.RuleLines(SettingsTable.FromRules(NetSession.Instance.Rules));
+        var card = page.Card("emp_ui_rules_title".lang());
+        if (isGuest) {
+            card.TextSmall("emp_ui_rules_note".lang(), FontColor.Gray);
+        } else {
+            // the host: a short summary, the full list being one click away
+            card.TextSmall("emp_ui_rules_summary".Loc(lines.Count), FontColor.Gray);
+            lines = lines.Take(4).ToList();
         }
 
-        var card = page.Card("emp_ui_rules_title".lang());
-        card.TextSmall("emp_ui_rules_note".lang(), FontColor.Gray);
-        foreach (var (label, value) in SettingsTable.RuleLines(SettingsTable.FromRules(NetSession.Instance.Rules))) {
-            card.TextSmall("emp_ui_rules_line".Loc(label, value));
+        foreach (var (label, value) in lines) {
+            card.KeyValue(label, value);
         }
-        if (SettingsTable.LastNotice is { } notice) {
+        if (isGuest && SettingsTable.LastNotice is { } notice) {
             card.TextSmall(notice);
+        }
+        if (!isGuest) {
+            card.ButtonRow().RowButton("emp_ui_rules_open".lang(),
+                () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server"));
         }
     }
 
