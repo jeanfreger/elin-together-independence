@@ -79,6 +79,7 @@ internal static class ZoneLeaseState
         // then on, also when the save is played alone (PeerMapPatch)
         Patches.PeerMapPatch.MarkCurrentSave();
 
+        var left = ZoneDataResponse.MaxMapUnpacked;
         foreach (var (id, asset) in map.Take(64)) {
             if (!IsMapFileKey(id)) {
                 continue;
@@ -86,7 +87,7 @@ internal static class ZoneLeaseState
 
             // beside it, then swapped: a write cut short (disk full, the game killed) leaves the old file whole
             var path = Path.Combine(folder, id);
-            asset.DecompressToFile(path + ".part");
+            left -= asset.DecompressToFile(path + ".part", left);
             Swap(path + ".part", path);
         }
     }

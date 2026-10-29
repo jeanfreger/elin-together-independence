@@ -137,6 +137,10 @@ public class ZoneDataResponse
     // a real big map is ~40 MB compressed: this only stops a malicious host from filling the disk with 64 big files
     private const long MaxMapBytes = 512L * 1024 * 1024;
 
+    // the same files unpacked, all together (security audit 2026-10-29: each was capped at 256 MB alone, 64 of
+    // them were 16 GB on the disk from one 64 MB message); a real map is some MB
+    internal const long MaxMapUnpacked = 512L * 1024 * 1024;
+
     /// <summary>
     ///     All the files of a received map together stay under <see cref="MaxMapBytes" />, as sent (compressed)
     /// </summary>
@@ -164,12 +168,13 @@ public class ZoneDataResponse
         var basePath = ResourceFetch.GetEmpSavePath();
 
         // (as ZoneLeaseState.WriteFiles: the game writes some twenty files for a map, a host sends no more)
+        var left = MaxMapUnpacked;
         foreach (var (id, asset) in Map.Take(64)) {
             if (!ZoneLeaseState.IsMapFileKey(id)) {
                 continue;
             }
             var path = Path.Combine(basePath, ZoneUid.ToString(), id);
-            asset.DecompressToFile(path);
+            left -= asset.DecompressToFile(path, left);
         }
 
         EmpLog.Debug("Saved map {ZoneUid} to temp folder",

@@ -119,23 +119,26 @@ public class LZ4Bytes
         return ms.ToArray();
     }
 
-    public void DecompressToStream(Stream output)
+    public void DecompressToStream(Stream output, long max = MaxDecompressed)
     {
         using var input = new MemoryStream(Bytes);
-        using var lz4 = new CappedStream(new LZ4Stream(input, CompressionMode.Decompress));
+        using var lz4 = new CappedStream(new LZ4Stream(input, CompressionMode.Decompress), max);
 
         lz4.CopyTo(output);
     }
 
-    public void DecompressToFile(string filePath)
+    /// <returns>the bytes written</returns>
+    /// <param name="max">at most this many, else it throws (a file of several makes them share one budget)</param>
+    public long DecompressToFile(string filePath, long max = MaxDecompressed)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         using var fs = File.Create(filePath);
 
-        DecompressToStream(fs);
+        DecompressToStream(fs, Math.Min(max, MaxDecompressed));
+        return fs.Length;
     }
 
-    private sealed class CappedStream(Stream inner) : Stream
+    private sealed class CappedStream(Stream inner, long max = MaxDecompressed) : Stream
     {
         private long _read;
 
@@ -149,8 +152,8 @@ public class LZ4Bytes
         {
             var n = inner.Read(buffer, offset, count);
             _read += n;
-            if (_read > MaxDecompressed) {
-                throw new InvalidDataException($"Decompressed data over {MaxDecompressed} bytes");
+            if (_read > max) {
+                throw new InvalidDataException($"Decompressed data over {max} bytes");
             }
 
             return n;
