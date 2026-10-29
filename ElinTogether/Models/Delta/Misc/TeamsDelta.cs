@@ -70,6 +70,13 @@ public class TeamsDelta : ElinDelta
     [Key(9)]
     public Dictionary<int, (int Icon, int Color)>? Banners { get; init; }
 
+    /// <summary>
+    ///     Team id -> the source id of the game's thing chosen as its emblem (<see cref="TeamBanner" />); an older host
+    ///     sends none and the element emblem of <see cref="Banners" /> is drawn
+    /// </summary>
+    [Key(10)]
+    public Dictionary<int, string>? Things { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

@@ -85,7 +85,7 @@ internal static class Teams
         _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
-        TeamBanner.Learn(delta.Banners);
+        TeamBanner.Learn(delta.Banners, delta.Things);
         // (not the book told on joining: nothing changed then)
         if (known) {
             Notice(team, asked);
@@ -916,7 +916,7 @@ internal static class Teams
                 EmpLog.Information("Team {TeamId} joining is now {Open}", opener, id == 1 ? "open" : "closed");
                 Tell();
                 break;
-            case TeamAsk.Banner when TeamBanner.Set(chara, id, zoneUid):
+            case TeamAsk.Banner when TeamBanner.Set(chara, id, zoneUid, text):
                 Tell();
                 break;
             case TeamAsk.AcceptInvite when LeadersManage && Invites.TryGetValue(chara.uid, out var offered) && offered == id:
