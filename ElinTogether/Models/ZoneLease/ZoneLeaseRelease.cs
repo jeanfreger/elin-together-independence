@@ -101,4 +101,11 @@ public class ZoneLeaseRelease
     /// </summary>
     [Key(15)]
     public List<LZ4Bytes>? Residents { get; init; }
+
+    /// <summary>
+    ///     Numbers of characters of the base that went for good while this player was alone (a livestock
+    ///     butchered, a member banished): the host drops its copy, see AwayResidents
+    /// </summary>
+    [Key(16)]
+    public List<int>? GoneResidents { get; init; }
 }

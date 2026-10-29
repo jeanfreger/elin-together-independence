@@ -281,6 +281,39 @@ internal partial class ElinNetHost
         }
     }
 
+    /// <summary>
+    ///     The characters of the base a player butchered or banished while it was alone (ZoneLeaseRelease.GoneResidents):
+    ///     the host's copy goes too, it was the only one left and came back ("dodos respawned after getting butchered")
+    /// </summary>
+    private void DropGoneResidents(List<int>? gone, int ownerUid)
+    {
+        if (gone is null || ownerUid == 0) {
+            return;
+        }
+
+        foreach (var uid in gone.Take(256)) {
+            // never a player's character, never one standing on the map the host plays, never a stranger's companion
+            // (a base member without a base is not a resident), never one with a story of its own
+            if (game.cards.globalCharas.Find(uid) is not { isDestroyed: false } old || old.IsPlayer || old.GetBool("remote_chara") ||
+                old.homeBranch is not { } branch || old.trait.IsUnique || old.IsUnique ||
+                (old.CompanionOwnerUid != 0 && old.CompanionOwnerUid != ownerUid) ||
+                (old.parent is Zone && old.currentZone == _zone)) {
+                continue;
+            }
+
+            ForgetCachedCard(old);
+            if (old.IsPCParty) {
+                pc.party.RemoveMember(old);
+            }
+
+            branch.RemoveMemeber(old);
+            game.cards.globalCharas.Remove(old);
+            old.Destroy();
+
+            EmpLog.Information("Resident {Uid} went while player {OwnerUid} was alone: dropped here too", uid, ownerUid);
+        }
+    }
+
     private static void RebindRide(int ownerUid)
     {
         if (game.cards.globalCharas.Find(ownerUid) is { } player) {

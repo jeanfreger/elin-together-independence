@@ -20,6 +20,11 @@ internal static class AwayResidents
 {
     private static readonly HashSet<int> _changed = [];
 
+    // the other way round: a character of the base that went for good while it was alone (a livestock butchered, a
+    // member banished). Nothing said it went, and the host kept its copy: "dodos respawned after getting butchered"
+    // (issues 26 and 27, 2026-10-29)
+    private static readonly HashSet<int> _gone = [];
+
     private static bool Alone => !ElinDelta.IsApplying && NetSession.Instance is { IsZoneAuthority: true, Transport: ElinNetClient };
 
     [HarmonyPostfix]
@@ -38,6 +43,49 @@ internal static class AwayResidents
         if (Alone && c is { IsPlayer: false }) {
             _changed.Add(c.uid);
         }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.BanishMember))]
+    internal static void OnBanished(Chara c)
+    {
+        NoteGone(c);
+    }
+
+    // (a character of the base that is destroyed any other way; one that stays a member is not destroyed, see Card.Destroy)
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.Destroy))]
+    internal static void OnDestroyed(Card __instance)
+    {
+        if (__instance is Chara { IsGlobal: true } chara && !(chara.IsPCFaction && !chara.isSummon)) {
+            NoteGone(chara);
+        }
+    }
+
+    private static void NoteGone(Chara? c)
+    {
+        if (Alone && c is { IsPlayer: false, isDestroyed: false }) {
+            _gone.Add(c.uid);
+            _changed.Remove(c.uid);
+        }
+    }
+
+    /// <summary>
+    ///     The numbers of the characters of the base that went while this player was alone, see <see cref="NoteGone" />
+    /// </summary>
+    /// <param name="handed">the zone is handed back (not a checkpoint): what is sent now is not sent again</param>
+    internal static List<int>? CollectGone(bool handed)
+    {
+        if (_gone.Count == 0) {
+            return null;
+        }
+
+        var gone = _gone.ToList();
+        if (handed) {
+            _gone.Clear();
+        }
+
+        return gone;
     }
 
     /// <param name="handed">the zone is handed back (not a checkpoint): what is sent now is not sent again</param>
