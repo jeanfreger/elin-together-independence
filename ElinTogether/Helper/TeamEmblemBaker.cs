@@ -96,27 +96,40 @@ internal static class TeamEmblemBaker
     /// <summary>The 64x64 pixels, rows bottom-up as a texture holds them</summary>
     internal static Color32[] Bake(Emblem emblem)
     {
-        // (top-down while drawing)
+        // (top-down while drawing) the background: its pattern of the two colours
         var px = new Color[N * N];
         var bg = TeamBanner.ColorOf(emblem.Background);
-        for (var i = 0; i < px.Length; i++) {
-            px[i] = bg;
+        var bg2 = TeamBanner.ColorOf(emblem.Background2);
+        for (var y = 0; y < N; y++) {
+            for (var x = 0; x < N; x++) {
+                px[y * N + x] = Second(emblem.Pattern, emblem.Shape, x, y) ? bg2 : bg;
+            }
         }
 
+        var cover = new float[N * N];
+        var colour = new Color[N * N];
         foreach (var layer in emblem.Layers) {
             if (Source(layer.Thing) is not { } src) {
                 continue;
             }
 
+            System.Array.Clear(cover, 0, cover.Length);
             Color? tint = layer.Tint < TeamEmblem.OwnColours ? TeamBanner.ColorOf(layer.Tint) : null;
+            var opacity = Mathf.Clamp(layer.Opacity, TeamEmblem.MinOpacity, 100) / 100f;
             var scale = N * layer.Size / 100f / Mathf.Max(src.W, src.H, 1);
+            // undo the clockwise turn (eighths of a turn), then the flips
+            var angle = layer.Rotation * Mathf.PI / 4f;
+            var (cos, sin) = (Mathf.Cos(angle), Mathf.Sin(angle));
+            if (layer.Rotation % 2 == 0) {
+                // (quarter turns stay exact: the same pixels as the first form drew)
+                (cos, sin) = (Mathf.Round(cos), Mathf.Round(sin));
+            }
+
             for (var dy = 0; dy < N; dy++) {
                 for (var dx = 0; dx < N; dx++) {
-                    float u = dx + 0.5f - layer.X, v = dy + 0.5f - layer.Y;
-                    // undo the clockwise quarter turns, then the flips
-                    for (var r = 0; r < layer.Rotation; r++) {
-                        (u, v) = (v, -u);
-                    }
+                    float x0 = dx + 0.5f - layer.X, y0 = dy + 0.5f - layer.Y;
+                    var u = x0 * cos + y0 * sin;
+                    var v = -x0 * sin + y0 * cos;
 
                     if ((layer.Flip & 1) != 0) {
                         u = -u;
@@ -143,7 +156,17 @@ internal static class TeamEmblemBaker
                     }
 
                     var i = dy * N + dx;
-                    px[i] = Color.Lerp(px[i], new(c.r, c.g, c.b, 1f), c.a);
+                    cover[i] = c.a;
+                    colour[i] = c;
+                }
+            }
+
+            // the outline first, on the pixels the layer leaves bare beside the ones it covers; then the layer
+            for (var i = 0; i < px.Length; i++) {
+                if (cover[i] > 0f) {
+                    px[i] = Color.Lerp(px[i], new(colour[i].r, colour[i].g, colour[i].b, 1f), cover[i] * opacity);
+                } else if (layer.Outline != 0 && Borders(cover, i)) {
+                    px[i] = Color.Lerp(px[i], Ink, opacity);
                 }
             }
         }
@@ -160,15 +183,64 @@ internal static class TeamEmblemBaker
         return output;
     }
 
-    /// <summary>The pixel (top-down) is inside the shape: square, round, or a shield pointed at the bottom</summary>
+    // the outline's dark ink
+    private static readonly Color Ink = new(0.1f, 0.08f, 0.06f, 1f);
+
+    /// <summary>A bare pixel next to one the layer covers at least half (its four neighbours)</summary>
+    private static bool Borders(float[] cover, int i)
+    {
+        var (x, y) = (i % N, i / N);
+        return (x > 0 && cover[i - 1] >= 0.5f) || (x < N - 1 && cover[i + 1] >= 0.5f) ||
+               (y > 0 && cover[i - N] >= 0.5f) || (y < N - 1 && cover[i + N] >= 0.5f);
+    }
+
+    /// <summary>
+    ///     The pixel (top-down) takes the pattern's second colour: halves, quarters, a diagonal, stripes, a chevron, or a
+    ///     border along the shape's edge
+    /// </summary>
+    private static bool Second(int pattern, int shape, int x, int y)
+    {
+        const int half = N / 2;
+        switch (pattern) {
+            case 1:
+                return x >= half;
+            case 2:
+                return y >= half;
+            case 3:
+                return x >= half ^ y >= half;
+            case 4:
+                return x > y;
+            case 5:
+                return x / 8 % 2 == 1;
+            case 6:
+                // an upturned V across the middle, 12 pixels thick
+                var top = N * 0.3f + Mathf.Abs(x + 0.5f - half) * 0.9f;
+                return y + 0.5f >= top && y + 0.5f < top + 12f;
+            case 7:
+                const int w = 6;
+                return !Inside(shape, x - w, y) || !Inside(shape, x + w, y) || !Inside(shape, x, y - w) || !Inside(shape, x, y + w);
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    ///     The pixel (top-down) is inside the shape: square, round, a shield pointed at the bottom, a banner with a
+    ///     swallowtail, a diamond, a hexagon
+    /// </summary>
     private static bool Inside(int shape, int x, int y)
     {
+        if (x < 0 || y < 0 || x >= N || y >= N) {
+            return false;
+        }
+
         var dx = Mathf.Abs(x + 0.5f - N / 2f);
         var py = y + 0.5f;
+        var dy = Mathf.Abs(py - N / 2f);
+        const float r = N / 2f;
         switch (shape) {
             case 1:
-                var dy = py - N / 2f;
-                return dx * dx + dy * dy <= N * N / 4f;
+                return dx * dx + dy * dy <= r * r;
             case 2:
                 if (py < N / 2f) {
                     return true;
@@ -176,6 +248,15 @@ internal static class TeamEmblemBaker
 
                 var t = (py - N / 2f) / (N / 2f);
                 return dx <= N / 2f * Mathf.Pow(Mathf.Max(0f, 1f - t), 0.6f);
+            case 3:
+                // a hanging banner, a little narrower than the square, its bottom cut in a V
+                const float notch = 16f;
+                return dx <= r * 0.8f && !(py > N - notch && dx < py - (N - notch));
+            case 4:
+                return dx + dy <= r;
+            case 5:
+                // pointed at the top and the bottom, its sides upright
+                return dx <= r * 0.866f && dx * 0.57735f + dy <= r;
             default:
                 return true;
         }

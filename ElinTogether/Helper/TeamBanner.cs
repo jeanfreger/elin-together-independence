@@ -35,9 +35,16 @@ internal static class TeamBanner
     private static readonly int[] Palette = [
         0x0072b2, 0xe69f00, 0xcc79a7, 0x009e73, 0xd55e00, 0x56b4e9,
         0xf0e442, 0x9a6fe0, 0xe0554f, 0x8fbf3f, 0x4fd1c5, 0xb0b0b0,
+        // the emblem's further twelve (heraldry's deep and pale tinctures): never a team's colour
+        0x1f3a93, 0x8b1a1a, 0x2e6b2e, 0x7a4a21, 0x202020, 0xf2f2f2,
+        0xd4af37, 0x5b2a86, 0xf4a6b8, 0x1d6f6f, 0xa0522d, 0x606060,
     ];
 
+    /// <summary>The team colours (chips, the banner colour): the first twelve of the palette</summary>
     internal const int ColorCount = 12;
+
+    /// <summary>The emblem's colours: the whole palette</summary>
+    internal const int EmblemColorCount = TeamEmblem.Colours;
 
     // a guest's copy of the host's banners
     private static Dictionary<int, (int Icon, int Color)> _told = [];
@@ -74,7 +81,7 @@ internal static class TeamBanner
         }
     }
 
-    internal static Color ColorOf(int index) => ToColor(Palette[Mathf.Clamp(index, 0, ColorCount - 1)]);
+    internal static Color ColorOf(int index) => ToColor(Palette[Mathf.Clamp(index, 0, Palette.Length - 1)]);
 
     /// <summary>
     ///     The colour of a team's chip: its banner colour, else a stable one from the team id in the same palette
@@ -166,15 +173,18 @@ internal static class TeamBanner
         }
 
         if (thing.Length > 0) {
-            // an emblem of up to 8 things or monsters of the game (an old single id is upgraded to one layer); any
+            // an emblem of up to 12 things or monsters of the game (an old single id is upgraded to one layer); any
             // text that does not read, a field out of range or an id the game does not know is refused
             if (TeamEmblem.Canonical(thing, color, Normalize) is not { } canonical) {
                 return false;
             }
 
+            // (the team's colour is the emblem's background when it is one of the twelve team colours, else it stays)
             var bg = TeamEmblem.Parse(canonical)!.Background;
+            var had = ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2;
+            var teamColour = bg < ColorCount ? bg : had ? old![1] : color;
             ElinNetHost.TeamThings[team] = canonical;
-            ElinNetHost.TeamBanners[team] = [ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2 ? old[0] : 0, bg];
+            ElinNetHost.TeamBanners[team] = [had ? old![0] : 0, teamColour];
             EmpLog.Information("Team {TeamId} banner: emblem {Emblem}", team, canonical);
             return true;
         }
