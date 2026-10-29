@@ -359,14 +359,18 @@ internal static class TeamBanner
 
     /// <summary>
     ///     Two pills (Items / Monsters) over a search field over every thing or monster of the game (name in the
-    ///     player's language, or id), results paged
+    ///     player's language, or id), results paged; a click gives the typed id to <paramref name="onPick" />
     /// </summary>
-    private static void BuildThingPicker(YKLayout card, int teamId, (int Icon, int Color) current)
+    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick)
     {
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         list.Layout.spacing = 4f;
-        BuildKindPills(card, list, teamId, current);
+        Pills(card, ["emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang()], _kind, i => {
+            _kind = i;
+            _page = 0;
+            FillThings(list, colour, onPick);
+        });
 
         var search = card.InputText(_query);
         search.field.characterLimit = 40;
@@ -376,15 +380,15 @@ internal static class TeamBanner
         search.field.onValueChanged.AddListener(text => {
             _query = text;
             _page = 0;
-            FillThings(list, teamId, current);
+            FillThings(list, colour, onPick);
         });
-        FillThings(list, teamId, current);
+        FillThings(list, colour, onPick);
     }
 
     /// <summary>
-    ///     The Items / Monsters pills, the game's tab pills in a row of the card, in a selectable group like the page pills
+    ///     The game's tab pills in a row of the card, in a selectable group like the page pills
     /// </summary>
-    private static void BuildKindPills(YKLayout card, YKLayout list, int teamId, (int Icon, int Color) current)
+    internal static void Pills(YKLayout card, IEnumerable<string> labels, int selected, System.Action<int> onPick)
     {
         if (EmpUiParts.Pill is not { } mold) {
             return;
@@ -397,7 +401,7 @@ internal static class TeamBanner
         group.colorWhenSelected = true;
         group.useTransition = true;
         group.fixRefreshButtons = true;
-        foreach (var label in new[] { "emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang() }) {
+        foreach (var label in labels) {
             var pill = Util.Instantiate(mold, row.transform);
             pill.mainText.SetText(label);
             if (pill.icon != null) {
@@ -408,14 +412,10 @@ internal static class TeamBanner
         }
 
         group.SetColors();
-        group.Init(_kind, i => {
-            _kind = i;
-            _page = 0;
-            FillThings(list, teamId, current);
-        });
+        group.Init(selected, i => onPick(i));
     }
 
-    private static void FillThings(YKLayout list, int teamId, (int Icon, int Color) current)
+    private static void FillThings(YKLayout list, Color colour, System.Action<string> onPick)
     {
         foreach (Transform child in list.transform) {
             Object.Destroy(child.gameObject);
@@ -424,8 +424,6 @@ internal static class TeamBanner
         var found = Search();
         var pages = Mathf.Max(1, (found.Count + PageSize - 1) / PageSize);
         _page = Mathf.Clamp(_page, 0, pages - 1);
-        var chosen = EmblemOf(teamId)?.Layers[0].Thing;
-        var colour = ColorOf(current.Color);
         YKLayout? row = null;
         var n = 0;
         foreach (var thing in found.Skip(_page * PageSize).Take(PageSize)) {
@@ -434,18 +432,18 @@ internal static class TeamBanner
             }
 
             var value = thing.Value;
-            Frame(row!, colour, thing.Sprite, 30f, value == chosen, () => Teams.Ask(TeamAsk.Banner, current.Icon, current.Color, value));
+            Frame(row!, colour, thing.Sprite, 30f, false, () => onPick(value));
         }
 
         var bar = list.ButtonRow();
         bar.RowButton("<", () => {
             _page--;
-            FillThings(list, teamId, current);
+            FillThings(list, colour, onPick);
         });
         bar.Text($"{_page + 1} / {pages}");
         bar.RowButton(">", () => {
             _page++;
-            FillThings(list, teamId, current);
+            FillThings(list, colour, onPick);
         });
     }
 
@@ -477,25 +475,6 @@ internal static class TeamBanner
             go.AddComponent<Button>().onClick.AddListener(() => click());
         } else {
             image.raycastTarget = false;
-        }
-    }
-
-    /// <summary>
-    ///     The picker: the emblems, then the 12 colours; a click asks the host (checked there against the team's leader)
-    /// </summary>
-    internal static void BuildPicker(YKLayout card, int teamId)
-    {
-        var current = Of(teamId) ?? (Emblems.FirstOrDefault().Id, 0);
-        var colour = ColorOf(current.Color);
-        card.TextSmall("emp_ui_team_banner_emblem".lang(), FontColor.Gray);
-        BuildThingPicker(card, teamId, current);
-
-        card.TextSmall("emp_ui_team_banner_color".lang(), FontColor.Gray);
-        var row = card.Row();
-        for (var c = 0; c < ColorCount; c++) {
-            var index = c;
-            Swatch(row, ColorOf(c), 24f, 24f, c == current.Color, () => Teams.Ask(TeamAsk.Banner, current.Icon, index,
-                EmblemOf(teamId) is { } emblem ? TeamEmblem.Format(emblem with { Background = index }) : ""));
         }
     }
 

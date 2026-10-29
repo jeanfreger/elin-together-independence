@@ -243,7 +243,7 @@ internal class TabTeam : TabEmpBase
         if (!leads) {
             card.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
         } else if (_bannerPicker) {
-            TeamBanner.BuildPicker(card, mine);
+            EmblemEditor.Build(card, mine);
         }
 
         var lands = page.Card("emp_ui_team_lands_map".lang());
