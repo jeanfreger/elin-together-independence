@@ -17,6 +17,8 @@ namespace ElinTogether.Components;
 /// </summary>
 internal class TabLands : TabEmpBase
 {
+    private static readonly string[] LandIcons = ["icon_container", "icon_influence"];
+
     public override void OnLayout()
     {
         if (!TabTeam.TeamsOn) {
@@ -27,7 +29,7 @@ internal class TabLands : TabEmpBase
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
         if (mine == Teams.Wanderers) {
-            this.Card("emp_ui_tab_lands".lang()).EmptyState("emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
+            TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
             BuildBoxes(mine);
             return;
@@ -35,7 +37,7 @@ internal class TabLands : TabEmpBase
 
         var lands = Teams.LandsOf(mine).ToList();
         if (lands.Count == 0) {
-            this.Card("emp_ui_tab_lands".lang()).EmptyText("emp_ui_land_none".lang());
+            TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
         }
 
         foreach (var land in lands) {
@@ -103,7 +105,9 @@ internal class TabLands : TabEmpBase
             return;
         }
 
-        var card = this.Card("emp_ui_land_boxes".lang(), EmpUi.Icon("icon_container"));
+        // (the header says what is shown: both boxes, or the one there is)
+        var header = bank is not null && delivery is not null ? "emp_ui_land_boxes" : bank is not null ? "emp_ui_land_team_bank" : "emp_ui_land_delivery";
+        var card = this.Card(header.lang(), EmpUi.Icon("icon_container"));
         if (bank is not null) {
             BoxRow(card, bank, "emp_ui_land_team_bank".lang(), "emp_ui_land_bank_line".Loc(bank.GetCurrency(), bank.things.Count));
         }
