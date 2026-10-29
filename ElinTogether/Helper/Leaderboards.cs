@@ -174,6 +174,7 @@ internal static class Leaderboards
             Uids = top.Select(e => e.Uid).ToArray(),
             OwnRank = rank,
             OwnScore = rank > 0 ? list[rank - 1].Score : 0,
+            Total = list.Count,
         };
     }
 

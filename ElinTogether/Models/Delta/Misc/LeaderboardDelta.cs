@@ -33,6 +33,10 @@ public class LeaderboardDelta : ElinDelta
     [Key(6)]
     public long OwnScore { get; set; }
 
+    // how many entries the board has in all (the answer lists only the top ones)
+    [Key(7)]
+    public int Total { get; set; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return IsAnswer ? "not a request" : Board is < 0 or > 3 ? "no such board" : NoCharacter(sender);

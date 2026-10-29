@@ -21,6 +21,8 @@ internal class TabLeaderboard : TabEmpBase
     private static readonly string[] Icons = ["icon_medal", "icon_influence"];
     private static readonly string[] Keys = ["emp_ui_lb_level", "emp_ui_lb_deepest", "emp_ui_lb_duels", "emp_ui_lb_wealth"];
 
+    private const float RowH = 44f;
+
     private readonly YKVertical?[] _lists = new YKVertical?[Leaderboards.BoardCount];
 
     public override void OnLayout()
@@ -76,9 +78,13 @@ internal class TabLeaderboard : TabEmpBase
                 var uid = answer.Uids.Length > i ? answer.Uids[i] : 0;
                 var mine = answer.OwnRank == i + 1;
                 var row = page.Row();
+                // one fixed height: the portrait and the sprite are scaled to it, not the row to them
+                row.LayoutElement().minHeight = row.LayoutElement().preferredHeight = RowH;
+                row.Layout.childControlHeight = false;
+                row.Layout.childForceExpandHeight = false;
                 row.Text($"#{i + 1}").LayoutElement().minWidth = 48f;
                 if (board != Leaderboards.Wealth) {
-                    row.Portrait(Teams.FindChara(uid));
+                    row.Portrait(Teams.FindChara(uid), RowH);
                 }
 
                 row.Text(answer.Names[i], mine ? FontColor.Good : FontColor.Default).LayoutElement().flexibleWidth = 1f;
@@ -87,7 +93,7 @@ internal class TabLeaderboard : TabEmpBase
 
             page.Divider();
             page.KeyValue("emp_ui_lb_you".lang(),
-                answer.OwnRank > 0 ? "emp_ui_lb_rank".Loc(answer.OwnRank, answer.OwnScore.ToString("N0")) : "emp_ui_lb_unranked".lang());
+                answer.OwnRank > 0 ? "emp_ui_lb_rank".Loc(answer.OwnRank, Mathf.Max(answer.Names.Length, answer.Total), answer.OwnScore.ToString("N0")) : "emp_ui_lb_unranked".lang());
         }
 
         Relayout();

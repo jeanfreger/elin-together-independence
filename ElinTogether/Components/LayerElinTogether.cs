@@ -113,15 +113,32 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             }
 
             var available = Bound.width - 150f;
-            for (var size = 16; size >= 10; size--) {
+            var texts = strip.GetComponentsInChildren<UnityEngine.UI.Text>(true);
+            for (var size = 16; size >= 9; size--) {
                 foreach (var tab in Window.setting.tabs) {
                     tab.button?.mainText?.SetSize(size);
                 }
 
+                // (the labels' own components too: a best-fit text ignores the size set above)
+                foreach (var text in texts) {
+                    text.resizeTextForBestFit = false;
+                    text.fontSize = size;
+                }
+
+                UnityEngine.Canvas.ForceUpdateCanvases();
                 strip.RebuildLayout(true);
                 if (UnityEngine.UI.LayoutUtility.GetPreferredWidth(strip) <= available) {
-                    break;
+                    return;
                 }
+            }
+
+            // still too wide at the smallest label: shrink the whole strip from its left edge so it ends before the ornament
+            var width = UnityEngine.UI.LayoutUtility.GetPreferredWidth(strip);
+            if (width > available && width > 1f) {
+                var before = strip.pivot;
+                strip.pivot = new(0f, before.y);
+                strip.anchoredPosition += new Vector2(-before.x * strip.rect.width * strip.localScale.x, 0f);
+                strip.localScale = new(available / width, available / width, 1f);
             }
         }
         catch (System.Exception e) {

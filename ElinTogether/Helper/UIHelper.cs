@@ -111,6 +111,45 @@ public static class UIHelper
 
     extension(UIInputText input)
     {
+        /// <summary>
+        ///     A search box that reads as an input: the game's field background, a visible grey placeholder, one row high
+        /// </summary>
+        public void StyleAsSearch(string placeholder)
+        {
+            var field = input.field;
+            var le = input.GetComponent<LayoutElement>() ?? input.gameObject.AddComponent<LayoutElement>();
+            le.minHeight = le.preferredHeight = RowHeight;
+            if (field.targetGraphic is Image back && back.sprite == null) {
+                back.sprite = FindSprite("buttonBig");
+                back.type = Image.Type.Sliced;
+                back.color = new(1f, 1f, 1f, 0.55f);
+            }
+
+            var hint = field.placeholder as Text;
+            if (hint == null) {
+                var template = field.textComponent;
+                var go = new GameObject("Placeholder", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+                go.transform.SetParent(template.transform.parent, false);
+                var rt = (RectTransform)go.transform;
+                var src = template.rectTransform;
+                (rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax) = (src.anchorMin, src.anchorMax, src.offsetMin, src.offsetMax);
+                hint = go.GetComponent<Text>();
+                hint.font = template.font;
+                hint.fontSize = template.fontSize;
+                hint.alignment = template.alignment;
+                field.placeholder = hint;
+            }
+
+            hint.text = placeholder;
+            hint.fontStyle = FontStyle.Italic;
+            hint.color = new(0.35f, 0.3f, 0.22f, 0.75f);
+            hint.raycastTarget = false;
+            hint.gameObject.SetActive(true);
+            if (field.textComponent != null) {
+                field.textComponent.color = new(0.15f, 0.1f, 0.05f, 1f);
+            }
+        }
+
         // the game's text box prefab may filter what is typed (issue #29: no space in the bug report): free text
         public void AllowAnyText()
         {

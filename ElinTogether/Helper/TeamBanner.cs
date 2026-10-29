@@ -167,7 +167,7 @@ internal static class TeamBanner
     ///     The team's banner in a row: its emblem tinted with its colour, then a chip of that colour. Nothing when the
     ///     box is off or the team has none
     /// </summary>
-    internal static void Draw(YKLayout row, int teamId, float size = 26f)
+    internal static void Draw(YKLayout row, int teamId, float size = 48f)
     {
         if (Of(teamId) is not { } banner) {
             return;
@@ -177,13 +177,9 @@ internal static class TeamBanner
         if (ThingOf(teamId) is { } thing) {
             Frame(row, color, EClass.sources.things.map[thing].GetSprite(), size, true, null);
         } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
-            var icon = row.CardIcon(null, size);
-            icon.sprite = sprite;
-            icon.color = color;
-            icon.enabled = true;
+            // the emblem on a square of the colour, like an item (no detached colour bar beside it)
+            Frame(row, color, sprite, size, true, null);
         }
-
-        Swatch(row, color, size * 0.35f, size, false, null);
     }
 
     /// <summary>
@@ -196,7 +192,9 @@ internal static class TeamBanner
         var go = new GameObject("Thing", typeof(RectTransform), typeof(Image));
         go.transform.SetParent(back, false);
         var rt = (RectTransform)go.transform;
-        (rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax) = (Vector2.zero, Vector2.one, new(2f, 2f), new(-2f, -2f));
+        // the sprite scaled to fit inside the square, with a margin of a seventh of it
+        var inset = Mathf.Max(2f, size / 7f);
+        (rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax) = (Vector2.zero, Vector2.one, new(inset, inset), new(-inset, -inset));
         var image = go.GetComponent<Image>();
         image.sprite = sprite;
         image.preserveAspect = true;
@@ -226,9 +224,7 @@ internal static class TeamBanner
     {
         var search = card.InputText(_query);
         search.field.characterLimit = 40;
-        if (search.field.placeholder is Text hint) {
-            hint.text = "emp_ui_team_banner_search".lang();
-        }
+        search.StyleAsSearch("emp_ui_team_banner_search".lang());
 
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;

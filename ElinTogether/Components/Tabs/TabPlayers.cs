@@ -54,9 +54,7 @@ internal class TabPlayers : TabEmpBase
 
         var search = controls.InputText(_search);
         search.field.characterLimit = 40;
-        if (search.field.placeholder is UnityEngine.UI.Text hint) {
-            hint.text = "emp_ui_pl_search".lang();
-        }
+        search.StyleAsSearch("emp_ui_pl_search".lang());
         search.field.onValueChanged.AddListener(text => {
             _search = text.Trim();
             _page = 0;

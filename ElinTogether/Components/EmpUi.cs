@@ -340,8 +340,17 @@ internal static class EmpUi
         }
 
         chip.text.SetText(text, color);
-        if (tint is { } c && chip.text.GetComponentInChildren<UnityEngine.UI.Text>() is { } label) {
-            label.color = c;
+        if (tint is { } c) {
+            // a coloured chip: the tag's own background in the colour, the label in white or black for contrast
+            var label = chip.text.GetComponentInChildren<UnityEngine.UI.Text>();
+            var shape = chip.GetComponentsInChildren<Image>(true).FirstOrDefault(i => label == null || i.gameObject != label.gameObject);
+            if (shape != null) {
+                shape.color = c;
+            }
+
+            if (label != null) {
+                label.color = c.grayscale > 0.55f ? Color.black : Color.white;
+            }
         }
 
         chip.transform.RebuildLayout(true);
@@ -380,6 +389,9 @@ internal static class EmpUi
         // (the portrait in a column of its own, the text starting after it: 14 of air, not the usual 10)
         var row = Line(parent, spacing: 14f);
         row.LayoutElement().minHeight = PortraitH + 4f;
+        row.LayoutElement().preferredHeight = PortraitH + 4f;
+        row.Layout.childControlHeight = false;
+        row.Layout.childForceExpandHeight = false;
 
         AddPortrait(row, info.Chara);
 
@@ -387,9 +399,12 @@ internal static class EmpUi
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         col.Layout.spacing = 0f;
         col.LayoutElement().flexibleWidth = 1f;
-        col.Text(info.Name).SetSize(UIHelper.LabelSize);
+        // one line each, cut with an ellipsis; the row keeps one height whatever the names
+        var nameText = col.Text(info.Name);
+        nameText.SetSize(UIHelper.LabelSize);
+        OneLine(nameText, info.Name, string.IsNullOrEmpty(info.Team) ? 200f : 150f);
         if (info.Detail.Length > 0) {
-            GreyLine(col, info.Detail);
+            OneLine(GreyLine(col, info.Detail), info.Detail, string.IsNullOrEmpty(info.Team) ? 200f : 150f);
         }
 
         if (!string.IsNullOrEmpty(info.Team)) {
@@ -414,16 +429,49 @@ internal static class EmpUi
     }
 
     /// <summary>
-    ///     Just the portrait, in its own fixed-width column (a character sheet's header: the facts go beside it)
+    ///     The text on one line: cut with "..." where it would pass the width (the legacy Text has no ellipsis)
     /// </summary>
-    public static void Portrait(this YKHorizontal row, Chara? chara)
+    private static void OneLine(UIText line, string full, float width)
     {
-        AddPortrait(row, chara);
+        var label = line.GetComponentInChildren<UnityEngine.UI.Text>();
+        if (label == null) {
+            return;
+        }
+
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        label.verticalOverflow = VerticalWrapMode.Truncate;
+        label.resizeTextForBestFit = false;
+        var settings = label.GetGenerationSettings(new(width, 100f));
+        settings.horizontalOverflow = HorizontalWrapMode.Overflow;
+        var gen = label.cachedTextGeneratorForLayout;
+        if (gen.GetPreferredWidth(full, settings) / label.pixelsPerUnit <= width) {
+            return;
+        }
+
+        var n = full.Length;
+        while (n > 1 && gen.GetPreferredWidth(full.Substring(0, n) + "...", settings) / label.pixelsPerUnit > width) {
+            n--;
+        }
+
+        line.SetText(full.Substring(0, n).TrimEnd() + "...");
+        var element = line.LayoutElement();
+        element.preferredWidth = width;
+        element.minWidth = 0f;
     }
 
-    private static void AddPortrait(YKHorizontal row, Chara? chara)
+    /// <summary>
+    ///     Just the portrait, in its own fixed-width column (a character sheet's header: the facts go beside it)
+    /// </summary>
+    public static void Portrait(this YKHorizontal row, Chara? chara, float height = 0f)
     {
-        var holder = NewBox(row.transform, "PortraitBox", PortraitW, PortraitH);
+        AddPortrait(row, chara, height);
+    }
+
+    private static void AddPortrait(YKHorizontal row, Chara? chara, float height = 0f)
+    {
+        // (a given height scales both boxes to it, keeping their proportions)
+        var k = height > 0f ? height / PortraitH : 1f;
+        var holder = NewBox(row.transform, "PortraitBox", PortraitW * k, PortraitH * k);
         if (chara is null) {
             return;
         }
@@ -444,7 +492,7 @@ internal static class EmpUi
                 portrait.imageChara.gameObject.SetActive(false);
             }
 
-            var spriteHolder = NewBox(row.transform, "SpriteBox", SpriteW, PortraitH);
+            var spriteHolder = NewBox(row.transform, "SpriteBox", SpriteW * k, PortraitH * k);
             CharaSprite(spriteHolder, chara);
             return;
         }
@@ -650,15 +698,18 @@ internal static class EmpUi
     private static void SettingWords(YKVertical col, string title, string? description, bool readOnly, string setByHostText)
     {
         if (readOnly && setByHostText.Length > 0) {
-            var titleLine = Line(col, spacing: 8f);
-            titleLine.Text(title).SetSize(UIHelper.LabelSize);
-            titleLine.Chip(setByHostText);
+            col.Text(title).SetSize(UIHelper.LabelSize);
         } else {
             col.Text(title).SetSize(UIHelper.LabelSize);
         }
 
         if (!string.IsNullOrEmpty(description)) {
             GreyLine(col, description!);
+        }
+
+        // (the chip on a line of its own, after the hint: beside the title it ran over the next words)
+        if (readOnly && setByHostText.Length > 0) {
+            Line(col, spacing: 8f).Chip(setByHostText);
         }
     }
 
