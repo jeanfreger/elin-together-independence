@@ -224,8 +224,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         return journal.rectTab != null ? journal.rectTab.GetComponentInChildren<UIButton>(true) : null;
     }
 
-    // the Journal's strip sits at the window's top right, (-38, -84.8), growing out of the frame; mirrored here
-    private const float JournalTabInset = 38f, JournalTabTop = -84.8f, JournalTabHeight = 54f;
+    // the Journal's strip sits at the window's top right, (-38, -84.8), growing out of the frame; mirrored here, a little
+    // further out so the bookmarks never cover the left page
+    private const float JournalTabInset = 12f, JournalTabTop = -84.8f, JournalTabHeight = 54f;
 
     /// <summary>
     ///     The Journal's side tabs mirrored to the left: the window's own strip (same buttons, group and SwitchContent)
