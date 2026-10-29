@@ -1045,5 +1045,7 @@
     "LangGeneral.emp_ui_emblem_shield.text": "盾形",
     "LangGeneral.emp_ui_emblem_undo.text": "撤销",
     "LangGeneral.emp_ui_emblem_reset.text": "重置",
-    "LangGeneral.emp_ui_emblem_save.text": "保存"
+    "LangGeneral.emp_ui_emblem_save.text": "保存",
+    "LangGeneral.emp_ui_team_tab_team.text": "队伍",
+    "LangGeneral.emp_ui_team_tab_emblem.text": "徽章"
 }

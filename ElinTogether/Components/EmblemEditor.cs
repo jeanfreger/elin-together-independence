@@ -18,7 +18,7 @@ internal static class EmblemEditor
 {
     private const int UndoMax = 20;
     private const int Step = 2;
-    private const float PreviewSize = TeamEmblem.Grid * 3f;
+    private const float PreviewSize = TeamEmblem.Grid * 4f;
 
     private static int _team = -1;
     private static Emblem _draft = new(0, 0, []);
@@ -29,10 +29,17 @@ internal static class EmblemEditor
     // the slider drag being one undo step, not one per value
     private static bool _sliding;
 
-    private static YKLayout? _root;
+    private static YKLayout? _left;
+    private static YKLayout? _right;
+    private static bool _leads;
     private static Image? _preview;
 
-    internal static void Build(YKLayout card, int teamId)
+    /// <summary>
+    ///     The Emblem page of the Team tab: the big preview, the background, the shape and the buttons on the left page;
+    ///     the layers and the selected layer's tools (or the picker while it is open) on the right page. Anyone but the
+    ///     leader sees the emblem and its layers only
+    /// </summary>
+    internal static void Build(YKLayout left, YKLayout right, int teamId, bool leads)
     {
         if (_team != teamId) {
             _team = teamId;
@@ -42,69 +49,58 @@ internal static class EmblemEditor
             _picking = false;
         }
 
-        var root = card.Vertical();
-        root.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        root.Layout.spacing = 6f;
-        _root = root;
+        _left = left;
+        _right = right;
+        _leads = leads;
+        if (!leads) {
+            _draft = Saved(teamId);
+        }
+
         Fill();
     }
 
     private static Emblem Saved(int teamId) =>
         TeamBanner.EmblemOf(teamId) ?? new(TeamBanner.Of(teamId)?.Color ?? 0, 0, []);
 
+    private static void Clear(YKLayout page)
+    {
+        foreach (Transform child in page.transform) {
+            Object.Destroy(child.gameObject);
+        }
+    }
+
     private static void Fill()
     {
-        if (_root == null) {
+        if (_left == null || _right == null) {
             return;
         }
 
-        foreach (Transform child in _root.transform) {
-            Object.Destroy(child.gameObject);
-        }
-
+        Clear(_left);
+        Clear(_right);
         _sliding = false;
-        var root = _root;
+        var left = _left;
+        var right = _right;
         _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _draft.Layers.Count - 1));
 
-        // the preview, then the layers beside it
-        var top = root.Horizontal();
-        top.Layout.spacing = 12f;
-        top.Layout.childForceExpandWidth = false;
-        _preview = TeamEmblemBaker.Place(top.transform, TeamEmblemBaker.Get(_draft), PreviewSize);
-        var layers = top.Vertical();
-        layers.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        layers.LayoutElement().flexibleWidth = 1f;
-        layers.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
-        for (var i = 0; i < _draft.Layers.Count; i++) {
-            LayerRow(layers, i);
-        }
+        // the left page: the preview, as big as the page allows
+        var view = left.Horizontal();
+        view.Layout.childAlignment = TextAnchor.MiddleCenter;
+        view.Layout.childForceExpandWidth = false;
+        _preview = TeamEmblemBaker.Place(view.transform, TeamEmblemBaker.Get(_draft), PreviewSize);
 
-        var add = layers.ButtonRow().RowButton((_picking ? "emp_ui_emblem_add_close" : "emp_ui_emblem_add").lang(), () => {
-            _picking = !_picking;
-            Fill();
-        });
-        add.interactable = _picking || _draft.Layers.Count < TeamEmblem.MaxLayers;
+        if (!_leads) {
+            right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
+            foreach (var layer in _draft.Layers) {
+                right.Text(NameOf(layer.Thing));
+            }
 
-        if (_picking) {
-            TeamBanner.BuildThingPicker(root, TeamBanner.ColorOf(_draft.Background), thing => {
-                if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
-                    return;
-                }
-
-                Change(_draft with { Layers = [.._draft.Layers, TeamEmblem.Layer(thing)] });
-                _selected = _draft.Layers.Count - 1;
-                _picking = false;
-                Fill();
-            });
-        }
-
-        if (_draft.Layers.Count > 0) {
-            LayerTools(root);
+            right.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
+            return;
         }
 
         // the background
-        root.TextSmall("emp_ui_emblem_background".lang(), FontColor.Gray);
-        var colours = root.Row();
+        left.TextSmall("emp_ui_emblem_background".lang(), FontColor.Gray);
+        var colours = left.Row();
         for (var c = 0; c < TeamBanner.ColorCount; c++) {
             var index = c;
             TeamBanner.Swatch(colours, TeamBanner.ColorOf(c), 24f, 24f, c == _draft.Background, () => {
@@ -113,7 +109,7 @@ internal static class EmblemEditor
             });
         }
 
-        TeamBanner.Pills(root, ["emp_ui_emblem_square".lang(), "emp_ui_emblem_round".lang(), "emp_ui_emblem_shield".lang()],
+        TeamBanner.Pills(left, ["emp_ui_emblem_square".lang(), "emp_ui_emblem_round".lang(), "emp_ui_emblem_shield".lang()],
             _draft.Shape, i => {
                 if (i != _draft.Shape) {
                     Change(_draft with { Shape = i });
@@ -121,7 +117,7 @@ internal static class EmblemEditor
                 }
             });
 
-        var bar = root.ButtonRow();
+        var bar = left.ButtonRow();
         bar.RowButton("emp_ui_emblem_undo".lang(), () => {
             if (_undo.Count == 0) {
                 return;
@@ -138,6 +134,42 @@ internal static class EmblemEditor
         bar.RowButton("emp_ui_emblem_save".lang(), () => {
             Teams.Ask(TeamAsk.Banner, 0, _draft.Background, TeamEmblem.Format(_draft));
         }).interactable = _draft.Layers.Count > 0;
+
+        // the right page: the layers, then the picker or the selected layer's tools
+        if (_picking) {
+            right.ButtonRow().RowButton("emp_ui_emblem_add_close".lang(), () => {
+                _picking = false;
+                Fill();
+            });
+            TeamBanner.BuildThingPicker(right, TeamBanner.ColorOf(_draft.Background), thing => {
+                if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
+                    return;
+                }
+
+                Change(_draft with { Layers = [.._draft.Layers, TeamEmblem.Layer(thing)] });
+                _selected = _draft.Layers.Count - 1;
+                _picking = false;
+                Fill();
+            });
+        } else {
+            right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
+            for (var i = 0; i < _draft.Layers.Count; i++) {
+                LayerRow(right, i);
+            }
+
+            var add = right.ButtonRow().RowButton("emp_ui_emblem_add".lang(), () => {
+                _picking = true;
+                Fill();
+            });
+            add.interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
+            if (_draft.Layers.Count > 0) {
+                LayerTools(right);
+            }
+        }
+
+        if (left.transform.parent is RectTransform spread) {
+            LayoutRebuilder.MarkLayoutForRebuild(spread);
+        }
     }
 
     /// <summary>A layer: its thumbnail and name (a click selects it), then up, down and remove</summary>

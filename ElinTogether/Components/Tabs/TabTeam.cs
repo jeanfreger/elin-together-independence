@@ -92,7 +92,23 @@ internal class TabTeam : TabEmpBase
         // on the right (without a team: founding and invitations on the left, the other teams on the right)
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
-        var (left, right) = this.Book();
+        var pages = new List<(string, System.Action<YKVertical>)> {
+            ("emp_ui_team_tab_team".lang(), page => BuildTeamPage(page, me, mine)),
+        };
+        // the emblem has its own page, laid out to fit the window (it sat under the team page, out of reach)
+        if (mine != Teams.Wanderers && TeamBanner.On) {
+            pages.Add(("emp_ui_team_tab_emblem".lang(), page => {
+                var (left, right) = page.Book();
+                EmblemEditor.Build(left, right, mine, Teams.LeaderOf(mine) == me);
+            }));
+        }
+
+        SubTabs("team", pages);
+    }
+
+    private void BuildTeamPage(YKVertical page, int me, int mine)
+    {
+        var (left, right) = page.Book();
         BuildInvitation(left, me);
         if (mine == Teams.Wanderers) {
             BuildFound(left);
@@ -225,27 +241,12 @@ internal class TabTeam : TabEmpBase
         }
     }
 
-    // the banner picker is open (kept over reopenings)
-    private static bool _bannerPicker;
-
     /// <summary>
-    ///     Host box "Team banners": the leader's "Banner" tool and its picker, the map of the team's lands and the
+    ///     Host box "Team banners": the map of the team's lands and the
     ///     team journal. The host checks that the asker leads the team
     /// </summary>
     private static void BuildBannerCard(YKLayout page, int mine, bool leads)
     {
-        var card = page.Card("emp_ui_team_banner".lang());
-        var tool = card.ButtonRow().RowButton("emp_ui_team_banner_tool".lang(), () => {
-            _bannerPicker = !_bannerPicker;
-            LayerElinTogether.Instance?.Reopen();
-        });
-        tool.interactable = leads;
-        if (!leads) {
-            card.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
-        } else if (_bannerPicker) {
-            EmblemEditor.Build(card, mine);
-        }
-
         var lands = page.Card("emp_ui_team_lands_map".lang());
         TeamBanner.BuildLandMap(lands, mine);
 
@@ -364,7 +365,8 @@ internal class TabTeam : TabEmpBase
 
     private static void BuildOtherTeams(YKLayout page, int mine)
     {
-        var others = Teams.Ids().Where(id => id != Teams.Wanderers && id != mine).ToList();
+        // (never the player's own team; a team with nobody left in it is a ghost of the book, not one to join)
+        var others = Teams.Ids().Where(id => id != Teams.Wanderers && id != mine && Teams.MembersOfTeam(id).Any()).ToList();
         if (others.Count == 0) {
             return;
         }
@@ -378,7 +380,7 @@ internal class TabTeam : TabEmpBase
             element.minHeight = element.preferredHeight = TeamRowHeight;
             TeamBanner.Draw(row, team, 40f);
             row.TextColumn(Clip(Teams.NameOf(team), 24),
-                "emp_ui_team_leader_short".Loc(Clip(Teams.PlayerName(Teams.LeaderOf(team)), 16), Teams.MembersOfTeam(team).Count()));
+                "emp_ui_team_leader_short".Loc(Clip(Teams.PlayerName(LeaderOrFirst(team)), 16), Teams.MembersOfTeam(team).Count()));
             var id = team;
             // (the joining rule is the button's hover text, said once instead of on every row)
             var join = row.Button("emp_ui_team_join_short".lang(), () => Teams.Ask(TeamAsk.Join, id));
@@ -388,6 +390,9 @@ internal class TabTeam : TabEmpBase
             le.flexibleWidth = 0f;
         }
     }
+
+    // the leader's character, or the first member's when the book names none
+    private static int LeaderOrFirst(int team) => Teams.LeaderOf(team) is var l && l != 0 ? l : Teams.MembersOfTeam(team).FirstOrDefault();
 
     private const int MaxTeamRows = 5;
     private const float TeamRowHeight = 54f;
