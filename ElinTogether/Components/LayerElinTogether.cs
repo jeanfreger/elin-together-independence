@@ -9,8 +9,7 @@ namespace ElinTogether.Components;
 
 internal class LayerElinTogether : YKLayer<LayerCreationData>
 {
-    // First opening: centred on the screen (an offset pushed the right side past the edge at 1280x720); later openings
-    // keep where the player left it, clamped so the whole window stays on screen (ClampOnScreen)
+    // First opening: centred on the screen; later openings keep where the player left it
     private static Vector2 _browsedPosition = Vector2.zero;
     private static string _lastOpenedTab = "";
     private readonly bool _resetHyp = Lang.setting.hyphenation;
@@ -34,6 +33,14 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         if (_resetHyp) {
             Lang.setting.hyphenation = false;
         }
+
+        // the Journal's tab buttons (its window's tab mold), set before Window.Init builds the tabs; tabAfterCaption
+        // as in the Journal, so the skin never moves the tab strip back over the pages
+        if (JournalWindow() is { } journal && JournalTabMold(journal) is { } mold) {
+            Window.moldTab = mold;
+        }
+
+        Window.setting.tabAfterCaption = true;
 
         // Play and Players: always there, the same for everyone
         _tabs.Add(CreateTab<TabPlay>("emp_ui_tab_play", TabPlay.TabName));
@@ -77,13 +84,14 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         Window.SwitchContent(_lastOpenedTab);
 
-        Window.transform.localPosition = ClampOnScreen(_browsedPosition);
+        Window.transform.localPosition = _browsedPosition;
         try {
-            MoveTabsToLeft();
+            JournalTabsOnTheLeft();
         }
         catch (System.Exception e) {
-            EmpLog.Debug(e, "The tab column could not be built");
+            EmpLog.Debug(e, "The Journal-style tabs could not be placed");
         }
+
         Decorate();
 #if DEBUG
         // the debug box (Ping/Delta/Snap/Dump) sits over the window: hidden while the menu is open
@@ -183,179 +191,148 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(TabCommunity.Redirect(targetTab)));
     }
 
+    /// <summary>The Journal layer's window in its prefab (looked up like Layer.Create does, never instantiated).</summary>
+    private static Window? JournalWindow()
+    {
+        foreach (var folder in Layer.searchPath) {
+            var layer = Resources.Load<Layer>($"UI/{folder}/LayerJournal");
+            if (layer == null) {
+                layer = Resources.Load<Layer>($"UI/{folder}/LayerJournal/LayerJournal");
+            }
+
+            if (layer != null) {
+                return layer.windows.Count > 0 ? layer.windows[0] : layer.GetComponentInChildren<Window>(true);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>The "ButtonTab Journal" button: the window's tab mold, else a tab's custom button, else one in its strip.</summary>
+    private static UIButton? JournalTabMold(Window journal)
+    {
+        if (journal.moldTab != null) {
+            return journal.moldTab;
+        }
+
+        foreach (var tab in journal.setting.tabs) {
+            if (tab.customTab != null) {
+                return tab.customTab;
+            }
+        }
+
+        return journal.rectTab != null ? journal.rectTab.GetComponentInChildren<UIButton>(true) : null;
+    }
+
+    // the Journal's strip sits at the window's top right, (-38, -84.8), growing out of the frame; mirrored here
+    private const float JournalTabInset = 38f, JournalTabTop = -84.8f, JournalTabHeight = 54f;
+
     /// <summary>
-    ///     The game's own tab buttons (same prefab, same selected look through the window's group) stacked in a column
-    ///     on the left edge, all one size (the longest label at the game's font size); the pages sit to their right.
-    ///     Tab ids, the group and SwitchContent are untouched: only the strip's container changes
+    ///     The Journal's side tabs mirrored to the left: the window's own strip (same buttons, group and SwitchContent)
+    ///     taken out of the window's layout, anchored at the top left and stacked downwards like bookmarks sticking out
+    ///     of the frame. Every button gets the widest label's width and the Journal's 54 height; the button is flipped
+    ///     so its bookmark art points left, its label (and the icon inside it) flipped back so they read normally
     /// </summary>
-    private void MoveTabsToLeft()
+    private void JournalTabsOnTheLeft()
     {
         var strip = Window.rectTab;
-        var view = Window.view != null ? Window.view.transform as RectTransform : null;
-        if (strip == null || view == null || view.parent == null) {
+        if (strip == null) {
             return;
         }
 
-        // a body row in the view's place: [tab column][pages]
-        var body = new GameObject("EmpBody", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
-        var bodyRect = (RectTransform)body.transform;
-        bodyRect.SetParent(view.parent, false);
-        bodyRect.SetSiblingIndex(view.GetSiblingIndex());
-        var bodyElement = body.GetComponent<UnityEngine.UI.LayoutElement>();
-        bodyElement.flexibleWidth = bodyElement.flexibleHeight = 1f;
-        // (the view's own size hints carry over to the row, so the window gives it the same room)
-        if (view.GetComponent<UnityEngine.UI.LayoutElement>() is { } old) {
-            bodyElement.minHeight = old.minHeight;
-            bodyElement.preferredHeight = old.preferredHeight;
+        var journal = JournalWindow();
+        var journalStrip = journal != null ? journal.rectTab : null;
+
+        if (strip.parent != Window.transform) {
+            strip.SetParent(Window.transform, false);
         }
 
-        // the old horizontal strip: its layout and fitter go, so nothing is left of the top strip
+        var stripElement = strip.GetComponent<UnityEngine.UI.LayoutElement>() ?? strip.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+        stripElement.ignoreLayout = true;
+
+        // the horizontal strip's row and fitter go; the Journal's column takes their place
         foreach (var fitter in strip.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
             DestroyImmediate(fitter);
         }
 
-        foreach (var group in strip.GetComponents<UnityEngine.UI.LayoutGroup>()) {
+        foreach (var group in strip.GetComponents<UnityEngine.UI.HorizontalLayoutGroup>()) {
             DestroyImmediate(group);
         }
 
-        // sizes first: the column's width is the widest label (game font size) plus the icon and margins
-        float width = 0f;
+        var column = strip.GetComponent<UnityEngine.UI.VerticalLayoutGroup>() ?? strip.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+        if (journalStrip != null && journalStrip.GetComponent<UnityEngine.UI.VerticalLayoutGroup>() is { } model) {
+            column.spacing = model.spacing;
+            column.padding = new(model.padding.right, model.padding.left, model.padding.top, model.padding.bottom);
+        }
+
+        // right aligned: the bookmarks' inner ends line up under the frame, mirroring the Journal's left alignment
+        column.childAlignment = TextAnchor.UpperRight;
+        column.childControlWidth = column.childControlHeight = true;
+        column.childForceExpandWidth = column.childForceExpandHeight = false;
+
+        // the strip's own background as in the Journal
+        if (journalStrip != null && journalStrip.GetComponent<UnityEngine.UI.Image>() is { } journalBg
+            && strip.GetComponent<UnityEngine.UI.Image>() is { } bg) {
+            bg.sprite = journalBg.sprite;
+            bg.color = journalBg.color;
+            bg.type = journalBg.type;
+            bg.enabled = journalBg.enabled;
+        }
+
+        // the widest label decides every button's width (each button's own fitted size, at the game's font size)
         var buttons = new List<UIButton>();
+        var width = 0f;
         foreach (var tab in Window.setting.tabs) {
             if (tab.button == null) {
                 continue;
             }
 
+            var rect = (RectTransform)tab.button.transform;
+            if (rect.GetComponent<UnityEngine.UI.LayoutElement>() is { } own) {
+                own.preferredWidth = own.minWidth = -1f;
+            }
+
+            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+            width = Mathf.Max(width, UnityEngine.UI.LayoutUtility.GetPreferredWidth(rect), rect.rect.width);
             buttons.Add(tab.button);
-            var text = tab.button.mainText;
-            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + LabelLeft + 10f);
         }
-
-        // (never narrower than a short label needs: preferredWidth can read 0 before the font is ready)
-        width = Mathf.Max(width, 140f);
-        const float Gap = 4f, Margin = 10f, ButtonHeight = 30f;
-        strip.SetParent(bodyRect, false);
-        strip.SetAsFirstSibling();
-        strip.anchorMin = new(0f, 0f);
-        strip.anchorMax = new(0f, 1f);
-        strip.pivot = new(0f, 1f);
-        strip.offsetMin = new(0f, 0f);
-        strip.offsetMax = new(width, 0f);
-        strip.gameObject.SetActive(true);
-        var column = strip.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
-        column.childAlignment = TextAnchor.UpperLeft;
-        column.childControlWidth = column.childControlHeight = true;
-        column.childForceExpandWidth = true;
-        column.childForceExpandHeight = false;
-        column.spacing = Gap;
-
-        // the pages start to the right of the column: nothing under the tabs
-        view.SetParent(bodyRect, false);
-        foreach (var ignore in view.GetComponents<UnityEngine.UI.LayoutElement>()) {
-            ignore.ignoreLayout = true;
-        }
-
-        view.anchorMin = Vector2.zero;
-        view.anchorMax = Vector2.one;
-        view.pivot = new(0f, 1f);
-        view.offsetMin = new(width + Margin, 0f);
-        view.offsetMax = Vector2.zero;
 
         foreach (var button in buttons) {
-            button.transform.SetParent(strip, false);
+            var rect = (RectTransform)button.transform;
+            foreach (var fitter in button.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
+                fitter.horizontalFit = fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
+            }
+
             var element = button.GetComponent<UnityEngine.UI.LayoutElement>() ?? button.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
             element.minWidth = element.preferredWidth = width;
-            element.minHeight = element.preferredHeight = ButtonHeight;
+            element.minHeight = element.preferredHeight = JournalTabHeight;
             element.flexibleWidth = element.flexibleHeight = 0f;
-            LayOutTabButton(button);
-        }
+            rect.sizeDelta = new(width, JournalTabHeight);
 
-        // (the window shows the strip only for 2+ tabs: always the case here)
-        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
-    }
-
-    // where the label starts inside a tab button: 6 margin + 22 icon + 6 gap
-    private const float IconLeft = 6f, IconSize = 22f, LabelLeft = IconLeft + IconSize + 6f;
-
-    /// <summary>
-    ///     One vanilla tab button (Window.BuildTabs instantiates the window's moldTab or
-    ///     "UI/Window/Base/Element/ButtonTab") laid out for a vertical column. The only children relied on are the two
-    ///     the game itself fills through UIButton: <c>mainText</c> (the label, SetLang(tab.idLang)) and <c>icon</c>
-    ///     (tab.sprite); the button's own Image stays the background. The prefab is built for a horizontal strip: a
-    ///     layout group and size fitters size the button to its label and line the children up in a row, which in a
-    ///     fixed-width column pushed the icon to the right end and squeezed the label (or its holder) to zero width.
-    ///     So those layout components are switched off on the button and its children, the label and the icon are
-    ///     re-parented straight under the button (if the prefab nests them in a holder) and placed by hand:
-    ///     icon 22 px at the left, label stretched from the icon to the right edge, left aligned, the game's font size.
-    /// </summary>
-    private static void LayOutTabButton(UIButton button)
-    {
-        var root = (RectTransform)button.transform;
-        // children the root's row placed (a background or highlight image): once the row is off they would keep the
-        // horizontal strip's size, so they fill the button instead
-        if (root.GetComponent<UnityEngine.UI.LayoutGroup>() != null) {
-            foreach (Transform child in root) {
-                if (child is RectTransform cr && (button.icon == null || cr != button.icon.rectTransform && !button.icon.transform.IsChildOf(cr))
-                    && (button.mainText == null || cr != button.mainText.rectTransform && !button.mainText.transform.IsChildOf(cr))) {
-                    cr.anchorMin = Vector2.zero;
-                    cr.anchorMax = Vector2.one;
-                    cr.offsetMin = cr.offsetMax = Vector2.zero;
+            // the bookmark art faces the other way: the button flips around its centre, its label flips back
+            // (UIButton only ever scales its icon, which lives inside the label)
+            rect.pivot = new(0.5f, rect.pivot.y);
+            rect.localScale = new(-1f, 1f, 1f);
+            if (button.mainText != null) {
+                var text = button.mainText.rectTransform;
+                text.pivot = new(0.5f, text.pivot.y);
+                text.localScale = new(-1f, 1f, 1f);
+                if (button.icon != null && !button.icon.transform.IsChildOf(text)) {
+                    button.icon.rectTransform.localScale = new(-1f, 1f, 1f);
                 }
             }
         }
 
-        foreach (var group in button.GetComponentsInChildren<UnityEngine.UI.LayoutGroup>(true)) {
-            group.enabled = false;
-        }
-
-        foreach (var fitter in button.GetComponentsInChildren<UnityEngine.UI.ContentSizeFitter>(true)) {
-            fitter.enabled = false;
-        }
-
-        if (button.icon != null) {
-            var ir = button.icon.rectTransform;
-            if (ir.parent != root) {
-                ir.SetParent(root, false);
-            }
-
-            IgnoreLayout(ir);
-            ir.anchorMin = ir.anchorMax = new(0f, 0.5f);
-            ir.pivot = new(0f, 0.5f);
-            ir.anchoredPosition = new(IconLeft, 0f);
-            ir.sizeDelta = new(IconSize, IconSize);
-            ir.localScale = Vector3.one;
-            button.icon.preserveAspect = true;
-            button.icon.gameObject.SetActive(button.icon.sprite != null);
-        }
-
-        if (button.mainText != null) {
-            var text = button.mainText;
-            var tr = text.rectTransform;
-            if (tr.parent != root) {
-                tr.SetParent(root, false);
-            }
-
-            IgnoreLayout(tr);
-            tr.anchorMin = Vector2.zero;
-            tr.anchorMax = Vector2.one;
-            tr.pivot = new(0f, 0.5f);
-            tr.offsetMin = new(button.icon != null ? LabelLeft : IconLeft, 0f);
-            tr.offsetMax = new(-6f, 0f);
-            tr.localScale = Vector3.one;
-            // (font size left as the prefab sets it: the game's tab size)
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            text.alignment = TextAnchor.MiddleLeft;
-            text.gameObject.SetActive(true);
-            text.enabled = true;
-            tr.SetAsLastSibling();
-        }
-    }
-
-    private static void IgnoreLayout(RectTransform rect)
-    {
-        var element = rect.GetComponent<UnityEngine.UI.LayoutElement>() ?? rect.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
-        element.ignoreLayout = true;
+        strip.anchorMin = strip.anchorMax = new(0f, 1f);
+        strip.pivot = new(1f, 1f);
+        strip.anchoredPosition = new(JournalTabInset, JournalTabTop);
+        strip.sizeDelta = new(width + column.padding.horizontal, strip.sizeDelta.y);
+        var fit = strip.GetComponent<UnityEngine.UI.ContentSizeFitter>() ?? strip.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
+        fit.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
+        fit.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        strip.SetAsLastSibling();
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(strip);
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)Window.transform);
     }
 
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>
@@ -366,31 +343,11 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         tab.langTooltip = tipId;
     }
 
-    /// <summary>
-    ///     The screen in canvas units: raw pixels divided by the canvas scaler's factor (the game's UI scale option),
-    ///     the units every RectTransform of the window is laid out in
-    /// </summary>
-    private static Vector2 CanvasSize()
-    {
-        var scale = ui.canvasScaler != null && ui.canvasScaler.scaleFactor > 0f ? ui.canvasScaler.scaleFactor : 1f;
-        return new Vector2(Screen.width, Screen.height) / scale;
-    }
-
-    /// <summary>
-    ///     A vanilla-like fixed window sized from the screen: at most 1120 x 620 canvas units, never more than 90 % of
-    ///     the width and 85 % of the height, so the close ornament and every page's right column stay on screen
-    /// </summary>
+    /// <summary>A vanilla-like fixed window (the character sheet's footprint), shrunk only on a small screen.</summary>
     private static Rect FixedWindow()
     {
-        var screen = CanvasSize();
-        return new(Vector2.zero, new(Mathf.Min(1120f, screen.x * 0.9f), Mathf.Min(620f, screen.y * 0.85f)));
-    }
-
-    /// <summary>The window's centre offset (local position, origin = screen centre) moved so no edge leaves the screen.</summary>
-    private static Vector2 ClampOnScreen(Vector2 position)
-    {
-        var room = (CanvasSize() - FixedWindow().size) * 0.5f;
-        room = Vector2.Max(room, Vector2.zero);
-        return new(Mathf.Clamp(position.x, -room.x, room.x), Mathf.Clamp(position.y, -room.y, room.y));
+        var scaler = ui.canvasScaler.scaleFactor;
+        var screen = new Vector2(Screen.width, Screen.height) / scaler;
+        return new(Vector2.zero, new(Mathf.Min(860f, screen.x * 0.9f), Mathf.Min(620f, screen.y * 0.85f)));
     }
 }
