@@ -253,6 +253,19 @@ internal static class CardSettingEvent
     }
 
     /// <summary>
+    ///     A generator that shorts out or recovers (TraitGenerator.ModHP, from the simulation of the host): its hp goes
+    ///     with it, the others do not simulate it
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Card), nameof(Card.isBroken), MethodType.Setter)]
+    internal static void OnBroken(Card __instance)
+    {
+        if (__instance.trait is TraitGenerator && NetSession.Instance.Connection is ElinNetHost) {
+            Tell(__instance, CardSettingDelta.Generator);
+        }
+    }
+
+    /// <summary>
     ///     "Turn on/off automatically" of a light (shift menu of the tile)
     /// </summary>
     [HarmonyPrefix]
