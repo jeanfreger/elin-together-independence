@@ -13,6 +13,7 @@ namespace ElinTogether.Patches;
 internal static class TraitBaseSpellbookPatch
 {
     private static Chara? _reader;
+    private static int _featBefore;
 
     // the reading of this game's player that is being rolled, and the one that failed (until it is stopped)
     private static AIProgress? _rolling;
@@ -78,12 +79,19 @@ internal static class TraitBaseSpellbookPatch
     {
         __state = _reader;
         _reader = c is { IsPC: false, IsRemotePlayer: true } ? c : null;
+        _featBefore = c.feat;
     }
 
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(TraitBaseSpellbook), nameof(TraitBaseSpellbook.OnRead))]
-    internal static void OnReadEnd(Chara? __state)
+    internal static void OnReadEnd(TraitBaseSpellbook __instance, Chara? __state)
     {
+        // the black note gives a feat point to a player as it does to the local one, not the four of a resident
+        if (_reader is not null && __instance.BookType == TraitBaseSpellbook.Type.BlackNote &&
+            _reader.feat - _featBefore == 4) {
+            _reader.feat -= 3;
+        }
+
         _reader = __state;
     }
 
