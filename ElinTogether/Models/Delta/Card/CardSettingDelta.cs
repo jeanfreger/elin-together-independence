@@ -44,6 +44,8 @@ public class CardSettingDelta : ElinDelta
     public const byte StockUse = 21;
     public const byte CharaSkin = 22;
     public const byte MailOwner = 23;
+    public const byte Important = 24;
+    public const byte Hidden = 25;
 
     [Key(0)]
     public required RemoteCard Card { get; init; }
@@ -107,6 +109,8 @@ public class CardSettingDelta : ElinDelta
                 Well => card.c_charges,
                 AutoRefuel => card.autoRefuel ? 1 : 0,
                 StockUse => card.c_isDisableStockUse ? 1 : 0,
+                Important => card.c_isImportant ? 1 : 0,
+                Hidden => card.isHidden ? 1 : 0,
                 CharaSkin => card.idSkin,
                 MailOwner => card.GetInt(TeamMail.OwnerKey),
                 _ => 0,
@@ -245,7 +249,7 @@ public class CardSettingDelta : ElinDelta
             (Kind == Teleporter && thing.trait is not TraitTeleporter) || (Kind == Door && thing.trait is not TraitDoor) ||
             (Kind == HouseBoard && thing.trait is not TraitHouseBoard) ||
             (Kind == Painting && (thing.trait is not TraitCanvas || Blob is not { Length: <= 1 << 20 } || !ImageGuard.IsSafe(Blob))) ||
-            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > MailOwner) {
+            (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > Hidden) {
             return;
         }
 
@@ -271,7 +275,7 @@ public class CardSettingDelta : ElinDelta
             // only the host manages the base: what stands on its map is not changed by the others, the sender gets the
             // setting the host keeps, which puts its copy back (what a player carries is its own)
             // (a door is opened by whoever walks there)
-            if (NetSession.Instance.Rules.HostManagesBase && !host.IsZoneSession && thing.GetRootCard() is not Chara && Kind is not (Door or Well)) {
+            if (NetSession.Instance.Rules.HostManagesBase && !host.IsZoneSession && thing.GetRootCard() is not Chara && Kind is not (Door or Well or Hidden)) {
                 host.SendDeltaTo(OriginPeer, Create(thing, Kind));
                 return;
             }
@@ -352,6 +356,17 @@ public class CardSettingDelta : ElinDelta
                 break;
             case AutoRefuel:
                 thing.autoRefuel = Value != 0;
+                break;
+            case Hidden:
+                // a medal or a trap spotted (ActWait.Search): not Card.SetHidden, it would refresh a cell off the map
+                thing.isHidden = Value != 0;
+                if (thing.ExistsOnMap) {
+                    thing.pos.cell.Refresh();
+                }
+
+                break;
+            case Important:
+                thing.c_isImportant = Value != 0;
                 break;
             case StockUse:
                 thing.c_isDisableStockUse = Value != 0;

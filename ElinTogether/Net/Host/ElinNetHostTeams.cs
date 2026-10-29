@@ -85,6 +85,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     [the last team id ever given]: a disbanded team's id is never reused, or a new team would inherit its bank,
+    ///     knowledge, story, bills and deed. 0 in an old save: <see cref="Helper.Teams.NextId" /> starts it above every id any book holds
+    /// </summary>
+    [ElinGameIOProperty("team_last_id")]
+    internal static int TeamLastId
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
     ///     Team id -> the founder who received its free land deed: never twice for a team, nor for a player who
     ///     founds again
     /// </summary>

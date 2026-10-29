@@ -69,6 +69,10 @@ public class QuestCompleteDelta : ElinDelta
             try {
                 using (QuestRewardPatch.GiveTo(host, OriginPeer)) {
                     using (Simulate()) {
+                        // the affinity and the fame of the quest go to the player, not the host
+                        using var __ = host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var taker)
+                            ? (System.IDisposable?)PlayerStandIn.For(host, OriginPeer, taker)
+                            : null;
                         quest.Complete();
                     }
                 }
