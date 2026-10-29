@@ -19,6 +19,8 @@ internal class TabServerInfo : TabEmpBase
     // which note is open for writing (a page rebuild keeps it: the layer is reopened after a change)
     private static string? _writing;
 
+    private static readonly string[] InfoIcons = ["icon_book", "icon_policy"];
+
     public override void OnLayout()
     {
         var pages = new List<(string, System.Action<YKVertical>)> {
@@ -52,9 +54,9 @@ internal class TabServerInfo : TabEmpBase
 
         if (text.Length == 0) {
             if (IsHost) {
-                card.EmptyState("emp_info_none_host".lang(), "emp_info_write".lang(), () => Open(file));
+                TabTeam.EmptyPage(card, InfoIcons, "emp_info_none_host".lang(), "emp_info_write".lang(), () => Open(file));
             } else {
-                card.TextSmall("emp_info_none".lang(), FontColor.Gray);
+                TabTeam.EmptyPage(card, InfoIcons, "emp_info_none".lang());
             }
             return;
         }

@@ -31,17 +31,55 @@ internal class TabTeam : TabEmpBase
     {
         var card = page.Card(titleId.lang());
         if (!NetSession.Instance.HasActiveConnection) {
-            card.EmptyState("emp_ui_team_unplugged".lang(), "emp_ui_players_go_play".lang(),
+            EmptyPage(card, TeamIcons, "emp_ui_team_unplugged".lang(), "emp_ui_players_go_play".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
         } else if (NetSession.Instance.Transport is ElinNetHost) {
-            card.EmptyState("emp_ui_team_off".lang(), "emp_ui_team_turn_on".lang(), () => {
+            EmptyPage(card, TeamIcons, "emp_ui_team_off".lang(), "emp_ui_team_turn_on".lang(), () => {
                 LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server");
                 TabServerConfiguration.ShowRule("teams");
             });
         } else {
-            card.EmptyText("emp_ui_team_off_guest".lang());
+            EmptyPage(card, TeamIcons, "emp_ui_team_off_guest".lang());
         }
     }
+
+
+    internal static readonly string[] TeamIcons = ["icon_factions", "icon_medal"];
+
+    /// <summary>
+    ///     An empty page: a game icon, a two-line explanation and, when there is something to do, one button as wide as
+    ///     its label
+    /// </summary>
+    internal static void EmptyPage(YKLayout card, string[] icons, string message, string? buttonText = null, System.Action? act = null)
+    {
+        var box = card.Vertical();
+        box.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        box.Layout.childAlignment = TextAnchor.MiddleCenter;
+        box.Layout.padding = new(16, 16, 10, 10);
+        box.Layout.spacing = UIHelper.RowSpacing;
+
+        var iconRow = box.Horizontal();
+        iconRow.Layout.childForceExpandWidth = false;
+        iconRow.Layout.childAlignment = TextAnchor.MiddleCenter;
+        iconRow.SpriteIcon(48f, icons);
+
+        box.Text(message, FontColor.Gray).alignment = TextAnchor.MiddleCenter;
+        if (buttonText == null || act == null) {
+            return;
+        }
+
+        var row = box.Horizontal();
+        row.Layout.childForceExpandWidth = false;
+        row.Layout.childAlignment = TextAnchor.MiddleCenter;
+        var button = row.Button(buttonText, act);
+        var element = button.LayoutElement();
+        element.preferredWidth = Mathf.Max(160f, (button.mainText != null ? button.mainText.preferredWidth : 0f) + 48f);
+        element.flexibleWidth = 0f;
+    }
+
+    private static string Clip(string text, int max) => text.Length <= max ? text : text.Substring(0, max - 1) + "\u2026";
+
+    private static string Cap(string text) => text.Length == 0 ? text : char.ToUpper(text[0]) + text.Substring(1);
 
     public override void OnLayout()
     {
@@ -104,7 +142,7 @@ internal class TabTeam : TabEmpBase
     private static void BuildFound(YKLayout page)
     {
         var card = page.Card("emp_ui_team_title".lang());
-        card.EmptyState("emp_ui_team_none".lang(), "emp_team_found".lang(), () => {
+        EmptyPage(card, TeamIcons, "emp_ui_team_none".lang(), "emp_team_found".lang(), () => {
             Dialog.InputName("emp_ui_team_name_ask", EClass.pc.NameSimple, (cancel, text) => {
                 if (!cancel) {
                     Teams.Ask(TeamAsk.Found, text: text);
@@ -182,20 +220,17 @@ internal class TabTeam : TabEmpBase
     {
         var chara = CharaOf(member);
         var card = page.Card(Teams.PlayerName(member));
-        var head = card.Row();
         if (chara != null) {
-            // (the portrait alone: a whole player row here kept an empty flexible name column between it and the facts)
-            head.Portrait(chara);
+            // the portrait on top, the facts under it across the page, as the character sheet lays them out
+            card.Row().Portrait(chara);
         }
-        var lines = head.Vertical();
-        lines.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        lines.LayoutElement().flexibleWidth = 1f;
-        lines.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
-        lines.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
-        lines.KeyValue("emp_ui_kv_state".lang(), (Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang());
-        lines.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
+        card.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
+        card.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
+        card.KeyValue("emp_ui_kv_state".lang(), Cap((Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang()));
+        card.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
 
         if (manages && member != me) {
+            card.Divider();
             var buttons = card.ButtonRow();
             buttons.RowButton("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member));
             buttons.RowButton("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member));
@@ -281,15 +316,56 @@ internal class TabTeam : TabEmpBase
         }
 
         var card = page.Card("emp_ui_team_others".lang());
+        // more than a few teams: a frame of a fixed height that scrolls, not a page that grows
+        YKLayout list = others.Count > MaxTeamRows ? ScrollFrame(card, MaxTeamRows * TeamRowHeight) : card;
         foreach (var team in others) {
-            var row = card.Row();
-            row.TextColumn(Teams.NameOf(team),
-                "emp_ui_team_leader_line".Loc(Teams.PlayerName(Teams.LeaderOf(team)), Teams.MembersOfTeam(team).Count()));
-            row.Chip((Teams.IsOpen(team) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed").lang());
-            var join = row.Button("emp_team_join".Loc(Teams.NameOf(team)), () => Teams.Ask(TeamAsk.Join, team)).LayoutElement();
-            join.preferredWidth = 200f;
-            join.flexibleWidth = 0f;
+            var row = list.Row();
+            var element = row.LayoutElement();
+            element.minHeight = element.preferredHeight = TeamRowHeight;
+            row.TextColumn(Clip(Teams.NameOf(team), 24),
+                "emp_ui_team_leader_short".Loc(Clip(Teams.PlayerName(Teams.LeaderOf(team)), 16), Teams.MembersOfTeam(team).Count()));
+            var id = team;
+            // (the joining rule is the button's hover text, said once instead of on every row)
+            var join = row.Button("emp_ui_team_join_short".lang(), () => Teams.Ask(TeamAsk.Join, id));
+            join.SetTooltipLang(Teams.IsOpen(team) ? "emp_ui_team_chip_open" : "emp_ui_team_chip_closed");
+            var le = join.LayoutElement();
+            le.preferredWidth = 90f;
+            le.flexibleWidth = 0f;
         }
+    }
+
+    private const int MaxTeamRows = 5;
+    private const float TeamRowHeight = 54f;
+
+    /// <summary>
+    ///     A clipped frame of a fixed height holding a list that scrolls by wheel or drag; returns the list to fill
+    /// </summary>
+    private static YKVertical ScrollFrame(YKLayout parent, float height)
+    {
+        var frame = new GameObject("TeamScroll", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
+        frame.transform.SetParent(parent.transform, false);
+        var element = frame.GetComponent<LayoutElement>();
+        element.minHeight = element.preferredHeight = height;
+        element.flexibleWidth = 1f;
+        frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.001f);
+
+        var content = parent.Vertical();
+        content.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        content.Layout.spacing = UIHelper.RowSpacing;
+        content.transform.SetParent(frame.transform, false);
+        var rt = (RectTransform)content.transform;
+        rt.anchorMin = new(0f, 1f);
+        rt.anchorMax = new(1f, 1f);
+        rt.pivot = new(0.5f, 1f);
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+        var scroll = frame.GetComponent<ScrollRect>();
+        scroll.content = rt;
+        scroll.viewport = (RectTransform)frame.transform;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
+        return content;
     }
 
     /// <summary>
