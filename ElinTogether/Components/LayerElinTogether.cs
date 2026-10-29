@@ -78,6 +78,12 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         Window.SwitchContent(_lastOpenedTab);
 
         Window.transform.localPosition = _browsedPosition;
+        try {
+            MoveTabsToLeft();
+        }
+        catch (System.Exception e) {
+            EmpLog.Debug(e, "The tab column could not be built");
+        }
         Decorate();
 #if DEBUG
         // the debug box (Ping/Delta/Snap/Dump) sits over the window: hidden while the menu is open
@@ -177,6 +183,100 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(TabCommunity.Redirect(targetTab)));
     }
 
+    /// <summary>
+    ///     The game's own tab buttons (same prefab, same selected look through the window's group) stacked in a column
+    ///     on the left edge, all one size (the longest label at the game's font size); the pages sit to their right.
+    ///     Tab ids, the group and SwitchContent are untouched: only the strip's container changes
+    /// </summary>
+    private void MoveTabsToLeft()
+    {
+        var strip = Window.rectTab;
+        var view = Window.view != null ? Window.view.transform as RectTransform : null;
+        if (strip == null || view == null || view.parent == null) {
+            return;
+        }
+
+        // a body row in the view's place: [tab column][pages]
+        var body = new GameObject("EmpBody", typeof(RectTransform), typeof(UnityEngine.UI.HorizontalLayoutGroup), typeof(UnityEngine.UI.LayoutElement));
+        var bodyRect = (RectTransform)body.transform;
+        bodyRect.SetParent(view.parent, false);
+        bodyRect.SetSiblingIndex(view.GetSiblingIndex());
+        var row = body.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+        row.childControlWidth = row.childControlHeight = true;
+        row.childForceExpandWidth = row.childForceExpandHeight = true;
+        row.spacing = 8f;
+        var bodyElement = body.GetComponent<UnityEngine.UI.LayoutElement>();
+        bodyElement.flexibleWidth = bodyElement.flexibleHeight = 1f;
+        // (the view's own size hints carry over to the row, so the window gives it the same room)
+        if (view.GetComponent<UnityEngine.UI.LayoutElement>() is { } old) {
+            bodyElement.minHeight = old.minHeight;
+            bodyElement.preferredHeight = old.preferredHeight;
+        }
+
+        // the old horizontal strip: its layout and fitter go, so nothing is left of the top strip
+        foreach (var fitter in strip.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
+            DestroyImmediate(fitter);
+        }
+
+        foreach (var group in strip.GetComponents<UnityEngine.UI.LayoutGroup>()) {
+            DestroyImmediate(group);
+        }
+
+        strip.SetParent(bodyRect, false);
+        strip.SetAsFirstSibling();
+        strip.anchorMin = Vector2.zero;
+        strip.anchorMax = Vector2.one;
+        strip.pivot = new(0f, 1f);
+        strip.anchoredPosition = Vector2.zero;
+        strip.gameObject.SetActive(true);
+        var column = strip.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+        column.childAlignment = TextAnchor.UpperLeft;
+        column.childControlWidth = column.childControlHeight = true;
+        column.childForceExpandWidth = column.childForceExpandHeight = false;
+        column.spacing = 4f;
+
+        view.SetParent(bodyRect, false);
+        var viewElement = view.GetComponent<UnityEngine.UI.LayoutElement>() ?? view.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+        viewElement.flexibleWidth = viewElement.flexibleHeight = 1f;
+
+        // every button the same size: the widest label (game font size, never shrunk) plus the icon and the margins
+        float width = 0f, height = 0f;
+        var buttons = new List<UIButton>();
+        foreach (var tab in Window.setting.tabs) {
+            if (tab.button == null) {
+                continue;
+            }
+
+            buttons.Add(tab.button);
+            var text = tab.button.mainText;
+            var iconWidth = tab.button.icon != null ? Mathf.Max(tab.button.icon.rectTransform.rect.width, 24f) : 0f;
+            width = Mathf.Max(width, (text != null ? text.preferredWidth : 0f) + iconWidth + 40f);
+            height = Mathf.Max(height, tab.button.Rect().rect.height, text != null ? text.preferredHeight + 16f : 0f);
+        }
+
+        height = Mathf.Max(height, 40f);
+        foreach (var button in buttons) {
+            button.transform.SetParent(strip, false);
+            var element = button.GetComponent<UnityEngine.UI.LayoutElement>() ?? button.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+            element.minWidth = element.preferredWidth = width;
+            element.minHeight = element.preferredHeight = height;
+            element.flexibleWidth = element.flexibleHeight = 0f;
+            if (button.mainText != null) {
+                button.mainText.horizontalOverflow = HorizontalWrapMode.Overflow;
+                if (button.mainText.TryGetComponent<UnityEngine.UI.ContentSizeFitter>(out var f)) {
+                    f.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
+                }
+            }
+        }
+
+        var stripElement = strip.GetComponent<UnityEngine.UI.LayoutElement>() ?? strip.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
+        stripElement.minWidth = stripElement.preferredWidth = width;
+        stripElement.flexibleWidth = 0f;
+        stripElement.flexibleHeight = 1f;
+        // (the window shows the strip only for 2+ tabs: always the case here)
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(bodyRect);
+    }
+
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>
     private void DecorateLastTab(string spriteId, string tipId)
     {
@@ -190,6 +290,6 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     {
         var scaler = ui.canvasScaler.scaleFactor;
         var screen = new Vector2(Screen.width, Screen.height) / scaler;
-        return new(Vector2.zero, new(Mathf.Min(860f, screen.x * 0.9f), Mathf.Min(620f, screen.y * 0.85f)));
+        return new(Vector2.zero, new(Mathf.Min(1040f, screen.x * 0.95f), Mathf.Min(620f, screen.y * 0.85f)));
     }
 }
