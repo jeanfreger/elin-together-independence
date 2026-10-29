@@ -90,7 +90,8 @@ internal static class PartyJoinEvent
             case ElinNetHost host:
                 // the host takes it for itself: a player's companion sent away keeps its owner (PartyMemberDelta),
                 // whoever takes it again is its owner from then on
-                if (!session.IsAway && c.CompanionOwnerUid != 0) {
+                // (not when a guest is the one recruiting through the host's party: R2 of recruit_suite)
+                if (!session.IsAway && c.CompanionOwnerUid != 0 && CharaMakeAllyEvent.Recruiter(c) is null) {
                     c.SetCompanionOwner(null);
                 }
 
