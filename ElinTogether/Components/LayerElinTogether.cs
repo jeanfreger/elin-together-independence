@@ -93,7 +93,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 #endif
     }
 
+#if DEBUG
     private bool _debugHidden;
+#endif
 
     /// <summary>
     ///     The tab strip must end before the close ornament: tighter spacing, then a smaller label until it fits
