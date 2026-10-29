@@ -37,7 +37,7 @@ internal static class ActivityJournal
     /// </summary>
     private static bool Recording => Host is { IsZoneSession: false } && EmpConfig.Server.ActivityJournal.Value;
 
-    internal static bool On => NetSession.Instance is { HasActiveConnection: true, Rules.ActivityJournal: true };
+    internal static bool On => NetSession.Instance is { InGame: true, Rules.ActivityJournal: true };
 
     // ---- storage
 

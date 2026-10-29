@@ -951,6 +951,9 @@ internal static class EmpUi
         var row = Line(parent, TextAnchor.UpperLeft, 6f);
         row.LayoutElement().minHeight = UIHelper.RowHeight;
         GrowWithText(row);
+        // (a card that does not size its children left the row at its first height: a wrapped grey line ran under
+        // the next row, My settings > Workshop mods, 2026-10-29; the rules page's rows size themselves the same way)
+        row.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var current = value;
         Marks? marks = null;

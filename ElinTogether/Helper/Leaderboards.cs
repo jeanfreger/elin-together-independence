@@ -34,7 +34,7 @@ internal static class Leaderboards
     private const int DeepestAt = 0;
     private const int DuelsAt = 1;
 
-    internal static bool On => NetSession.Instance is { HasActiveConnection: true, Rules.Leaderboards: true };
+    internal static bool On => NetSession.Instance is { InGame: true, Rules.Leaderboards: true };
 
     // ---------------------------------------------------------------- host: records
 

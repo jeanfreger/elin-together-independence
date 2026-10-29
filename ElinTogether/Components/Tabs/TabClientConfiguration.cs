@@ -64,21 +64,21 @@ internal class TabClientConfiguration : TabEmpBase
         var card = page.Card("emp_ui_cl_sec_mods".lang());
         var fetch = EmpConfig.Client.FetchMods;
         var fetchBox = card.ToggleRow("emp_ui_cl_fetch_mods".lang(), "emp_ui_cl_desc_fetch_mods".lang(), fetch.Value,
-            v => fetch.Value = v, ownLines: true);
+            v => fetch.Value = v);
         fetchBox.SetTooltipLang(fetch.Description.Description);
 
         // ... and kept: subscribed to, so that the next join needs no restart
         // (keeping them means nothing without fetching them: greyed out until then)
         var keep = EmpConfig.Client.KeepMods;
         var keepBox = card.ToggleRow("emp_ui_cl_keep_mods".lang(), "emp_ui_cl_desc_keep_mods".lang(), keep.Value,
-            v => keep.Value = v, ownLines: true);
+            v => keep.Value = v);
         keepBox.SetTooltipLang(keep.Description.Description);
         keepBox.interactable = fetch.Value;
 
         // security: mods with code (a DLL) are fetched only with this, off (the code runs on this PC)
         var code = EmpConfig.Client.FetchCodeMods;
         var codeBox = card.ToggleRow("emp_ui_cl_code_mods".lang(), "emp_ui_cl_desc_code_mods".lang(), code.Value,
-            v => code.Value = v, ownLines: true);
+            v => code.Value = v);
         codeBox.SetTooltipLang(code.Description.Description);
         codeBox.interactable = fetch.Value;
     }

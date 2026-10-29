@@ -23,7 +23,7 @@ internal static class TeamSheet
     private static Chara? _shown;
     private static int _karma, _fame, _deposit;
 
-    internal static bool On => NetSession.Instance is { HasActiveConnection: true } net && EClass.pc != null &&
+    internal static bool On => NetSession.Instance is { InGame: true } net && EClass.pc != null &&
                                (net.Transport is ElinNetHost
                                    ? EmpConfig.Server.TeamSheets.Value && EmpConfig.Server.Teams.Value
                                    : net.Rules is { UseTeams: true, TeamSheets: true });

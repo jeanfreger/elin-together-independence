@@ -522,6 +522,11 @@ internal static class SettingsTable
 
     private static IEnumerable<(ConfigEntryBase Entry, object Value)> OfficialChosenValues()
     {
+        // the Multiplayer menu's team and community pages (user 2026-10-29: no emblem editor on the official preset)
+        yield return (EmpConfig.Server.TeamBanner, true);
+        yield return (EmpConfig.Server.TeamSheets, true);
+        yield return (EmpConfig.Server.ActivityJournal, true);
+        yield return (EmpConfig.Server.Leaderboards, true);
         // who joins: both checks; characters: pick one of the account's, 3 at most, may be deleted, revive after permadeath
         yield return (EmpConfig.Server.SourceValidationSet, "sources,plugins");
         yield return (EmpConfig.Server.ChooseCharacter, true);
