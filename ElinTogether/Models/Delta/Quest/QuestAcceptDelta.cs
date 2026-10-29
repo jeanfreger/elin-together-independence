@@ -45,6 +45,10 @@ public class QuestAcceptDelta : ElinDelta
         }
 
         using var _ = Simulate();
+        // the parcel to deliver and the escort are the taker's, not the host's
+        using var __ = net is ElinNetHost host && host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var taker)
+            ? (System.IDisposable?)PlayerStandIn.For(host, OriginPeer, taker)
+            : null;
         game.quests.Start(quest);
         EmpLog.Debug("Accepted client quest {QuestUid} {QuestId} for peer {PeerIndex}", Uid, quest.id, OriginPeer);
     }
