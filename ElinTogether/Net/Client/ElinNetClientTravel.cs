@@ -113,6 +113,16 @@ internal partial class ElinNetClient
             return false;
         }
 
+        // GitHub issue 30 (a scroll of return took a guest to the world map): the game picks the world map when the
+        // destination the player chose is unknown or was never chosen (the list was not answered), see Chara.Tick.
+        // Say what it had, so the next report names the cause
+        if (transition.state == ZoneTransition.EnterState.Return && player.returnInfo is { } ret) {
+            EmpLog.Information(
+                "Return to {ZoneFullName}: destination uid {Dest} (known {Known}), still asking {Asking}, from {Here}",
+                zone.ZoneFullName, ret.uidDest, ret.uidDest != 0 && game.spatials.map.ContainsKey(ret.uidDest), ret.askDest,
+                pc.currentZone?.ZoneFullName);
+        }
+
         // any other travel forgets a death choice the host never answered (a lost link, a crash)
         _deathTravel = null;
 
