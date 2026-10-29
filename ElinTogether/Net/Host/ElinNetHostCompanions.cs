@@ -223,9 +223,11 @@ internal partial class ElinNetHost
 
     /// <summary>
     ///     The characters of the base a player made or let go while it was alone, and that did not come back with
-    ///     it (ZoneLeaseRelease.Residents): they exist here from now on, members of their base, at their base
+    ///     it (ZoneLeaseRelease.Residents): they exist here from now on, members of their base, at their base. Also
+    ///     every resident of the base it held and may manage (<paramref name="managedZoneUid" />), as its game left
+    ///     them: equipped, fed, trained, away on an expedition (lease audit 2026-10-29, #1)
     /// </summary>
-    private void ReplaceResidents(List<LZ4Bytes>? residents, int ownerUid)
+    private void ReplaceResidents(List<LZ4Bytes>? residents, int ownerUid, int managedZoneUid = -1)
     {
         if (residents is null || ownerUid == 0) {
             return;
@@ -241,7 +243,10 @@ internal partial class ElinNetHost
             }
 
             // only what that player could let go: a character nobody knew, or one that travelled with it
-            if (old is not null && old.CompanionOwnerUid != ownerUid) {
+            // or a resident of the base it held, staying a resident of that base
+            var ofManaged = managedZoneUid != -1 && old?.homeZone?.uid == managedZoneUid && uploaded.homeZone?.uid == managedZoneUid &&
+                            old!.CompanionOwnerUid == 0;
+            if (old is not null && old.CompanionOwnerUid != ownerUid && !ofManaged) {
                 EmpLog.Warning("Resident {Uid} sent by player {OwnerUid} is not its own, left as it is", uploaded.uid, ownerUid);
                 continue;
             }
@@ -252,8 +257,14 @@ internal partial class ElinNetHost
                 game.cards.globalCharas.Remove(old);
                 if (old.homeBranch is { } branch && branch.members.IndexOf(old) is var index and >= 0) {
                     branch.members[index] = uploaded;
+                    // what it wears counts for the faction (SetOwner, AddMemeber)
+                    pc.faction.charaElements.OnRemoveMember(old);
+                    pc.faction.charaElements.OnAddMemeber(uploaded);
                 }
             }
+
+            // where its game left it: away on an expedition (Expedition.Start), or at home where it stood
+            var at = uploaded.currentZone;
 
             uploaded.SetInt(CompanionHelper.OwnerKey, 0);
             uploaded.party = null;
@@ -272,7 +283,9 @@ internal partial class ElinNetHost
             }
 
             // (dead: it waits at its base as the game keeps the dead of a base, nothing to place)
-            if (!uploaded.isDead && uploaded.homeZone is { } home) {
+            if (ofManaged && at is { id: "somewhere" }) {
+                uploaded.currentZone = at;
+            } else if (!uploaded.isDead && uploaded.homeZone is { } home) {
                 uploaded.MoveZone(home);
             }
 

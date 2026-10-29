@@ -69,4 +69,17 @@ public class ZoneLeaseGrant
     /// </summary>
     [Key(9)]
     public int[]? MapSums { get; set; } = null;
+
+    /// <summary>
+    ///     The host's base of the zone, its name and hearth skills: the player starts from the current one, see
+    ///     Helper.LeasedBase
+    /// </summary>
+    [Key(10)]
+    public LZ4Bytes? Branch { get; init; }
+
+    [Key(11)]
+    public string? Name { get; init; }
+
+    [Key(12)]
+    public Dictionary<int, int>? BaseElements { get; init; }
 }

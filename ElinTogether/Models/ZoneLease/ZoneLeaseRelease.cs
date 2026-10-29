@@ -108,4 +108,31 @@ public class ZoneLeaseRelease
     /// </summary>
     [Key(16)]
     public List<int>? GoneResidents { get; init; }
+
+    /// <summary>
+    ///     The base of the zone (its FactionBranch), as this player's game simulated it alone: research, policies,
+    ///     expeditions, happiness, resources, meetings, statistics, recruits. The host takes it when the player may
+    ///     manage that land, see Helper.LeasedBase
+    /// </summary>
+    [Key(17)]
+    public LZ4Bytes? Branch { get; init; }
+
+    /// <summary>
+    ///     The name of the base (Spatial.name)
+    /// </summary>
+    [Key(18)]
+    public string? Name { get; init; }
+
+    /// <summary>
+    ///     The hearth skills and land feats of the base (the zone's elements, base values)
+    /// </summary>
+    [Key(19)]
+    public Dictionary<int, int>? BaseElements { get; init; }
+
+    /// <summary>
+    ///     What the base earned and the player did not pay itself (shop, inn, tourism): the host pays it to the
+    ///     base's owners, see Helper.BaseIncome
+    /// </summary>
+    [Key(20)]
+    public int[]? Income { get; init; }
 }
