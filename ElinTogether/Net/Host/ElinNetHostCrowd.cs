@@ -13,7 +13,11 @@ namespace ElinTogether.Net;
 ///     second in the snapshot only. Its own character, its companions, its team and whoever it trades, duels or fights
 ///     with are always near. The full snapshot (every 4 s) still names everyone: a character out of range is never
 ///     taken off a guest's map by WorldStateSnapshot.RemoveLeftOverCharas, and its first partial entry back in range
-///     puts it right
+///     puts it right.
+///     At 100 players (perf 2026-10-29) what each player's part is made of is worked out once per tick for the whole
+///     map, each entry is serialized once and the messages assembled from those bytes (ListSplice, checked against the
+///     serializer's own), players sent the same entries share one message, and the characters near a player are found
+///     by blocks of tiles instead of measuring every character for every player. Same entries, same order, same bytes
 /// </summary>
 internal partial class ElinNetHost
 {
@@ -21,6 +25,10 @@ internal partial class ElinNetHost
 
     // the far ones in every 5th partial snapshot: once a second at 5 Hz
     private const int CrowdFarEvery = 5;
+
+    // a block of tiles is one wider than the range: whatever is within it of a tile is in that tile's block or the
+    // 8 around it (Fov.Distance truncates the root: 24 means dx² + dz² < 625)
+    private const int CrowdBlock = CrowdNearTiles + 1;
 
     // player -> character uid -> the key of the entry last sent to it (WorldStateSnapshot.ChangeTracker.Key)
     private readonly Dictionary<int, Dictionary<int, int>> _crowdSent = [];
@@ -30,15 +38,68 @@ internal partial class ElinNetHost
 
     private int _crowdZoneUid;
 
+    private static readonly NetMetric CrowdSnapshotBuilt = NetMetrics.Named("crowd", "snapshot_built");
+    private static readonly NetMetric CrowdSnapshotShared = NetMetrics.Named("crowd", "snapshot_shared");
+    private static readonly NetMetric CrowdDeltaBuilt = NetMetrics.Named("crowd", "delta_built");
+    private static readonly NetMetric CrowdDeltaShared = NetMetrics.Named("crowd", "delta_shared");
+
+    // the entries of this tick: keys, whether a player's, slot by uid, serialized bytes, blocks of tiles
+    private readonly Dictionary<long, List<int>> _crowdGrid = [];
+    private readonly Stack<List<int>> _crowdGridPool = [];
+    private readonly Dictionary<int, int> _entrySlot = [];
+    private int[] _entryKey = [];
+    private int[] _entryStateKey = [];
+    private bool[] _entryPlayer = [];
+    private int[] _entryMark = [];
+    private byte[]?[] _entryParts = [];
+    private int _entryStamp;
+
+    private readonly List<int> _crowdCandidates = [];
+    private readonly List<(int Index, int Key, int Distance)> _crowdChanged = [];
+    private readonly List<int> _crowdKept = [];
+    private readonly List<byte[]> _crowdParts = [];
+    private readonly SameListBytes _sameSnapshots = new();
+    private readonly ListSplice.Guard _snapshotGuard = new("crowd snapshot");
+
+    // the deltas of one flush: what decides who gets them, serialized bytes
+    private DeltaInterest[] _deltaInterest = [];
+    private byte[]?[] _deltaParts = [];
+    private readonly SameListBytes _sameDeltas = new();
+    private readonly ListSplice.Guard _deltaGuard = new("crowd delta");
+    private ListSplice? _deltaSplice;
+
+    // views by the uid of their player's character and by team, for RefreshCrowdViews
+    private readonly Dictionary<int, CrowdView> _viewsByUid = [];
+    private readonly Dictionary<int, CrowdView> _viewsByTeam = [];
+
     private sealed class CrowdView
     {
         internal Chara? Self;
         internal readonly HashSet<int> Always = [];
 
+        // the next view of the same character (none in a sound game) and of the same team, RefreshCrowdViews
+        internal CrowdView? NextSame;
+        internal CrowdView? NextTeam;
+
         internal bool Near(int uid, int x, int z)
         {
             return Self is null || Always.Contains(uid) || Self.pos.Distance(x, z) <= CrowdNearTiles;
         }
+    }
+
+    private struct DeltaInterest
+    {
+        // 0 everyone, 1 a step, 2 a plain fight or wait that a far player skips
+        internal byte Kind;
+        internal int Uid;
+        internal int ActorUid;
+        internal int X;
+        internal int Z;
+        internal bool HasTarget;
+        internal int Target;
+        internal bool HasAt;
+        internal int AtX;
+        internal int AtZ;
     }
 
     private static bool Crowds => WorldStateSnapshot.ChangeTracker.Crowds;
@@ -59,9 +120,13 @@ internal partial class ElinNetHost
         }
 
         RefreshCrowdViews(charas);
+        PrepareEntries(all.CharaSnapshots, charas);
+        _sameSnapshots.Clear();
 
+        var entries = all.CharaSnapshots;
         byte[]? fullBytes = null;
         byte[]? lean = null;
+        ListSplice? splice = null;
         foreach (var peer in Socket.Peers) {
             if (IsOffHostMap(peer)) {
                 // back on the map, it starts from a full one
@@ -75,37 +140,142 @@ internal partial class ElinNetHost
                 sent ??= _crowdSent[peer.Id] = [];
                 sent.Clear();
                 var view = _crowdViews.GetValueOrDefault(peer.Id);
-                foreach (var entry in all.CharaSnapshots) {
-                    sent[entry.Owner.Uid] = KeyFor(entry, charas, view);
+                for (var i = 0; i < entries.Length; i++) {
+                    sent[entries[i].Owner.Uid] = KeyAt(i, entries[i], view);
                 }
 
                 peer.Send(fullBytes ??= Socket.Serializer.Serialize(all));
                 continue;
             }
 
-            peer.Send(Socket.Serializer.Serialize(all.With(PartialFor(peer.Id, all, sent!, charas, farSlot))));
+            PartialFor(peer.Id, entries, sent!, farSlot);
+            peer.Send(PartialBytes(all, ref splice));
         }
     }
 
-    private ImmutableArray<CharaStateSnapshot> PartialFor(int peerId, WorldStateSnapshot all, Dictionary<int, int> sent,
-        Dictionary<int, Chara> charas, bool farSlot)
+    /// <summary>
+    ///     Once per tick for the whole map: each entry's keys, whether it is a player's, its slot, its block
+    /// </summary>
+    private void PrepareEntries(ImmutableArray<CharaStateSnapshot> entries, Dictionary<int, Chara> charas)
+    {
+        var n = entries.Length;
+        if (_entryKey.Length < n) {
+            var size = System.Math.Max(n, _entryKey.Length * 2);
+            _entryKey = new int[size];
+            _entryStateKey = new int[size];
+            _entryPlayer = new bool[size];
+            _entryMark = new int[size];
+            _entryParts = new byte[size][];
+        }
+
+        foreach (var list in _crowdGrid.Values) {
+            list.Clear();
+            _crowdGridPool.Push(list);
+        }
+
+        _crowdGrid.Clear();
+        _entrySlot.Clear();
+        _entryStamp = 0;
+        for (var i = 0; i < n; i++) {
+            var entry = entries[i];
+            var uid = entry.Owner.Uid;
+            var player = charas.TryGetValue(uid, out var chara) && chara.IsPlayer;
+            _entrySlot[uid] = i;
+            _entryPlayer[i] = player;
+            _entryKey[i] = WorldStateSnapshot.ChangeTracker.Key(entry);
+            _entryStateKey[i] = player ? WorldStateSnapshot.ChangeTracker.StateKey(entry) : 0;
+            _entryMark[i] = 0;
+            _entryParts[i] = null;
+
+            var block = BlockKey(BlockCoord(entry.Pos.X), BlockCoord(entry.Pos.Z));
+            if (!_crowdGrid.TryGetValue(block, out var inBlock)) {
+                inBlock = _crowdGrid[block] = _crowdGridPool.Count > 0 ? _crowdGridPool.Pop() : [];
+            }
+
+            inBlock.Add(i);
+        }
+    }
+
+    private static int BlockCoord(int tile)
+    {
+        return tile >= 0 ? tile / CrowdBlock : -1 - (-1 - tile) / CrowdBlock;
+    }
+
+    private static long BlockKey(int bx, int bz)
+    {
+        return ((long)bx << 32) | (uint)bz;
+    }
+
+    /// <summary>
+    ///     A player near this one moves on that player's game through its CharaMoveDelta: its tile is left out of the
+    ///     key (item 1). A far one gets no step: its tile is what tells where it went
+    /// </summary>
+    private int KeyAt(int i, CharaStateSnapshot entry, CrowdView? view)
+    {
+        return _entryPlayer[i] && (view?.Near(entry.Owner.Uid, entry.Pos.X, entry.Pos.Z) ?? true)
+            ? _entryStateKey[i]
+            : _entryKey[i];
+    }
+
+    /// <summary>
+    ///     The entries of this player's partial snapshot, into <see cref="_crowdKept" /> (indices into this tick's)
+    /// </summary>
+    private void PartialFor(int peerId, ImmutableArray<CharaStateSnapshot> entries, Dictionary<int, int> sent, bool farSlot)
     {
         var view = _crowdViews.GetValueOrDefault(peerId);
-        var changed = new List<(CharaStateSnapshot Entry, int Key, int Distance)>();
-        foreach (var entry in all.CharaSnapshots) {
+        var candidates = _crowdCandidates;
+        candidates.Clear();
+        if (farSlot || view?.Self is not { } self) {
+            for (var i = 0; i < entries.Length; i++) {
+                candidates.Add(i);
+            }
+        } else {
+            // the only ones that can be near: the blocks around it and those always near, in the snapshot's order
+            // as when every entry was looked at
+            var stamp = ++_entryStamp;
+            var bx = BlockCoord(self.pos.x);
+            var bz = BlockCoord(self.pos.z);
+            for (var dx = -1; dx <= 1; dx++) {
+                for (var dz = -1; dz <= 1; dz++) {
+                    if (!_crowdGrid.TryGetValue(BlockKey(bx + dx, bz + dz), out var inBlock)) {
+                        continue;
+                    }
+
+                    foreach (var i in inBlock) {
+                        _entryMark[i] = stamp;
+                        candidates.Add(i);
+                    }
+                }
+            }
+
+            foreach (var uid in view.Always) {
+                if (_entrySlot.TryGetValue(uid, out var i) && _entryMark[i] != stamp) {
+                    _entryMark[i] = stamp;
+                    candidates.Add(i);
+                }
+            }
+
+            candidates.Sort();
+        }
+
+        var changed = _crowdChanged;
+        changed.Clear();
+        foreach (var i in candidates) {
+            var entry = entries[i];
             var uid = entry.Owner.Uid;
-            if (!farSlot && view?.Near(uid, entry.Pos.X, entry.Pos.Z) == false) {
+            var near = view?.Near(uid, entry.Pos.X, entry.Pos.Z) ?? true;
+            if (!farSlot && !near) {
                 // not marked as sent: it goes in the next far slot if it still differs
                 continue;
             }
 
-            var key = KeyFor(entry, charas, view);
+            var key = _entryPlayer[i] && near ? _entryStateKey[i] : _entryKey[i];
             if (sent.TryGetValue(uid, out var was) && was == key) {
                 continue;
             }
 
             var distance = view?.Self is not { } me || view.Always.Contains(uid) ? 0 : me.pos.Distance(entry.Pos.X, entry.Pos.Z);
-            changed.Add((entry, key, distance));
+            changed.Add((i, key, distance));
         }
 
         // the budget per player and tick (item 3): the nearest first, the others stay unsent and differ next tick
@@ -114,10 +284,58 @@ internal partial class ElinNetHost
             changed.RemoveRange(CrowdEntryBudget, changed.Count - CrowdEntryBudget);
         }
 
-        var kept = ImmutableArray.CreateBuilder<CharaStateSnapshot>(changed.Count);
-        foreach (var (entry, key, _) in changed) {
-            sent[entry.Owner.Uid] = key;
-            kept.Add(entry);
+        _crowdKept.Clear();
+        foreach (var (i, key, _) in changed) {
+            sent[entries[i].Owner.Uid] = key;
+            _crowdKept.Add(i);
+        }
+    }
+
+    /// <summary>
+    ///     The partial snapshot of <see cref="_crowdKept" />: one message for every player sent the same entries
+    /// </summary>
+    private byte[] PartialBytes(WorldStateSnapshot all, ref ListSplice? splice)
+    {
+        if (_sameSnapshots.Find(_crowdKept, out var hash) is { } known) {
+            CrowdSnapshotShared.Add(known.Length);
+            return known;
+        }
+
+        var entries = all.CharaSnapshots;
+        byte[]? bytes = null;
+        if (!_snapshotGuard.Broken) {
+            try {
+                splice ??= ListSplice.Of(Socket.Serializer.Serialize(all.With(ImmutableArray<CharaStateSnapshot>.Empty)), 2);
+                _crowdParts.Clear();
+                foreach (var i in _crowdKept) {
+                    _crowdParts.Add(_entryParts[i] ??= SteamNetSerializer.SerializePart(entries[i]));
+                }
+
+                bytes = splice.Build(_crowdParts);
+                if (_snapshotGuard.WantsCheck) {
+                    var reference = Socket.Serializer.Serialize(all.With(Picked(entries, _crowdKept)));
+                    _snapshotGuard.Check(bytes, reference);
+                    if (_snapshotGuard.Broken) {
+                        bytes = reference;
+                    }
+                }
+            } catch (System.Exception ex) {
+                _snapshotGuard.Fail(ex);
+                bytes = null;
+            }
+        }
+
+        bytes ??= Socket.Serializer.Serialize(all.With(Picked(entries, _crowdKept)));
+        _sameSnapshots.Add(hash, _crowdKept, bytes);
+        CrowdSnapshotBuilt.Add(bytes.Length);
+        return bytes;
+    }
+
+    private static ImmutableArray<CharaStateSnapshot> Picked(ImmutableArray<CharaStateSnapshot> entries, List<int> indices)
+    {
+        var kept = ImmutableArray.CreateBuilder<CharaStateSnapshot>(indices.Count);
+        foreach (var i in indices) {
+            kept.Add(entries[i]);
         }
 
         return kept.MoveToImmutable();
@@ -191,19 +409,6 @@ internal partial class ElinNetHost
         return hash.ToHashCode();
     }
 
-    /// <summary>
-    ///     A player near this one moves on that player's game through its CharaMoveDelta: its tile is left out of the
-    ///     key (item 1). A far one gets no step: its tile is what tells where it went
-    /// </summary>
-    private int KeyFor(CharaStateSnapshot entry, Dictionary<int, Chara> charas, CrowdView? view)
-    {
-        var uid = entry.Owner.Uid;
-        var player = charas.TryGetValue(uid, out var chara) && chara.IsPlayer;
-        return player && (view?.Near(uid, entry.Pos.X, entry.Pos.Z) ?? true)
-            ? WorldStateSnapshot.ChangeTracker.StateKey(entry)
-            : WorldStateSnapshot.ChangeTracker.Key(entry);
-    }
-
     private void RefreshCrowdViews(Dictionary<int, Chara> charas)
     {
         // once per tick for the whole map: the player behind each character, and each player's team
@@ -223,36 +428,66 @@ internal partial class ElinNetHost
             teams[pc.uid] = Teams.TeamOf(pc.uid);
         }
 
+        _viewsByUid.Clear();
+        _viewsByTeam.Clear();
         foreach (var peer in Socket.Peers) {
             if (!_crowdViews.TryGetValue(peer.Id, out var view)) {
                 view = _crowdViews[peer.Id] = new();
             }
 
             view.Always.Clear();
+            view.NextSame = view.NextTeam = null;
             view.Self = ActiveRemoteCharas.GetValueOrDefault(peer.Id) is { IsInActiveMap: true } self ? self : null;
             if (view.Self is not { } me) {
                 continue;
             }
 
             view.Always.Add(me.uid);
-            var team = teams.GetValueOrDefault(me.uid);
-            foreach (var (uid, chara) in charas) {
-                var of = behind.GetValueOrDefault(uid, uid);
-                if (of == me.uid || (team != Teams.Wanderers && teams.GetValueOrDefault(of) == team) || chara.enemy == me) {
+            view.NextSame = _viewsByUid.GetValueOrDefault(me.uid);
+            _viewsByUid[me.uid] = view;
+            if (teams.GetValueOrDefault(me.uid) is var team and not Teams.Wanderers) {
+                view.NextTeam = _viewsByTeam.GetValueOrDefault(team);
+                _viewsByTeam[team] = view;
+            }
+        }
+
+        // each character once: to the view of the player behind it, of that player's team, and of whom it fights
+        // (was each character once per player)
+        foreach (var (uid, chara) in charas) {
+            var of = behind.GetValueOrDefault(uid, uid);
+            for (var view = _viewsByUid.GetValueOrDefault(of); view is not null; view = view.NextSame) {
+                view.Always.Add(uid);
+            }
+
+            if (teams.GetValueOrDefault(of) is var team and not Teams.Wanderers) {
+                for (var view = _viewsByTeam.GetValueOrDefault(team); view is not null; view = view.NextTeam) {
                     view.Always.Add(uid);
                 }
             }
 
-            if (me.enemy is { } enemy) {
-                view.Always.Add(enemy.uid);
+            if (chara.enemy is { } enemy) {
+                for (var view = _viewsByUid.GetValueOrDefault(enemy.uid); view is not null; view = view.NextSame) {
+                    if (view.Self == enemy) {
+                        view.Always.Add(uid);
+                    }
+                }
             }
+        }
 
-            if (PlayerDuel.FoeOf(me.uid) is var foe and not 0) {
-                view.Always.Add(foe);
-            }
+        foreach (var view in _viewsByUid.Values) {
+            for (var same = view; same is not null; same = same.NextSame) {
+                var me = same.Self!;
+                if (me.enemy is { } enemy) {
+                    same.Always.Add(enemy.uid);
+                }
 
-            if (PlayerTrade.PartnerOf(me) is { } partner) {
-                view.Always.Add(partner.uid);
+                if (PlayerDuel.FoeOf(me.uid) is var foe and not 0) {
+                    same.Always.Add(foe);
+                }
+
+                if (PlayerTrade.PartnerOf(me) is { } partner) {
+                    same.Always.Add(partner.uid);
+                }
             }
         }
 
@@ -273,6 +508,9 @@ internal partial class ElinNetHost
     /// </summary>
     private void SendCrowdDeltas(List<ElinDelta> deltas)
     {
+        PrepareDeltas(deltas);
+        _sameDeltas.Clear();
+
         byte[]? all = null;
         byte[]? lean = null;
         var leanBuilt = false;
@@ -292,43 +530,78 @@ internal partial class ElinNetHost
                 continue;
             }
 
-            if (CrowdDeltas(deltas, peer) is not { } kept) {
+            if (!CrowdDeltas(deltas.Count, peer)) {
                 peer.Send(all ??= Socket.Serializer.Serialize(new WorldStateDeltaList { DeltaList = deltas }));
-            } else if (kept.Count > 0) {
-                peer.Send(Socket.Serializer.Serialize(new WorldStateDeltaList { DeltaList = kept }));
+            } else if (_crowdKept.Count > 0) {
+                peer.Send(KeptDeltaBytes(deltas));
             }
         }
     }
 
     /// <summary>
-    ///     The steps and acts of this batch that a player on the host map is sent, null when all of them. Its own
-    ///     steps come back to it as well without this box (its game drops them, CharaMoveDelta.OnApply)
+    ///     Once per flush: what decides whether a player is sent each delta
     /// </summary>
-    private List<ElinDelta>? CrowdDeltas(List<ElinDelta> deltas, ISteamNetPeer peer)
+    private void PrepareDeltas(List<ElinDelta> deltas)
     {
-        if (_crowdViews.GetValueOrDefault(peer.Id) is not { Self: { } me } view) {
-            return null;
+        var n = deltas.Count;
+        if (_deltaInterest.Length < n) {
+            var size = System.Math.Max(n, _deltaInterest.Length * 2);
+            _deltaInterest = new DeltaInterest[size];
+            _deltaParts = new byte[size][];
         }
 
-        List<ElinDelta>? kept = null;
-        for (var i = 0; i < deltas.Count; i++) {
-            var delta = deltas[i];
-            var drop = delta switch {
-                CharaMoveDelta move => move.Owner.Uid == me.uid || !view.Near(move.Owner.Uid, move.Pos.X, move.Pos.Z),
+        for (var i = 0; i < n; i++) {
+            _deltaParts[i] = null;
+            _deltaInterest[i] = deltas[i] switch {
+                CharaMoveDelta move => new() { Kind = 1, Uid = move.Owner.Uid, X = move.Pos.X, Z = move.Pos.Z },
                 // only plain fighting and waiting: other acts change the map on replay (fire, webs, a thrown potion)
                 // or carry state nothing else sends (riding)
-                CharaActPerformDelta { Tool: null } act when SkippableFar(act.ActId) => FarActor(act, view),
+                CharaActPerformDelta { Tool: null } act when SkippableFar(act.ActId) && act.Owner.Find() is Chara actor => new() {
+                    Kind = 2,
+                    Uid = act.Owner.Uid,
+                    ActorUid = actor.uid,
+                    X = actor.pos.x,
+                    Z = actor.pos.z,
+                    HasTarget = act.TargetCard is not null,
+                    Target = act.TargetCard?.Uid ?? 0,
+                    HasAt = act.Pos is not null,
+                    AtX = act.Pos?.X ?? 0,
+                    AtZ = act.Pos?.Z ?? 0,
+                },
+                _ => default,
+            };
+        }
+    }
+
+    /// <summary>
+    ///     The steps and acts of this flush that a player on the host map is sent, into <see cref="_crowdKept" />;
+    ///     false when all of them. Its own steps come back to it as well without this box (its game drops them,
+    ///     CharaMoveDelta.OnApply)
+    /// </summary>
+    private bool CrowdDeltas(int count, ISteamNetPeer peer)
+    {
+        if (_crowdViews.GetValueOrDefault(peer.Id) is not { Self: { } me } view) {
+            return false;
+        }
+
+        _crowdKept.Clear();
+        var dropped = false;
+        for (var i = 0; i < count; i++) {
+            ref var interest = ref _deltaInterest[i];
+            var drop = interest.Kind switch {
+                1 => interest.Uid == me.uid || !view.Near(interest.Uid, interest.X, interest.Z),
+                2 => FarActor(ref interest, view),
                 _ => false,
             };
 
-            if (drop && kept is null) {
-                kept = deltas.GetRange(0, i);
-            } else if (!drop) {
-                kept?.Add(delta);
+            if (drop) {
+                dropped = true;
+            } else {
+                _crowdKept.Add(i);
             }
         }
 
-        return kept;
+        return dropped;
     }
 
     private static bool SkippableFar(int actId)
@@ -336,14 +609,63 @@ internal partial class ElinNetHost
         return actId is ABILITY.ActWait or ABILITY.ActMelee or ABILITY.ActRanged or ABILITY.ActKick;
     }
 
-    private static bool FarActor(CharaActPerformDelta act, CrowdView view)
+    private static bool FarActor(ref DeltaInterest act, CrowdView view)
     {
-        if (act.Owner.Find() is not Chara actor || view.Always.Contains(act.Owner.Uid) ||
-            act.TargetCard is { } target && view.Always.Contains(target.Uid)) {
+        if (view.Always.Contains(act.Uid) || act.HasTarget && view.Always.Contains(act.Target)) {
             return false;
         }
 
-        return !view.Near(actor.uid, actor.pos.x, actor.pos.z) &&
-               (act.Pos is not { } at || !view.Near(0, at.X, at.Z));
+        return !view.Near(act.ActorUid, act.X, act.Z) &&
+               (!act.HasAt || !view.Near(0, act.AtX, act.AtZ));
+    }
+
+    /// <summary>
+    ///     The deltas of <see cref="_crowdKept" />: one message for every player sent the same ones, each delta
+    ///     serialized once
+    /// </summary>
+    private byte[] KeptDeltaBytes(List<ElinDelta> deltas)
+    {
+        if (_sameDeltas.Find(_crowdKept, out var hash) is { } known) {
+            CrowdDeltaShared.Add(known.Length);
+            return known;
+        }
+
+        byte[]? bytes = null;
+        if (!_deltaGuard.Broken) {
+            try {
+                _deltaSplice ??= ListSplice.Of(Socket.Serializer.Serialize(new WorldStateDeltaList()), 0);
+                _crowdParts.Clear();
+                foreach (var i in _crowdKept) {
+                    _crowdParts.Add(_deltaParts[i] ??= SteamNetSerializer.SerializePart<ElinDelta>(deltas[i]));
+                }
+
+                bytes = _deltaSplice.Build(_crowdParts);
+                if (_deltaGuard.WantsCheck) {
+                    var reference = Socket.Serializer.Serialize(new WorldStateDeltaList { DeltaList = PickedDeltas(deltas) });
+                    _deltaGuard.Check(bytes, reference);
+                    if (_deltaGuard.Broken) {
+                        bytes = reference;
+                    }
+                }
+            } catch (System.Exception ex) {
+                _deltaGuard.Fail(ex);
+                bytes = null;
+            }
+        }
+
+        bytes ??= Socket.Serializer.Serialize(new WorldStateDeltaList { DeltaList = PickedDeltas(deltas) });
+        _sameDeltas.Add(hash, _crowdKept, bytes);
+        CrowdDeltaBuilt.Add(bytes.Length);
+        return bytes;
+    }
+
+    private List<ElinDelta> PickedDeltas(List<ElinDelta> deltas)
+    {
+        var kept = new List<ElinDelta>(_crowdKept.Count);
+        foreach (var i in _crowdKept) {
+            kept.Add(deltas[i]);
+        }
+
+        return kept;
     }
 }
