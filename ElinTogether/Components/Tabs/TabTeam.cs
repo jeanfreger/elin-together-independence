@@ -180,10 +180,14 @@ internal class TabTeam : TabEmpBase
             var chara = CharaOf(member);
             var target = member;
             // the "..." of a member the leader manages: the same two choices as the member's page, one click nearer
-            IReadOnlyList<(string, System.Action)> actions = manages && member != me
-                ? [("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, target)),
-                    ("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, target))]
-                : [];
+            var actions = new List<(string, System.Action)>();
+            if (TeamSheet.On) {
+                actions.Add(("emp_ui_team_sheet".lang(), () => TeamSheet.Ask(target)));
+            }
+            if (manages && member != me) {
+                actions.Add(("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, target)));
+                actions.Add(("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, target)));
+            }
             var row = list.PickRow(new PlayerRowInfo(Teams.PlayerName(member), MemberLine(chara, member), chara), member == picked, () => {
                 _picked = target;
                 LayerElinTogether.Instance?.Reopen();
@@ -228,6 +232,10 @@ internal class TabTeam : TabEmpBase
         card.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
         card.KeyValue("emp_ui_kv_state".lang(), Cap((Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang()));
         card.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
+
+        if (TeamSheet.On) {
+            card.ButtonRow().RowButton("emp_ui_team_sheet".lang(), () => TeamSheet.Ask(member));
+        }
 
         if (manages && member != me) {
             card.Divider();

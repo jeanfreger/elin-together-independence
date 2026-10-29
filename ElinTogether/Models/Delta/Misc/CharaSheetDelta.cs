@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -23,8 +24,30 @@ public class CharaSheetDelta : ElinDelta
     [Key(2)]
     public byte[] Data { get; set; } = [];
 
+    // the answer's standing of the character (the sheet shows "???" for a character that is not the player's own)
+    [Key(3)]
+    public int Karma { get; set; }
+
+    [Key(4)]
+    public int Fame { get; set; }
+
+    [Key(5)]
+    public int Deposit { get; set; }
+
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return Kind == Answer ? "not a request" : NoCharacter(sender);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
-        // TODO(PLAN_hub_features WP-A, Helper/TeamSheet.cs): host checks same team and 1 request / 2 s / player, guest opens the sheet
+        switch (net) {
+            case ElinNetHost host when Kind == Request:
+                TeamSheet.OnRequest(host, OriginPeer, Uid);
+                break;
+            case ElinNetClient when Kind == Answer:
+                TeamSheet.Show(this);
+                break;
+        }
     }
 }

@@ -990,5 +990,6 @@
     "LangGeneral.emp_ui_journal_off.text": "这个世界没有开启活动日志。",
     "LangGeneral.emp_ui_journal_empty.text": "日志里还没有内容。",
     "LangGeneral.emp_ui_leaderboard_off.text": "这个世界没有开启排行榜。",
-    "LangGeneral.emp_ui_leaderboard_empty.text": "还没有排名。"
+    "LangGeneral.emp_ui_leaderboard_empty.text": "还没有排名。",
+    "LangGeneral.emp_ui_team_sheet.text": "角色面板"
 }
