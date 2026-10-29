@@ -211,6 +211,9 @@ internal static class TeamBanner
         return false;
     }
 
+    /// <summary>The team's baked emblem sprite, for small marks such as the players' team chip; null when none</summary>
+    internal static Sprite? EmblemSprite(int teamId) => EmblemOf(teamId) is { } emblem ? TeamEmblemBaker.Get(emblem) : null;
+
     internal static void Remove(int teamId)
     {
         ElinNetHost.TeamBanners.Remove(teamId);
@@ -240,6 +243,7 @@ internal static class TeamBanner
         _told = [];
         _toldThings = [];
         _asks.Clear();
+        TeamEmblemBaker.Clear();
     }
 
     /// <summary>
@@ -254,7 +258,8 @@ internal static class TeamBanner
 
         var color = ColorOf(banner.Color);
         if (EmblemOf(teamId) is { } emblem) {
-            Frame(row, color, SpriteOf(emblem.Layers[0].Thing), size, true, null);
+            // the baked emblem (background, shape and layers in one sprite shared by every view)
+            TeamEmblemBaker.Place(row.transform, TeamEmblemBaker.Get(emblem), size);
         } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
             // the emblem on a square of the colour, like an item (no detached colour bar beside it)
             Frame(row, color, sprite, size, true, null);

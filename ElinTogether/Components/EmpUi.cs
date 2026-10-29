@@ -31,7 +31,8 @@ internal record PlayerRowInfo(
     string? Team = null,
     int PingBars = -1,
     PlayerBadge Badges = PlayerBadge.None,
-    Color? TeamColor = null);
+    Color? TeamColor = null,
+    Sprite? TeamEmblem = null);
 
 /// <summary>
 ///     Vanilla-looking pieces for the Elin Together layer: they reuse the game's own prefabs (UINote texts, headers,
@@ -456,6 +457,11 @@ internal static class EmpUi
         }
 
         if (!string.IsNullOrEmpty(info.Team)) {
+            // a mini emblem before the team chip (box "Team banners")
+            if (info.TeamEmblem != null) {
+                Helper.TeamEmblemBaker.Place(row.transform, info.TeamEmblem, 24f);
+            }
+
             row.Chip(info.Team!, tint: info.TeamColor);
         }
 

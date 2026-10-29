@@ -344,7 +344,8 @@ internal class TabPlayers : TabEmpBase
         var teamId = Teams.TeamOf(chara.uid);
         var inTeam = NetSession.Instance.Rules.UseTeams && teamId != Teams.Wanderers;
         var team = inTeam ? Teams.NameOf(teamId) : null;
-        parent.PickRow(new(name, detail, chara, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null), picked, onPick);
+        parent.PickRow(new(name, detail, chara, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null,
+            inTeam ? TeamBanner.EmblemSprite(teamId) : null), picked, onPick);
     }
 
     /// <summary>

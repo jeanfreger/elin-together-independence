@@ -376,7 +376,7 @@ internal class TabTeam : TabEmpBase
             var row = list.Row();
             var element = row.LayoutElement();
             element.minHeight = element.preferredHeight = TeamRowHeight;
-            TeamBanner.Draw(row, team, 22f);
+            TeamBanner.Draw(row, team, 40f);
             row.TextColumn(Clip(Teams.NameOf(team), 24),
                 "emp_ui_team_leader_short".Loc(Clip(Teams.PlayerName(Teams.LeaderOf(team)), 16), Teams.MembersOfTeam(team).Count()));
             var id = team;
