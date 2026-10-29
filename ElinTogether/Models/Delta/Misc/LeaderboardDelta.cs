@@ -26,8 +26,30 @@ public class LeaderboardDelta : ElinDelta
     [Key(4)]
     public int OwnRank { get; set; }
 
+    // who each row is: a player character uid, a team id on the wealth board
+    [Key(5)]
+    public int[] Uids { get; set; } = [];
+
+    [Key(6)]
+    public long OwnScore { get; set; }
+
+    internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
+    {
+        return IsAnswer ? "not a request" : Board is < 0 or > 3 ? "no such board" : NoCharacter(sender);
+    }
+
     protected override void OnApply(ElinNetBase net)
     {
-        // TODO(PLAN_hub_features WP-D, Helper/Leaderboards.cs): host computes and answers, guest hands it to TabLeaderboard
+        if (net is ElinNetHost host) {
+            if (!IsAnswer && host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var from)) {
+                Helper.Leaderboards.Handle(this, from, host);
+            }
+
+            return;
+        }
+
+        if (IsAnswer) {
+            Helper.Leaderboards.Show(this);
+        }
     }
 }

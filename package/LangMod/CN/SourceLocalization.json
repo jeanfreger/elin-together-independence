@@ -991,5 +991,12 @@
     "LangGeneral.emp_ui_journal_empty.text": "日志里还没有内容。",
     "LangGeneral.emp_ui_leaderboard_off.text": "这个世界没有开启排行榜。",
     "LangGeneral.emp_ui_leaderboard_empty.text": "还没有排名。",
-    "LangGeneral.emp_ui_team_sheet.text": "角色面板"
+    "LangGeneral.emp_ui_team_sheet.text": "角色面板",
+    "LangGeneral.emp_ui_lb_level.text": "等级",
+    "LangGeneral.emp_ui_lb_deepest.text": "最深楼层",
+    "LangGeneral.emp_ui_lb_duels.text": "决斗获胜",
+    "LangGeneral.emp_ui_lb_wealth.text": "队伍财富",
+    "LangGeneral.emp_ui_lb_you.text": "你",
+    "LangGeneral.emp_ui_lb_rank.text": "第 {0} 名（{1}）",
+    "LangGeneral.emp_ui_lb_unranked.text": "未上榜"
 }
