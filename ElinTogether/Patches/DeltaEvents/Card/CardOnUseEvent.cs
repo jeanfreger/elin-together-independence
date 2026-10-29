@@ -58,6 +58,7 @@ internal static class CardOnUseEvent
             Pos = pos,
             Target = target,
             Equip = equip,
+            Peace = trait is TraitWhistlePeace ? !EClass._zone.isPeace : null,
         });
 
         return equip is null;
