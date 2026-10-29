@@ -489,7 +489,7 @@ internal partial class ElinNetHost
         }
 
         try {
-            CharaImport.Adopt(chara, response.Source);
+            CharaImport.Adopt(chara, response.Source, away);
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Could not take in the character brought by player {@Peer}", peer);
             PreparePlayerJoin(peer, "emp_ui_chara_import_fail");

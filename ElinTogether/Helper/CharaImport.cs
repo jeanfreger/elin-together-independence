@@ -202,8 +202,12 @@ internal static class CharaImport
     /// <summary>
     ///     Host side: the copy becomes a character of this world, with uids of this world
     /// </summary>
-    internal static void Adopt(Chara chara, string source)
+    internal static void Adopt(Chara chara, string source, Chara? existing = null)
     {
+        if (existing is not null) {
+            KeepGifts(chara, existing);
+        }
+
         var before = chara.uid;
 
         chara.SetBool(CINT.IsPC, false);
@@ -230,5 +234,28 @@ internal static class CharaImport
         }
 
         chara.SetStr(SourceKey, source);
+    }
+
+    /// <summary>
+    ///     A character back in the place of the one waiting here: a god's gifts already given in this world are not
+    ///     given again (each count the higher of the two, see RemoteGodGiftPatch), and an artifact it brings that its
+    ///     companions here already hold is the one artifact of its kind a player keeps (Card.PurgeDuplicateArtifact)
+    /// </summary>
+    private static void KeepGifts(Chara chara, Chara existing)
+    {
+        foreach (var religion in EClass.game.religions.list) {
+            var key = Patches.RemoteGodGiftPatch.Key(religion);
+            chara.SetInt(key, Math.Max(chara.GetInt(key), existing.GetInt(key)));
+        }
+
+        var held = EClass.game.cards.globalCharas.Values
+            .Where(c => c is not null && c != existing && c.CompanionOwnerUid == existing.uid)
+            .SelectMany(c => c.things.List(t => t.HasTag(CTAG.godArtifact)))
+            .Select(t => t.id)
+            .ToHashSet();
+        foreach (var duplicate in chara.things.List(t => t.HasTag(CTAG.godArtifact) && held.Contains(t.id)).ToList()) {
+            EmpLog.Information("Import: {Id} {Uid} destroyed, a companion of the player already holds one", duplicate.id, duplicate.uid);
+            duplicate.Destroy();
+        }
     }
 }
