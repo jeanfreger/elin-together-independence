@@ -371,6 +371,7 @@ internal partial class ElinNetClient
         }
 
         ZoneLeaseState.ApplyState(zone, grant.ZoneState, grant.IdCurrentSubset);
+        Helper.LeasedBase.Apply(zone, grant.Branch, grant.BaseElements, grant.Name);
         // cards created here get uids the host does not use
         game.cards.uidNext = Math.Max(game.cards.uidNext, grant.UidRangeStart);
         AdoptQuestUidRange(grant);
@@ -597,6 +598,8 @@ internal partial class ElinNetClient
         }
 
         Session.IsGuest = false;
+        // the base as the world keeps it: what this game simulates from now on goes back from there
+        Helper.LeasedBase.Apply(zone, grant.Branch, grant.BaseElements, grant.Name);
         // our own move asked just before the host left (to another map than this one) goes on: its grant comes next,
         // and finds us holding this map as any player away who moves on. Dropped here, the grant was "unexpected"
         // and refused, and we stayed behind instead of going where we went (simultaneous moves, 2026-10-14)
@@ -656,11 +659,11 @@ internal partial class ElinNetClient
             return false;
         }
 
+        // only what the things on the floor hold differs: still theirs. Kept, our copy went back whole with our next
+        // release and wrote over the chests of the world (lease audit 2026-10-29, #3)
         if (ZoneLeaseState.SameFloor(ours, theirs)) {
-            // only what the things on the floor hold: told, not a reason to load the map under the player
-            EmpLog.Information("Taking over {ZoneFullName} from {From}: the content of a container differs, our copy is kept (here {Local} | there {Host})",
+            EmpLog.Information("Taking over {ZoneFullName} from {From}: the content of a container differs, loading theirs (here {Local} | there {Host})",
                 zone.ZoneFullName, from, ZoneLeaseState.TellSums(ours), ZoneLeaseState.TellSums(theirs));
-            return false;
         }
 
         // ponytail: what we did in the last round trip and the keeper never saw is not in its copy. A thing put
@@ -1262,8 +1265,14 @@ internal partial class ElinNetClient
 
         // the world map is a local copy for everyone; the zone of a quest is gone once left
         var map = zone.IsRegion || zone.IsInstance ? null : ZoneLeaseState.CollectMap(zone);
+        // (taken before the branch is packed: what the host pays is not in it any more)
+        var income = Helper.LeasedBase.TakeIncome(zone);
 
         return new() {
+            Branch = Helper.LeasedBase.Pack(zone),
+            Name = Helper.LeasedBase.Name(zone),
+            BaseElements = Helper.LeasedBase.Elements(zone),
+            Income = income,
             ZoneUid = zone.uid,
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,

@@ -78,6 +78,13 @@ internal static class BaseIncome
     [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.GetDailyIncome))]
     private static bool OnDailyIncome(FactionBranch __instance)
     {
+        // a player alone at its base would pay itself the whole of it from its copy, whoever owns the land: it
+        // waits, and goes to the host with the base, which pays it as here (LeasedBase.TakeIncome, lease audit
+        // 2026-10-29, #5)
+        if (NetSession.Instance is { IsZoneAuthority: true, Transport: ElinNetClient }) {
+            return false;
+        }
+
         if (Host is not { } host) {
             return true;
         }

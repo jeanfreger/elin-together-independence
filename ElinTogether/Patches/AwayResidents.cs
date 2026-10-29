@@ -91,13 +91,19 @@ internal static class AwayResidents
     /// <param name="handed">the zone is handed back (not a checkpoint): what is sent now is not sent again</param>
     internal static List<LZ4Bytes>? Collect(bool handed)
     {
-        if (_changed.Count == 0) {
+        // every resident of the base this player holds: its game changed them in place (equipped, fed, trained, sent
+        // on an expedition) and nothing told it (lease audit 2026-10-29, #1). The host takes them with the branch
+        var members = NetSession.Instance is { IsZoneAuthority: true, AwayZone.branch: { } branch }
+            ? branch.members.Where(m => !m.GetBool("remote_chara")).Select(m => m.uid)
+            : [];
+        var uids = _changed.Union(members).ToList();
+        if (uids.Count == 0) {
             return null;
         }
 
         // (a companion that died on the way still travels with its player, dead: it goes with the companions)
         var travelling = CompanionHelper.TravellingWith(EClass.pc);
-        var residents = _changed
+        var residents = uids
             .Select(uid => EClass.game.cards.globalCharas.Find(uid))
             .Where(c => c is { isDestroyed: false, IsPCParty: false, IsPlayer: false } && !travelling.Contains(c))
             .Select(c => LZ4Bytes.Create(c!))

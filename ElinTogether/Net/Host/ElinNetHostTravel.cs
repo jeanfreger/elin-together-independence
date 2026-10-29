@@ -256,6 +256,9 @@ internal partial class ElinNetHost
                     QuestUidRangeStart = ReserveQuestUids(),
                     ZoneState = ZoneLeaseState.GetState(zone),
                     IdCurrentSubset = zone.idCurrentSubset,
+                    Branch = LeasedBase.Pack(zone),
+                    Name = LeasedBase.Name(zone),
+                    BaseElements = LeasedBase.Elements(zone),
                     Handoff = true,
                     Map = map,
                     MapSums = sums,
@@ -925,6 +928,9 @@ internal partial class ElinNetHost
             QuestUidRangeStart = ReserveQuestUids(),
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
+            Branch = LeasedBase.Pack(zone),
+            Name = LeasedBase.Name(zone),
+            BaseElements = LeasedBase.Elements(zone),
             Map = map,
         });
     }
@@ -1168,6 +1174,9 @@ internal partial class ElinNetHost
             QuestUidRangeStart = ReserveQuestUids(),
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
+            Branch = LeasedBase.Pack(zone),
+            Name = LeasedBase.Name(zone),
+            BaseElements = LeasedBase.Elements(zone),
             Handoff = true,
             Map = map,
             MapSums = sums,
@@ -1343,11 +1352,14 @@ internal partial class ElinNetHost
         }
 
         var handedBack = false;
+        // the base of the zone it held, when that player may manage it: its residents come back with it
+        var managed = -1;
         if (_leases.TryGetValue(peer.Id, out var zones) && zones.Remove(release.ZoneUid, out var rangeStart)) {
             handedBack = true;
 
-            if (game.spatials.Find(release.ZoneUid) is { IsRegion: false } zone && !_questZones.Contains(zone.uid)) {
-                ApplyLeasedZone(zone, release);
+            if (game.spatials.Find(release.ZoneUid) is { IsRegion: false } zone && !_questZones.Contains(zone.uid) &&
+                ApplyLeasedZone(zone, release, peer)) {
+                managed = zone.uid;
             }
 
             // only a range the client allocated in pushes the host counter
@@ -1376,7 +1388,7 @@ internal partial class ElinNetHost
         var rebound = new Dictionary<int, int>();
         var chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound, capGainsOf: wasVisitor ? peer.Id : -1);
         ReplaceCompanions(release.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0, rebound);
-        ReplaceResidents(release.Residents, ownerUid);
+        ReplaceResidents(release.Residents, ownerUid, managed);
         DropGoneResidents(release.GoneResidents, ownerUid);
         ReplaceGuestCharas(release, peer);
 
@@ -1451,9 +1463,9 @@ internal partial class ElinNetHost
             return;
         }
 
-        if (game.spatials.Find(checkpoint.ZoneUid) is { IsRegion: false } zone) {
-            ApplyLeasedZone(zone, checkpoint);
-        }
+        var managed = game.spatials.Find(checkpoint.ZoneUid) is { IsRegion: false } zone && ApplyLeasedZone(zone, checkpoint, peer)
+            ? checkpoint.ZoneUid
+            : -1;
 
         // the client keeps allocating in its range, the host counter only moves on release or disconnect
         var start = zones[checkpoint.ZoneUid];
@@ -1461,7 +1473,7 @@ internal partial class ElinNetHost
 
         ReplaceRemoteChara(peer.User, checkpoint.Chara);
         ReplaceCompanions(checkpoint.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0);
-        ReplaceResidents(checkpoint.Residents, ownerUid);
+        ReplaceResidents(checkpoint.Residents, ownerUid, managed);
         DropGoneResidents(checkpoint.GoneResidents, ownerUid);
         ReplaceGuestCharas(checkpoint, peer);
 
@@ -1519,13 +1531,14 @@ internal partial class ElinNetHost
         pc.MoveZone(move.Zone, move.Transition);
     }
 
-    private void ApplyLeasedZone(Zone zone, ZoneLeaseRelease release)
+    /// <returns>true when the base of the zone came back too (that player may manage it): see ReplaceResidents</returns>
+    private bool ApplyLeasedZone(Zone zone, ZoneLeaseRelease release, ISteamNetPeer holder)
     {
         if (zone == _zone) {
             // host walked in meanwhile and simulates it, host copy wins
             EmpLog.Warning("Zone {ZoneFullName} is active on host, discarding the client copy",
                 zone.ZoneFullName);
-            return;
+            return false;
         }
 
         if (release.Map is not null) {
@@ -1542,6 +1555,17 @@ internal partial class ElinNetHost
 
         ZoneLeaseState.ApplyState(zone, release.ZoneState, release.IdCurrentSubset);
 
+        // its base, simulated there alone (lease audit 2026-10-29, #2 and #4), and what it earned, paid once (#5)
+        var managed = ManagesLeasedBase(zone, holder);
+        if (managed) {
+            LeasedBase.Apply(zone, release.Branch, release.BaseElements, release.Name);
+        } else if (zone.branch is not null && release.Branch is not null) {
+            EmpLog.Information("The base {ZoneFullName} handed back by {@Peer} is not its to manage, the host keeps its own",
+                zone.ZoneFullName, holder);
+        }
+
+        LeasedBase.PayIncome(zone, release.Income);
+
         // the date came with that copy; before the save and the move of the host that follow a recall
         if (HasPlayerIn(zone)) {
             KeepAlive(zone);
@@ -1555,8 +1579,21 @@ internal partial class ElinNetHost
         // the client just left, no catch-up simulation owed
         zone.lastActive = world.date.GetRaw();
 
-        EmpLog.Information("Applied client copy of zone {ZoneFullName}, map {HasMap}, generated {IsGenerated}",
-            zone.ZoneFullName, release.Map is not null, zone.isGenerated);
+        EmpLog.Information("Applied client copy of zone {ZoneFullName}, map {HasMap}, generated {IsGenerated}, base {Base}",
+            zone.ZoneFullName, release.Map is not null, zone.isGenerated, managed && release.Branch is not null);
+        return managed && zone.branch is not null;
+    }
+
+    /// <summary>
+    ///     The player holding that zone may change its base: a land of no team or of its team (and its rule), and the
+    ///     host does not keep the bases to itself. The rules a player on the host's map meets (PolicyStateDelta,
+    ///     BaseRequestDelta)
+    /// </summary>
+    private bool ManagesLeasedBase(Zone zone, ISteamNetPeer holder)
+    {
+        return zone.branch is not null && !Session.Rules.HostManagesBase &&
+               SavedRemoteCharas.TryGetValue(holder.User, out var uid) && game.cards.globalCharas.Find(uid) is { } chara &&
+               Teams.CanTouch(chara, zone);
     }
 
     /// <summary>
