@@ -21,7 +21,7 @@ internal static class CardSettingEvent
             return;
         }
 
-        if (card.GetRootCard() is not Chara && kind is not (CardSettingDelta.Door or CardSettingDelta.Well)) {
+        if (card.GetRootCard() is not Chara && kind is not (CardSettingDelta.Door or CardSettingDelta.Well or CardSettingDelta.Hidden)) {
             RemoteBasePaidPatch.WarnHostOnly();
         }
 
@@ -210,6 +210,25 @@ internal static class CardSettingEvent
     {
         if (__instance is Thing && __instance.c_isDisableStockUse != __state) {
             Tell(__instance, CardSettingDelta.StockUse);
+        }
+    }
+
+    /// <summary>
+    ///     A hidden medal or trap found by a player (search, waiting): the other games reveal it too
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.SetHidden))]
+    internal static void OnHidden(Card __instance, out bool __state)
+    {
+        __state = __instance.isHidden;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Card), nameof(Card.SetHidden))]
+    internal static void OnHiddenSet(Card __instance, bool __state)
+    {
+        if (__instance is Thing && __instance.isHidden != __state) {
+            Tell(__instance, CardSettingDelta.Hidden);
         }
     }
 
