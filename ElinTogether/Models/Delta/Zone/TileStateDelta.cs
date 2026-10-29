@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -37,6 +38,14 @@ public class TileStateDelta : ElinDelta
     [Key(1)]
     public required int ZoneUid { get; init; }
 
+    /// <summary>
+    ///     The plant data (Map.plants: the seed with its level and food traits, water, fert, size) of the cells above
+    ///     that have one, by cell index. A cell of <see cref="Cells" /> that is not in it has no plant. The seed of a
+    ///     harvest is made from it: without it a +50 seed gave back a level 0 one (issue #31)
+    /// </summary>
+    [Key(2)]
+    public LZ4Bytes? Plants { get; init; }
+
     internal static void Mark(Map map, int x, int z)
     {
         // generating or loading a map is not a change to tell: everyone gets the whole map then
@@ -68,10 +77,14 @@ public class TileStateDelta : ElinDelta
         if (NetSession.Instance.Connection is ElinNetHost host && NetCompany.HasCompany && !ZoneActivateEvent.IsHappening) {
             var size = _map.Size;
             var cells = new List<int>(Math.Min(_dirty.Count, MaxCells) * Width);
+            var plants = new Dictionary<int, PlantData>();
             void Send()
             {
-                host.Delta.AddRemote(new TileStateDelta { Cells = [..cells], ZoneUid = _zone.uid });
+                host.Delta.AddRemote(new TileStateDelta {
+                    Cells = [..cells], ZoneUid = _zone.uid, Plants = plants.Count == 0 ? null : LZ4Bytes.Create(plants),
+                });
                 cells.Clear();
+                plants.Clear();
             }
 
             foreach (var index in _dirty) {
@@ -81,6 +94,10 @@ public class TileStateDelta : ElinDelta
                 }
 
                 var c = _map.cells[x, z];
+                if (_map.plants.TryGetValue(c.index, out var plant)) {
+                    plants[c.index] = plant;
+                }
+
                 cells.AddRange([
                     x, z, c._block, c._blockMat, c._floor, c._floorMat, c.obj, c.objMat, c._bridge, c._bridgeMat,
                     c._roofBlock, c._roofBlockMat, c._deco, c._decoMat, c._dirs, c.objVal, c._roofBlockDir,
@@ -98,6 +115,23 @@ public class TileStateDelta : ElinDelta
         }
 
         _dirty.Clear();
+    }
+
+    /// <summary>
+    ///     The plant data of the cell is the sender's (Map.SetObj dropped what this game had); null when the plants
+    ///     could not be read: keep what is there then
+    /// </summary>
+    private static void SyncPlant(Map map, Cell c, Dictionary<int, PlantData>? plants)
+    {
+        if (plants is null) {
+            return;
+        }
+
+        if (plants.TryGetValue(c.index, out var plant) && plant is not null) {
+            map.plants[c.index] = plant;
+        } else {
+            map.plants.Remove(c.index);
+        }
     }
 
     /// <summary>
@@ -127,6 +161,12 @@ public class TileStateDelta : ElinDelta
 
         // many cells at once (a dragged floor): one refresh of the sight for all
         var many = Cells.Length > 64 * Width;
+        Dictionary<int, PlantData>? plants = null;
+        try {
+            plants = Plants?.Decompress<Dictionary<int, PlantData>>();
+        } catch (Exception e) {
+            EmpLog.Warning("Plant data of a tile state unreadable: {Why}", e.Message);
+        }
 
         for (var i = 0; i + Width <= Cells.Length; i += Width) {
             int x = Cells[i], z = Cells[i + 1];
@@ -144,6 +184,7 @@ public class TileStateDelta : ElinDelta
                        c.height == s[16] && c.bridgeHeight == s[17] && c.hidePillar == (s[18] != 0) && c.isHarvested == (s[19] != 0) &&
                        c.crossWall == (s[20] != 0) && c.isWatered == (s[21] != 0) && FlagsOf(c) == s[22];
             if (same) {
+                SyncPlant(map, c, plants);
                 continue;
             }
 
@@ -177,6 +218,7 @@ public class TileStateDelta : ElinDelta
             c.crossWall = s[20] != 0;
             c.isWatered = s[21] != 0;
             SetFlags(c, s[22]);
+            SyncPlant(map, c, plants);
             c.room?.SetDirty();
             map.RefreshNeighborTiles(x, z);
             if (!many) {

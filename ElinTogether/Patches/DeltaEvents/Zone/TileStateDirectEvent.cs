@@ -106,3 +106,27 @@ internal static class TileStateTaskEvent
             p => TileStateDelta.Mark(EClass._map, p.x, p.z));
     }
 }
+
+/// <summary>
+///     A seed that sprouts, a fertilizer on bare soil, a plant that is given up: the plant data of the cell
+///     (<see cref="PlantData" />, the level of the seed) is told with the cell, see <see cref="TileStateDelta" />
+/// </summary>
+[HarmonyPatch]
+internal static class TileStatePlantEvent
+{
+    internal static IEnumerable<MethodBase> TargetMethods()
+    {
+        return [
+            AccessTools.Method(typeof(Map), nameof(Map.AddPlant)),
+            AccessTools.Method(typeof(Map), nameof(Map.RemovePlant)),
+        ];
+    }
+
+    [HarmonyPostfix]
+    internal static void OnPlant(Map __instance, Point pos)
+    {
+        if (pos.IsValid) {
+            TileStateDelta.Mark(__instance, pos.x, pos.z);
+        }
+    }
+}
