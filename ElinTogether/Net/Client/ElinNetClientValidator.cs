@@ -100,7 +100,7 @@ internal partial class ElinNetClient
                 // nothing to download, mods of ours the host does not have: Elin restarts without them, once
                 if (mods.Missing.Count == 0 && mods.Extra.Count > 0 &&
                     rejected.Reason == NetIntegrityRejected.NetIntegrityRejectReason.ActMappingMismatch &&
-                    ModFetch.Begin(_modsText, mods, ReturnTo)) {
+                    ModFetch.Begin(_modsText, mods, ReturnTo, (ulong)Host.User, Host.User.Name)) {
                     Socket.Disconnect(Host, EmpDisconnectInfo.ActMappingMismatch);
                     return;
                 }
@@ -163,7 +163,7 @@ internal partial class ElinNetClient
         _modsText = request.Mods ?? "";
         if (_modsText.Length > 0) {
             _mods = ModList.Compare(ModListFile.Parse(_modsText), "the host", _modsText.Contains(ModList.LookOwn));
-            if (_mods.Missing.Count > 0 && ModFetch.Begin(_modsText, _mods, ReturnTo)) {
+            if (_mods.Missing.Count > 0 && ModFetch.Begin(_modsText, _mods, ReturnTo, (ulong)Host.User, Host.User.Name)) {
                 // they are fetched, Elin restarts with them and joins again by itself: nothing more is asked here
                 Socket.Disconnect(Host, EmpDisconnectInfo.ClientCancel);
                 return;
