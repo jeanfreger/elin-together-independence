@@ -1,3 +1,5 @@
+using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -54,7 +56,7 @@ public class CharaFaithDelta : ElinDelta
                 old.Punish(chara);
             }
 
-            religion.JoinFaith(chara);
+            JoinFaith(religion, chara);
             if (!Campaign) {
                 chara.c_daysWithGod = 0;
             }
@@ -71,9 +73,29 @@ public class CharaFaithDelta : ElinDelta
         }
 
         // client sim
-        religion.JoinFaith(chara);
+        JoinFaith(religion, chara);
         if (!Campaign) {
             chara.c_daysWithGod = 0;
+        }
+    }
+
+    /// <summary>
+    ///     Religion.JoinFaith, with what it does for "the player" only (ElementContainerFaction.OnLeaveFaith and
+    ///     OnJoinFaith): the faction's global bonuses of the god-blessed gear that player and its companions wear
+    ///     count by that player's faith (OtherPlayerPatch.OnIsEffective), taken out under the old one, back under the new
+    /// </summary>
+    private static void JoinFaith(Religion religion, Chara chara)
+    {
+        var bonuses = pc.faction.charaElements;
+        var side = (chara.party?.members ?? []).Where(c => c != chara && c.IsCompanionOf(chara)).Prepend(chara)
+            .Where(c => c.IsPCFaction).ToList();
+        foreach (var member in side) {
+            bonuses.OnRemoveMember(member);
+        }
+
+        religion.JoinFaith(chara);
+        foreach (var member in side) {
+            bonuses.OnAddMemeber(member);
         }
     }
 }
