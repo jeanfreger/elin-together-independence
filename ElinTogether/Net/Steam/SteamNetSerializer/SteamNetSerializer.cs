@@ -47,6 +47,14 @@ internal class SteamNetSerializer : ISteamNetSerializer
         return bytes;
     }
 
+    /// <summary>
+    ///     One entry of a list alone, no type header: a piece of a message assembled by <see cref="ListSplice" />
+    /// </summary>
+    internal static byte[] SerializePart<T>(T obj)
+    {
+        return MessagePackSerializer.Serialize(obj, _options);
+    }
+
     public object Deserialize(ReadOnlyMemory<byte> data, Type type)
     {
         return MessagePackSerializer.Deserialize(type, data, _options)!;
