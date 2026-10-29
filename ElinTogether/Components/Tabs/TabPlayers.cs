@@ -169,7 +169,7 @@ internal class TabPlayers : TabEmpBase
 
         // nobody else: say so, and the one click that helps (invite when in a game, else the Play page)
         if (all.Count <= 1) {
-            if (NetSession.Instance.HasActiveConnection) {
+            if (NetSession.Instance.InGame) {
                 card.EmptyState("emp_ui_players_alone".lang(), "emp_ui_players_alone_btn".lang(),
                     NetSession.Instance.Lobby.InviteSteamOverlay);
             } else {

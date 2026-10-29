@@ -117,6 +117,23 @@ internal static class MultiplayerHubPatch
         }
     }
 
+    // a widget with a fixed slot count (its own setting, kept in the player's widget layout and not in the save)
+    // drew only the first 4 slots on another PC, so the button sat in the bar but out of sight (user 2026-10-29):
+    // the row grows to show it, as the player would with the widget's "numSlot" slider
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(WidgetHotbar), nameof(WidgetHotbar.Rebuild))]
+    private static void ShowButton(WidgetHotbar __instance)
+    {
+        if (__instance.hotbar is not { id: Hotbar.IDMainMenu } bar || __instance.extra is not { autoSize: false } extra) {
+            return;
+        }
+
+        var index = bar.CurrentPage.items.FindIndex(i => i is HotItemLayer { id: LayerId });
+        if (index >= extra.rows) {
+            extra.rows = index + 1;
+        }
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(HotItemLayer), nameof(HotItemLayer.OnClick), typeof(ButtonHotItem), typeof(Hotbar))]
     private static bool OnClick(HotItemLayer __instance)

@@ -20,7 +20,7 @@ internal static class TabJournal
     public static void Build(YKVertical page)
     {
         var card = page.Card("emp_ui_tab_journal".lang());
-        if (NetSession.Instance is not { HasActiveConnection: true, Rules.ActivityJournal: true }) {
+        if (NetSession.Instance is not { InGame: true, Rules.ActivityJournal: true }) {
             TabTeam.EmptyPage(card, Icons, "emp_ui_journal_off".lang());
             return;
         }

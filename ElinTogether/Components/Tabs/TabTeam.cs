@@ -21,7 +21,7 @@ internal class TabTeam : TabEmpBase
     /// <summary>
     ///     Teams exist in this game: a connected game whose rules have them on
     /// </summary>
-    internal static bool TeamsOn => NetSession.Instance is { HasActiveConnection: true, Rules.UseTeams: true } && EClass.pc != null;
+    internal static bool TeamsOn => NetSession.Instance is { InGame: true, Rules.UseTeams: true } && EClass.pc != null;
 
     /// <summary>
     ///     "Teams are off in this world": the empty state both pages show. Only the host gets the button that opens the
@@ -30,7 +30,7 @@ internal class TabTeam : TabEmpBase
     internal static void BuildOff(YKLayout page, string titleId)
     {
         var card = page.Card(titleId.lang());
-        if (!NetSession.Instance.HasActiveConnection) {
+        if (!NetSession.Instance.InGame) {
             EmptyPage(card, TeamIcons, "emp_ui_team_unplugged".lang(), "emp_ui_players_go_play".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
         } else if (NetSession.Instance.Transport is ElinNetHost) {

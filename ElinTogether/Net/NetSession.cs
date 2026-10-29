@@ -81,6 +81,12 @@ public class NetSession : EClass
     public NetPeerState? Self { get; internal set; }
 
     public bool HasActiveConnection => Transport != null && Transport.IsConnected;
+
+    /// <summary>
+    ///     In a multiplayer game: hosting (even before anyone joins) or connected to a host. HasActiveConnection is
+    ///     false for a host alone, which locked the Team page of a freshly started server (user, 2026-10-29)
+    /// </summary>
+    public bool InGame => Transport is ElinNetHost || HasActiveConnection;
     public bool IsHost => Connection?.IsHost is not false;
     public bool IsClient => !IsHost;
     public bool ShouldSimulate => IsHost || SyncMode == Mode.PartialSync;

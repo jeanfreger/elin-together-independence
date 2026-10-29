@@ -28,7 +28,7 @@ internal static class TabLeaderboard
     private static YKVertical? _you;
     private static Action? _relayout;
 
-    public static bool Enabled => NetSession.Instance is { HasActiveConnection: true, Rules.Leaderboards: true };
+    public static bool Enabled => NetSession.Instance is { InGame: true, Rules.Leaderboards: true };
 
     public static int Board => _board;
 
