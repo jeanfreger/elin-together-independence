@@ -116,6 +116,7 @@ internal partial class ElinNetHost
 
         if (!IsZoneSession) {
             GiveOrphanTo(peer.User);
+            ReclaimLostCharas(peer);
         }
 
         // a saved character that is the host's own, or is played by another peer right now, is nobody's to hand out
@@ -187,6 +188,53 @@ internal partial class ElinNetHost
                 SendToSpawnZone(chara, peer, false);
                 ReturnToAwayZone(peer);
             });
+        }
+    }
+
+    /// <summary>
+    ///     The Steam account that plays a character, written on it when it is played (<see cref="RegisterPlayer" />):
+    ///     the world itself says whose a character is, whatever its tables say
+    /// </summary>
+    internal const string PlayerIdKey = "emp_player_id";
+
+    /// <summary>
+    ///     A player's character still in the world (a player mark, at the base, among the players) but in nobody's
+    ///     roster is this player's again: its Steam account written on it, else (written before the account was) the
+    ///     player name. Issue #25: after the host lost its link while the guest was away, the guest found only "new
+    ///     character", its own one still in the players tab and counted at the base, out of every list it can be
+    ///     picked or deleted from
+    /// </summary>
+    private static void ReclaimLostCharas(ISteamNetPeer peer)
+    {
+        var claimed = SavedRemoteCharas.Values
+            .Concat(PlayerRosters.Values.SelectMany(uids => uids))
+            .Concat(PcOrphans.Keys)
+            .ToHashSet();
+        var id = ((ulong)peer.User).ToString();
+        var name = peer.User.Name;
+
+        foreach (var chara in game.cards.globalCharas.Values.ToList()) {
+            if (chara is null || chara == pc || chara.IsPC || !chara.GetBool("remote_chara") || claimed.Contains(chara.uid) ||
+                ServerAvatar.Is(chara)) {
+                continue;
+            }
+
+            var owner = chara.GetStr(PlayerIdKey);
+            var mine = owner.IsEmpty()
+                ? !name.IsEmpty() && name != "?" && chara.GetStr(PlayerRevive.PlayerKey) == name
+                : owner == id;
+            if (!mine) {
+                continue;
+            }
+
+            if (!PlayerRosters.TryGetValue(peer.User, out var roster)) {
+                roster = PlayerRosters[peer.User] = [];
+            }
+
+            roster.Add(chara.uid);
+            chara.SetStr(PlayerIdKey, id);
+            EmpLog.Warning("Chara {Uid} ({Name}) of {@Peer} was in no roster: back in its own", chara.uid, chara.Name, peer);
+            AdminLog($"character {chara.uid} ({chara.Name}) of {id} was in no roster: given back to its player");
         }
     }
 
@@ -350,6 +398,7 @@ internal partial class ElinNetHost
     {
         chara.SetBool("remote_chara", false);
         chara.SetStr(PlayerRevive.PlayerKey, null);
+        chara.SetStr(PlayerIdKey, null);
         chara.party?.RemoveMember(chara);
         EClass.Home.FindBranch(chara)?.RemoveMemeber(chara);
         if (chara.IsPCFaction) {
@@ -482,6 +531,8 @@ internal partial class ElinNetHost
         chara.MoveZone(pc.currentZone);
         chara.SetBool("remote_chara", true);
         chara.SetStr(PlayerRevive.PlayerKey, peer.User.Name ?? "?");
+        // (whose it is, kept in the world: see ReclaimLostCharas)
+        chara.SetStr(PlayerIdKey, ((ulong)peer.User).ToString());
         GiveAxeToRemotePlayer(chara);
 
         var state = States[peer.Id] = new() {
