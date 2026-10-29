@@ -22,11 +22,15 @@ internal static class AIEatPatch
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(FoodEffect), nameof(FoodEffect.Proc))]
-    internal static bool OnFoodEffect(Chara c)
+    internal static bool OnFoodEffect(Chara c, out ScopeExit? __state)
     {
+        __state = null;
         if (NetSession.Instance.Connection is not ElinNetHost || !c.IsRemotePlayer) {
             return true;
         }
+
+        // poison and sins cost karma to the eater's own game, not to the host's player
+        __state = PlayerKarma.Skip();
 
         for (var ai = c.ai.Current; ai is not null; ai = ai.parent) {
             if (ai is AI_Eat eat) {
@@ -35,5 +39,12 @@ internal static class AIEatPatch
         }
 
         return true;
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(FoodEffect), nameof(FoodEffect.Proc))]
+    internal static void OnFoodEffectEnd(ScopeExit? __state)
+    {
+        __state?.Dispose();
     }
 }

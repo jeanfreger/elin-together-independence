@@ -36,6 +36,12 @@ public class CardOnUseDelta : ElinDelta
     [Key(5)]
     public bool? Equip { get; init; }
 
+    /// <summary>
+    ///     Peace whistle: the state wanted, not a toggle. A game already in that state keeps it
+    /// </summary>
+    [Key(6)]
+    public bool? Peace { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         // by the sender or its companion, out of what they hold or what lies around (a shrine, a well, a chest)
@@ -77,6 +83,12 @@ public class CardOnUseDelta : ElinDelta
                 item.EQ = equip ? card.Thing : null;
             }
 
+            return;
+        }
+
+        // two players blowing the whistle: the zone ends up as the first one wanted, not toggled back
+        if (Peace is { } peace && card.trait is TraitWhistlePeace && EClass._zone.isPeace == peace) {
+            Relay(net);
             return;
         }
 
