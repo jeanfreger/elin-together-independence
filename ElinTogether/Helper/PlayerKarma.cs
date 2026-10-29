@@ -12,6 +12,19 @@ namespace ElinTogether.Helper;
 internal static class PlayerKarma
 {
     private static int _own;
+    private static int _skipped;
+
+    /// <summary>
+    ///     The host settles a meal of another player: the karma it costs (poison, a food of sin) is taken in that
+    ///     player's own game, with the meal. Nothing is taken from this game's player here
+    /// </summary>
+    internal static ScopeExit Skip()
+    {
+        _skipped++;
+        return new() {
+            OnExit = () => _skipped--,
+        };
+    }
 
     /// <summary>
     ///     Who killed, while the game settles a death on the host
@@ -61,6 +74,10 @@ internal static class PlayerKarma
     /// <returns>true when it is not this game's player's to take</returns>
     internal static bool Reroute(int karma)
     {
+        if (_skipped > 0) {
+            return true;
+        }
+
         if (_own > 0 || !PersonalQuests.Enabled || NetSession.Instance.Connection is not { } connection) {
             return false;
         }
