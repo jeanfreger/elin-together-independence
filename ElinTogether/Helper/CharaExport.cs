@@ -75,6 +75,7 @@ internal static class CharaExport
         // marks of a player of this world, which mean nothing in a solo game
         copy.SetBool("remote_chara", false);
         copy.SetStr(PlayerRevive.PlayerKey, null);
+        copy.SetStr(Net.ElinNetHost.PlayerIdKey, null);
         copy.SetStr(CharaImport.SourceKey, null);
         copy.SetStr(AwayKey, null);
         copy.SetStr(AwaySaveKey, null);

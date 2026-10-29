@@ -156,8 +156,8 @@ internal partial class ElinNetHost
         EmpLog.Information("Chara {Away} back from a solo save as {Back} ({Name})", away.uid, back.uid, back.Name);
 
         PlayerStandings.Remove(away.uid);
-        away.Destroy();
-        away.RemoveGlobal();
+        // (a plain Destroy left it at the base, among the players: see DestroyPlayerChara)
+        DestroyPlayerChara(away);
 
         // the same on the way back: a crash must not reload the old away character beside the one now played
         EmpAutoHost.SaveFromMessage("a character came back from a solo save");
