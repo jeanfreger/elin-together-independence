@@ -608,6 +608,7 @@ internal static class SaveDepot
             throw new IOException("the depot sent a world too big once unzipped");
         }
 
+        long written = 0;
         foreach (var entry in zip.Entries) {
             // (archives made by Windows write their folders with backslashes)
             var name = entry.FullName.Replace('\\', '/');
@@ -625,7 +626,17 @@ internal static class SaveDepot
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             using var from = entry.Open();
             using var to = File.Create(path);
-            from.CopyTo(to);
+            // the sizes the archive says are the archive's word only: what is really unpacked is counted
+            // (security audit 2026-10-29)
+            var piece = new byte[81920];
+            for (var n = from.Read(piece, 0, piece.Length); n > 0; n = from.Read(piece, 0, piece.Length)) {
+                written += n;
+                if (written > size || written > MaxUnzipped) {
+                    throw new IOException("the depot sent a world bigger once unzipped than its archive says");
+                }
+
+                to.Write(piece, 0, n);
+            }
         }
     }
 
