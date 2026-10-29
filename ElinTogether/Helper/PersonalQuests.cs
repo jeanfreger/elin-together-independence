@@ -433,9 +433,11 @@ internal static class PlayerStandIn
         EClass.player.chara = actor;
         // what is made meanwhile has the level of this player's fame (H5-04)
         var fame = PlayerFame.As(actor);
+        var counters = RemoteCraft.KeepCounters(self, actor);
 
         return new() {
             OnExit = () => {
+                counters?.Dispose();
                 fame?.Dispose();
                 EClass.player.chara = self;
                 IsActive = false;

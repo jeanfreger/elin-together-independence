@@ -36,10 +36,12 @@ internal static class RemoteCraft
         var fame = withFame ? PlayerFame.As(crafter) : null;
         // and the recipe levels and kill list are its team's when the box of teams is on
         var lore = TeamKnowledge.Lend(crafter);
+        var counters = KeepCounters(self, crafter);
 
         return new() {
             OnExit = () => {
                 lore?.Invoke();
+                counters?.Dispose();
                 fame?.Dispose();
                 EClass.player.chara = self;
                 _standIns--;
@@ -48,6 +50,26 @@ internal static class RemoteCraft
     }
 
     private static int _standIns;
+
+    /// <summary>
+    ///     The counters of "the player" that a fishing, a stolen catch or a cat treat moves are the host's: while
+    ///     another player stands in they do not move, its own are in its game
+    /// </summary>
+    internal static ScopeExit? KeepCounters(Chara? self, Chara actor)
+    {
+        if (self == actor || EClass.player is not { } player) {
+            return null;
+        }
+
+        var (artifact, stolen, cats) = (player.fishArtifact, player.flags.fishStolen, player.stats.angryCats);
+        return new() {
+            OnExit = () => {
+                player.fishArtifact = artifact;
+                player.flags.fishStolen = stolen;
+                player.stats.angryCats = cats;
+            },
+        };
+    }
 
     /// <summary>
     ///     "The player" is another player's character for now: what this game tells of its own player waits
