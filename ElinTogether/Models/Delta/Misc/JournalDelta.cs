@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -36,6 +37,6 @@ public class JournalDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        // TODO(PLAN_hub_features WP-B, Helper/ActivityJournal.cs): store the entries for TabJournal
+        ActivityJournal.Receive(this);
     }
 }

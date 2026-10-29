@@ -998,5 +998,18 @@
     "LangGeneral.emp_ui_lb_wealth.text": "队伍财富",
     "LangGeneral.emp_ui_lb_you.text": "你",
     "LangGeneral.emp_ui_lb_rank.text": "第 {0} 名（{1}）",
-    "LangGeneral.emp_ui_lb_unranked.text": "未上榜"
+    "LangGeneral.emp_ui_lb_unranked.text": "未上榜",
+    "LangGeneral.emp_journal_1.text": "{0}创建了队伍「{1}」。",
+    "LangGeneral.emp_journal_2.text": "{0}加入了队伍「{1}」。",
+    "LangGeneral.emp_journal_3.text": "{0}离开了队伍「{1}」。",
+    "LangGeneral.emp_journal_4.text": "{0}为{1}占领了土地「{2}」。",
+    "LangGeneral.emp_journal_5.text": "{1}因长期不在失去了{2}块土地。",
+    "LangGeneral.emp_journal_6.text": "{0}在决斗中击败了{2}。",
+    "LangGeneral.emp_journal_7.text": "{0}死于{2}。",
+    "LangGeneral.emp_journal_8.text": "{0}击败了{2}。",
+    "LangGeneral.emp_journal_9.text": "{0}刷新了最深纪录：危险等级{2}。",
+    "LangGeneral.emp_ui_journal_filter.text": "显示",
+    "LangGeneral.emp_ui_journal_f_all.text": "全部",
+    "LangGeneral.emp_ui_journal_f_team.text": "队伍",
+    "LangGeneral.emp_ui_journal_f_mine.text": "我的"
 }
