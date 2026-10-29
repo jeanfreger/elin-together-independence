@@ -232,7 +232,17 @@ internal static class GateItems
                     .SetTitles("wMoongate");
                 return;
             case Moongate or MoongateEx when EClass.game.spatials.Find(answer.ZoneUid) is Zone_User zone:
-                var path = Path.Combine(CorePath.ZoneSaveUser, Path.GetFileName(answer.FileName ?? zone.idUser + ".z"));
+                // in the session's temp folder, under a name of letters and digits: written among the player's own
+                // user maps, the other game's file replaced any of them (or the game's cache.txt) and was then
+                // picked by a moongate in a game played alone, read with any type its text names (security audit
+                // 2026-10-29)
+                var name = new string(Path.GetFileNameWithoutExtension(answer.FileName ?? zone.idUser ?? "")
+                    .Where(c => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_' or '-').Take(64).ToArray());
+                if (name.Length == 0 || !WorldCopyStore.IsSafePath(name)) {
+                    name = "map";
+                }
+
+                var path = Path.Combine(ResourceFetch.TempFolder, "UserZones", name + ".z");
                 answer.Map?.DecompressToFile(path);
                 zone.path = path;
                 zone.idUser = answer.IdUser;
