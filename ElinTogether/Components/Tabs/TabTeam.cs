@@ -250,9 +250,17 @@ internal class TabTeam : TabEmpBase
         TeamBanner.BuildLandMap(lands, mine);
 
         var journal = page.Card("emp_ui_team_journal".lang());
-        // HOOK (PLAN_hub_features B): once Helper/ActivityJournal.cs is in main and the box "Activity journal" is on, list
-        // here the entries whose Team is `mine` (read-only). Until then the box only says it is empty
-        journal.TextSmall("emp_ui_team_journal_none".lang(), FontColor.Gray);
+        // the activity journal's entries of this team, newest first (box "Activity journal")
+        var lines = ActivityJournal.On
+            ? ActivityJournal.Entries().Where(e => e.Team == mine).Reverse().Take(20).ToList()
+            : [];
+        if (lines.Count == 0) {
+            journal.TextSmall("emp_ui_team_journal_none".lang(), FontColor.Gray);
+        }
+
+        foreach (var entry in lines) {
+            journal.TextSmall(ActivityJournal.Line(entry));
+        }
     }
 
     /// <summary>
