@@ -201,8 +201,9 @@ internal static class Leaderboards
             return;
         }
 
-        foreach (var (peerId, remote) in host.ActiveRemoteCharas) {
-            if (remote == from) {
+        // (also a player away on a leased zone: its chara is the kept one, not in ActiveRemoteCharas)
+        foreach (var peerId in host.PeerIds.ToArray()) {
+            if (host.PlayerChara(peerId)?.uid == from.uid) {
                 host.SendDeltaTo(peerId, answer);
                 return;
             }

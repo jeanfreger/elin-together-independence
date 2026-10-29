@@ -91,8 +91,9 @@ internal static class ActivityJournal
         }
 
         EmpLog.Information("Journal {Kind}: actor {Actor}, team {Team} {Arg}", kind, actor, team, arg);
-        foreach (var (peer, chara) in host.ActiveRemoteCharas.ToArray()) {
-            if (Visible(entry, chara.uid)) {
+        // (every connected player, also one away on a leased zone: it is no longer in ActiveRemoteCharas)
+        foreach (var peer in host.PeerIds.ToArray()) {
+            if (host.PlayerChara(peer) is { } chara && Visible(entry, chara.uid)) {
                 host.SendDeltaTo(peer, Make([entry], false));
             }
         }
