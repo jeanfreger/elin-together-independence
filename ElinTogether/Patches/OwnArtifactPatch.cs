@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -64,6 +65,44 @@ internal static class OwnArtifactPatch
 
         // (issue 34: an untagged chara is the leader's only when really in that party, else nobody's but its own)
         return chara.party is { } p && p.members.Contains(chara) ? (p.leader ?? EClass.pc).uid : chara.uid;
+    }
+
+    /// <summary>
+    ///     The player on the taker's side, for what the purge reads of "the player": the feat of Eyth (1228) that
+    ///     turns the other Eyth artifacts back to their own god
+    /// </summary>
+    internal static Chara SidePlayer(Card card)
+    {
+        if (NetSession.Instance.Transport is null || card.GetRootCard() is not Chara taker) {
+            return EClass.pc;
+        }
+
+        return EClass.game.cards.globalCharas.Find(Side(taker)) is { } player && (player.IsPC || player.GetBool("remote_chara"))
+            ? player
+            : EClass.pc;
+    }
+
+    // EClass.pc.HasElement(1228) -> SidePlayer(this).HasElement(1228)
+    [HarmonyTranspiler]
+    internal static IEnumerable<CodeInstruction> OnPurgeIl(IEnumerable<CodeInstruction> instructions)
+    {
+        var getPc = AccessTools.PropertyGetter(typeof(EClass), nameof(EClass.pc));
+        var list = instructions.ToList();
+        var changed = 0;
+        for (var i = 0; i < list.Count - 1; i++) {
+            if (list[i].Calls(getPc) && list[i + 1].LoadsConstant(1228)) {
+                var labels = list[i].labels;
+                list[i] = new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(OwnArtifactPatch), nameof(SidePlayer)));
+                list.Insert(i, new CodeInstruction(OpCodes.Ldarg_0) { labels = labels });
+                changed++;
+            }
+        }
+
+        if (changed != 1) {
+            EmpLog.Warning("God artifact purge: {Changed} reads of the Eyth feat found, 1 expected", changed);
+        }
+
+        return list;
     }
 
     [HarmonyFinalizer]

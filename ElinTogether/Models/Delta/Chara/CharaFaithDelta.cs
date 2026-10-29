@@ -59,6 +59,13 @@ public class CharaFaithDelta : ElinDelta
                 chara.c_daysWithGod = 0;
             }
 
+            // what JoinFaith does for "the player" only (Card.PurgeEythArtifact): with the feat of Eyth, joining Eyth
+            // turns the other Eyth artifacts of that player's side back to their own god
+            if (religion.IsEyth && chara.HasElement(1228) &&
+                chara.things.Find(t => t.HasTag(CTAG.godArtifact) && t.c_idDeity == religion.id) is { } eyth) {
+                chara.PurgeDuplicateArtifact(eyth);
+            }
+
             net.Delta.AddRemote(this);
             return;
         }
