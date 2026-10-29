@@ -14,6 +14,33 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal static class TraitSeedPatch
 {
+    /// <summary>
+    ///     Reaping a plant with a sickle: Map.MineObj hands the seed to "the player" (EClass.pc), which on the host is
+    ///     the host's own character, not the one who reaped. The whole call stands in for the reaper
+    /// </summary>
+    [HarmonyPatch(typeof(Map), nameof(Map.MineObj))]
+    internal static class MineObjStandIn
+    {
+        [HarmonyPrefix]
+        internal static void Before(Task? task, out ScopeExit? __state)
+        {
+            __state = null;
+            if (task is not TaskHarvest || NetSession.Instance.Connection is not ElinNetHost ||
+                CharaProgressCompleteEvent.Chara is not { } farmer || !farmer.IsRemotePlayer) {
+                return;
+            }
+
+            var standIn = RemoteCraft.AsCrafter(farmer);
+            __state = new() { OnExit = () => standIn.Dispose() };
+        }
+
+        [HarmonyFinalizer]
+        internal static void After(ScopeExit? __state)
+        {
+            __state?.Dispose();
+        }
+    }
+
     internal static MethodBase TargetMethod()
     {
         return AccessTools.Method(typeof(TraitSeed), nameof(TraitSeed.MakeSeed), [typeof(SourceObj.Row), typeof(PlantData)]);
