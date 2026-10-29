@@ -337,7 +337,30 @@ internal partial class ElinNetHost
         }
 
         EmpLog.Information("Player character {Uid} ({Name}, Lv {Level}) deleted by its player", chara.uid, chara.Name, chara.LV);
-        chara.Destroy();
+        DestroyPlayerChara(chara);
+    }
+
+    /// <summary>
+    ///     A player's character leaves this world for good. It is a member of the base (MakeAlly), and the game's
+    ///     Card.Destroy refuses a card of the player's faction with a log line only: deleted that way, it stayed in the
+    ///     world, among the residents and the players, counted in the base (issue #25). Out of the base, the party and
+    ///     the player marks first, then destroyed
+    /// </summary>
+    internal static void DestroyPlayerChara(Chara chara)
+    {
+        chara.SetBool("remote_chara", false);
+        chara.SetStr(PlayerRevive.PlayerKey, null);
+        chara.party?.RemoveMember(chara);
+        EClass.Home.FindBranch(chara)?.RemoveMemeber(chara);
+        if (chara.IsPCFaction) {
+            chara.SetFaction(game.factions.Wilds);
+        }
+
+        if (!chara.isDestroyed) {
+            chara.Destroy();
+        }
+
+        chara.RemoveGlobal();
     }
 
     /// <summary>
