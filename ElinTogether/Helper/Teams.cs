@@ -723,6 +723,23 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     A team id never given before: above the last one given and every id any book of this world holds (an old save
+    ///     has no counter), so a disbanded team's books stay its own
+    /// </summary>
+    private static int NextId()
+    {
+        var top = new[] {
+            ElinNetHost.TeamLastId, Wanderers,
+            TeamList.Keys.DefaultIfEmpty().Max(), ElinNetHost.TeamSeen.Keys.DefaultIfEmpty().Max(),
+            ElinNetHost.TeamDeeds.Keys.DefaultIfEmpty().Max(), ElinNetHost.TeamNames.Keys.DefaultIfEmpty().Max(),
+            ElinNetHost.TeamLoreBook.Keys.DefaultIfEmpty().Max(), ElinNetHost.TeamTaxBills.Keys.DefaultIfEmpty().Max(),
+            ElinNetHost.TeamStoryBook.Keys.DefaultIfEmpty().Max(), ElinNetHost.TeamStoryBundles.Keys.DefaultIfEmpty().Max(),
+            ElinNetHost.TeamBoxBook.Keys.DefaultIfEmpty().Max()
+        }.Max();
+        return ElinNetHost.TeamLastId = top + 1;
+    }
+
+    /// <summary>
     ///     That player founds a team named so and leads it, leaving its former team. Only in the game that keeps the
     ///     book; 0 when it does not
     /// </summary>
@@ -734,7 +751,7 @@ internal static class Teams
 
         var from = TeamOf(chara.uid);
         Remove(chara.uid);
-        var id = TeamList.Keys.DefaultIfEmpty(Wanderers).Max() + 1;
+        var id = NextId();
         // open: anyone joins at once; closed: its leader answers who asks (the host's rule when it is founded)
         TeamList[id] = [chara.uid, EmpConfig.Server.TeamApproval.Value ? 0 : 1, chara.uid];
         Names[id] = name.Trim();
