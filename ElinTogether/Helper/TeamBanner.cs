@@ -225,12 +225,21 @@ internal static class TeamBanner
         var go = new GameObject("Thing", typeof(RectTransform), typeof(Image));
         go.transform.SetParent(back, false);
         var rt = (RectTransform)go.transform;
-        // the sprite scaled to fit inside the square, with a margin of a seventh of it
-        var inset = Mathf.Max(2f, size / 7f);
-        (rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax) = (Vector2.zero, Vector2.one, new(inset, inset), new(-inset, -inset));
+        // the sprite at its native aspect filling ~80 % of the square, centred, pixel art kept (point filtering)
+        rt.anchorMin = rt.anchorMax = rt.pivot = new(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
         var image = go.GetComponent<Image>();
         image.sprite = sprite;
         image.preserveAspect = true;
+        if (sprite != null) {
+            if (sprite.texture != null) {
+                sprite.texture.filterMode = FilterMode.Point;
+            }
+
+            var scale = size * 0.8f / Mathf.Max(sprite.rect.width, sprite.rect.height, 1f);
+            rt.sizeDelta = new(sprite.rect.width * scale, sprite.rect.height * scale);
+        }
+
         image.raycastTarget = false;
     }
 
