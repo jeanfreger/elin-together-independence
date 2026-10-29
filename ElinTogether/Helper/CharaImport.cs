@@ -152,7 +152,8 @@ internal static class CharaImport
             return plain.ReadToEnd();
         }
 
-        using var lz4 = new LZ4Stream(bytes, CompressionMode.Decompress);
+        // the list holds saves made of another game's world too: the text unpacks to MaxText at most
+        using var lz4 = new Models.LZ4Bytes.CappedStream(new LZ4Stream(bytes, CompressionMode.Decompress), Patches.PeerMapPatch.MaxText);
         using var reader = new StreamReader(lz4);
         return reader.ReadToEnd();
     }

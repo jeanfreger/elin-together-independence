@@ -29,6 +29,9 @@ internal static class PeerMapPatch
     // a map layer is at most MaxSize² cells of 4 bytes: what the game unpacks (IO.ReadLZ4) never says more than this
     private const int MaxUnwrapped = 64 * 1024 * 1024;
 
+    // a game.txt of another game once unpacked (the game's own saves are a few dozen MB)
+    internal const long MaxText = 512L * 1024 * 1024;
+
     // the saves made of another game's world (WorldTakeover "world_N", SaveDepot "world_depot", the guest's "world_emp")
     private const string PeerSavePrefix = "world_";
 
@@ -168,5 +171,33 @@ internal static class PeerMapPatch
         EmpLog.Warning("A map file saying {Size} bytes once unpacked was not read (at most {Max})", size, MaxUnwrapped);
         __result = [];
         return false;
+    }
+
+    /// <summary>
+    ///     IO.Decompress reads a whole game.txt with no limit: a world of another game says how much it unpacks to
+    ///     only when it is read. Past MaxText it is refused (the load fails, nothing is kept)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(IO), nameof(IO.Decompress), [typeof(string)])]
+    internal static bool OnDecompress(string path, ref string __result)
+    {
+        if (!IsBound()) {
+            return true;
+        }
+
+        try {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var lz4 = new LZ4Bytes.CappedStream(new LZ4.LZ4Stream(file, LZ4.LZ4StreamMode.Decompress), MaxText);
+            using var reader = new StreamReader(lz4);
+            __result = reader.ReadToEnd();
+            return false;
+        } catch (InvalidDataException ex) when (ex.Message.StartsWith("Decompressed data over", StringComparison.Ordinal)) {
+            EmpLog.Warning("A save of another game unpacking to more than {Max} bytes was refused: {Path}", MaxText, path);
+            __result = "";
+            return false;
+        } catch (Exception) {
+            // not LZ4 (plain text) or unreadable: the game's own way, which falls back to the text
+            return true;
+        }
     }
 }

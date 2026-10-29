@@ -138,7 +138,7 @@ public class LZ4Bytes
         return fs.Length;
     }
 
-    private sealed class CappedStream(Stream inner, long max = MaxDecompressed) : Stream
+    internal sealed class CappedStream(Stream inner, long max = MaxDecompressed) : Stream
     {
         private long _read;
 
