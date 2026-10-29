@@ -135,12 +135,13 @@ public class TileStateDelta : ElinDelta
     }
 
     /// <summary>
-    ///     The cell tool of the build mode (AM_FlagCell): no snow, floating, wall pillar, see-through, clear area
+    ///     The cell tool of the build mode (AM_FlagCell): no snow, floating, wall pillar, see-through, clear area, and a dyed tile object (bit 32: a dyed seed that
+    ///     grows keeps its colour)
     /// </summary>
     internal static int FlagsOf(Cell c)
     {
         return (c.isClearSnow ? 1 : 0) | (c.isForceFloat ? 2 : 0) | (c.isToggleWallPillar ? 4 : 0) |
-               (c.toggleOcclusion ? 8 : 0) | (c.isClearArea ? 16 : 0);
+               (c.toggleOcclusion ? 8 : 0) | (c.isClearArea ? 16 : 0) | (c.isObjDyed ? 32 : 0);
     }
 
     internal static void SetFlags(Cell c, int flags)
@@ -150,6 +151,7 @@ public class TileStateDelta : ElinDelta
         c.isToggleWallPillar = (flags & 4) != 0;
         c.toggleOcclusion = (flags & 8) != 0;
         c.isClearArea = (flags & 16) != 0;
+        c.isObjDyed = (flags & 32) != 0;
     }
 
     protected override void OnApply(ElinNetBase net)
