@@ -14,7 +14,7 @@ namespace ElinTogether.Patches;
 internal static class RemoteGodGiftPatch
 {
     // an int key, not a string one: Card.SetInt(string) of "the player" also writes the shared dialog flags
-    private static int Key(Religion religion)
+    internal static int Key(Religion religion)
     {
         return ("emp_gift_" + religion.id).GetHashCode();
     }
