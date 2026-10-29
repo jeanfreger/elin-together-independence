@@ -244,7 +244,7 @@ public class CardSettingDelta : ElinDelta
         if (Card.Find() is not Thing { isDestroyed: false } thing || (Kind == Bed && thing.trait is not TraitBed) ||
             (Kind == Teleporter && thing.trait is not TraitTeleporter) || (Kind == Door && thing.trait is not TraitDoor) ||
             (Kind == HouseBoard && thing.trait is not TraitHouseBoard) ||
-            (Kind == Painting && (thing.trait is not TraitCanvas || Blob is not { Length: <= 1 << 20 })) ||
+            (Kind == Painting && (thing.trait is not TraitCanvas || Blob is not { Length: <= 1 << 20 } || !ImageGuard.IsSafe(Blob))) ||
             (Kind == RoomPlate && thing.trait is not TraitRoomPlate) || (Kind == Figure && (thing.trait is not TraitFigure { source: { } row } || Value < 0 || Value >= row.tiles.Length)) || (Kind == Well && thing.trait is not TraitWell) || (Kind == MailOwner && thing.trait is not TraitMailPost) || Kind is > RoomPlate and < AutoToggle or > MailOwner) {
             return;
         }
