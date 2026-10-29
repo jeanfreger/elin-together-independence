@@ -88,6 +88,12 @@ internal static class PartyJoinEvent
 
         switch (session.Connection) {
             case ElinNetHost host:
+                // the host takes it for itself: a player's companion sent away keeps its owner (PartyMemberDelta),
+                // whoever takes it again is its owner from then on
+                if (!session.IsAway && c.CompanionOwnerUid != 0) {
+                    c.SetCompanionOwner(null);
+                }
+
                 host.Delta.AddRemote(new CharaMakeAllyDelta {
                     Owner = c,
                     ShowMsg = showMsg,
