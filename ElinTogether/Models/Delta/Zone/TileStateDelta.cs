@@ -46,6 +46,14 @@ public class TileStateDelta : ElinDelta
     [Key(2)]
     public LZ4Bytes? Plants { get; init; }
 
+    /// <summary>
+    ///     The effect lying on the cells above (fire, puddle, oil...): x, z and the 8 ints of the CellEffect, for each
+    ///     cell of <see cref="Cells" /> that has one. Null from a peer that does not tell them: keep what is there; a
+    ///     cell of <see cref="Cells" /> that is not in it has none (host authoritative)
+    /// </summary>
+    [Key(3)]
+    public int[]? Effects { get; init; }
+
     internal static void Mark(Map map, int x, int z)
     {
         // generating or loading a map is not a change to tell: everyone gets the whole map then
@@ -78,13 +86,15 @@ public class TileStateDelta : ElinDelta
             var size = _map.Size;
             var cells = new List<int>(Math.Min(_dirty.Count, MaxCells) * Width);
             var plants = new Dictionary<int, PlantData>();
+            var effects = new List<int>();
             void Send()
             {
                 host.Delta.AddRemote(new TileStateDelta {
-                    Cells = [..cells], ZoneUid = _zone.uid, Plants = plants.Count == 0 ? null : LZ4Bytes.Create(plants),
+                    Cells = [..cells], ZoneUid = _zone.uid, Plants = plants.Count == 0 ? null : LZ4Bytes.Create(plants), Effects = [..effects],
                 });
                 cells.Clear();
                 plants.Clear();
+                effects.Clear();
             }
 
             foreach (var index in _dirty) {
@@ -96,6 +106,12 @@ public class TileStateDelta : ElinDelta
                 var c = _map.cells[x, z];
                 if (_map.plants.TryGetValue(c.index, out var plant)) {
                     plants[c.index] = plant;
+                }
+
+                if (c.effect is { } effect) {
+                    effects.Add(x);
+                    effects.Add(z);
+                    effects.AddRange(effect.ints);
                 }
 
                 cells.AddRange([
@@ -135,13 +151,41 @@ public class TileStateDelta : ElinDelta
     }
 
     /// <summary>
-    ///     The cell tool of the build mode (AM_FlagCell): no snow, floating, wall pillar, see-through, clear area, and a dyed tile object (bit 32: a dyed seed that
-    ///     grows keeps its colour)
+    ///     The effect of the cell is the sender's (SetBlock cleared what this game had); null when the sender does not
+    ///     tell them: keep what is there
+    /// </summary>
+    private static void SyncEffect(Map map, Cell c, Dictionary<int, int[]>? effects)
+    {
+        if (effects is null) {
+            return;
+        }
+
+        if (!effects.TryGetValue(c.x + c.z * map.Size, out var ints)) {
+            if (c.effect is not null) {
+                c.effect = null;
+            }
+
+            return;
+        }
+
+        if (c.effect is null || !c.effect.ints.AsSpan().SequenceEqual(ints)) {
+            var effect = new CellEffect();
+            ints.CopyTo(effect.ints, 0);
+            c.effect = effect;
+            if (effect.IsFire) {
+                map.effectManager.GetOrCreate(c.GetPoint());
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The cell tool of the build mode (AM_FlagCell): no snow, floating, wall pillar, see-through, clear area, a dyed tile object (bit 32: a dyed seed that
+    ///     grows keeps its colour), and the decal (blood, stains) in the bits from 8
     /// </summary>
     internal static int FlagsOf(Cell c)
     {
         return (c.isClearSnow ? 1 : 0) | (c.isForceFloat ? 2 : 0) | (c.isToggleWallPillar ? 4 : 0) |
-               (c.toggleOcclusion ? 8 : 0) | (c.isClearArea ? 16 : 0) | (c.isObjDyed ? 32 : 0);
+               (c.toggleOcclusion ? 8 : 0) | (c.isClearArea ? 16 : 0) | (c.isObjDyed ? 32 : 0) | (c.decal << 8);
     }
 
     internal static void SetFlags(Cell c, int flags)
@@ -152,6 +196,7 @@ public class TileStateDelta : ElinDelta
         c.toggleOcclusion = (flags & 8) != 0;
         c.isClearArea = (flags & 16) != 0;
         c.isObjDyed = (flags & 32) != 0;
+        c.decal = (byte)(flags >> 8);
     }
 
     protected override void OnApply(ElinNetBase net)
@@ -168,6 +213,15 @@ public class TileStateDelta : ElinDelta
             plants = Plants?.Decompress<Dictionary<int, PlantData>>();
         } catch (Exception e) {
             EmpLog.Warning("Plant data of a tile state unreadable: {Why}", e.Message);
+        }
+
+        // the effects by cell, null from a peer that does not tell them
+        Dictionary<int, int[]>? effects = null;
+        if (Effects is not null) {
+            effects = [];
+            for (var e = 0; e + 10 <= Effects.Length; e += 10) {
+                effects[Effects[e] + Effects[e + 1] * map.Size] = Effects.AsSpan(e + 2, 8).ToArray();
+            }
         }
 
         for (var i = 0; i + Width <= Cells.Length; i += Width) {
@@ -187,6 +241,7 @@ public class TileStateDelta : ElinDelta
                        c.crossWall == (s[20] != 0) && c.isWatered == (s[21] != 0) && FlagsOf(c) == s[22];
             if (same) {
                 SyncPlant(map, c, plants);
+                SyncEffect(map, c, effects);
                 continue;
             }
 
@@ -221,6 +276,7 @@ public class TileStateDelta : ElinDelta
             c.isWatered = s[21] != 0;
             SetFlags(c, s[22]);
             SyncPlant(map, c, plants);
+            SyncEffect(map, c, effects);
             c.room?.SetDirty();
             map.RefreshNeighborTiles(x, z);
             if (!many) {
