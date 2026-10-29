@@ -41,6 +41,7 @@ internal static class TeamBanner
 
     // a guest's copy of the host's banners
     private static Dictionary<int, (int Icon, int Color)> _told = [];
+    private static Dictionary<int, string> _toldThings = [];
 
     private static List<(int Id, Sprite Sprite)>? _emblems;
 
@@ -75,10 +76,23 @@ internal static class TeamBanner
 
     internal static Color ColorOf(int index) => ToColor(Palette[Mathf.Clamp(index, 0, ColorCount - 1)]);
 
+    /// <summary>
+    ///     The colour of a team's chip: its banner colour, else a stable one from the team id in the same palette
+    /// </summary>
+    internal static Color ChipColor(int teamId) => Of(teamId) is { } banner ? ColorOf(banner.Color) : ColorOf(((teamId % ColorCount) + ColorCount) % ColorCount);
+
     private static Color ToColor(int rgb) => new Color32((byte)((rgb >> 16) & 0xFF), (byte)((rgb >> 8) & 0xFF), (byte)(rgb & 0xFF), 255);
 
     private static Dictionary<int, (int Icon, int Color)> Book =>
         KeepsBook ? ElinNetHost.TeamBanners.Where(b => b.Value is { Length: 2 }).ToDictionary(b => b.Key, b => (b.Value[0], b.Value[1])) : _told;
+
+    private static Dictionary<int, string> Things => KeepsBook ? ElinNetHost.TeamThings : _toldThings;
+
+    /// <summary>
+    ///     The id of the game's thing the leader chose as the emblem, when it chose one (else the old element emblem)
+    /// </summary>
+    internal static string? ThingOf(int teamId) =>
+        On && Things.TryGetValue(teamId, out var id) && EClass.sources.things.map.ContainsKey(id) ? id : null;
 
     internal static (int Icon, int Color)? Of(int teamId) => On && Book.TryGetValue(teamId, out var banner) ? banner : null;
 
@@ -86,23 +100,46 @@ internal static class TeamBanner
     ///     In the game that keeps the book: this leader sets the banner of its team. False when the rule is off, the asker
     ///     leads no team or the emblem or colour is not one offered
     /// </summary>
-    internal static bool Set(Chara chara, int icon, int color)
+    internal static bool Set(Chara chara, int icon, int color, string thing = "")
     {
         var team = Teams.TeamOf(chara.uid);
         if (!KeepsBook || !On || team == Teams.Wanderers || Teams.LeaderOf(team) != chara.uid) {
             return false;
         }
 
-        if (color is < 0 or >= ColorCount || Emblems.All(e => e.Id != icon)) {
+        if (color is < 0 or >= ColorCount) {
             return false;
         }
 
+        if (thing.Length > 0) {
+            // any thing of the game; an id the game does not know is refused
+            if (!EClass.sources.things.map.ContainsKey(thing)) {
+                return false;
+            }
+
+            ElinNetHost.TeamThings[team] = thing;
+            ElinNetHost.TeamBanners[team] = [ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2 ? old[0] : 0, color];
+            EmpLog.Information("Team {TeamId} banner: thing {Thing}, colour {Color}", team, thing, color);
+            return true;
+        }
+
+        if (Emblems.All(e => e.Id != icon)) {
+            return false;
+        }
+
+        ElinNetHost.TeamThings.Remove(team);
         ElinNetHost.TeamBanners[team] = [icon, color];
         EmpLog.Information("Team {TeamId} banner: emblem {Icon}, colour {Color}", team, icon, color);
         return true;
     }
 
-    internal static void Remove(int teamId) => ElinNetHost.TeamBanners.Remove(teamId);
+    internal static void Remove(int teamId)
+    {
+        ElinNetHost.TeamBanners.Remove(teamId);
+        ElinNetHost.TeamThings.Remove(teamId);
+    }
+
+    internal static Dictionary<int, string>? ToldThings() => EmpConfig.Server.TeamBanner.Value ? new(ElinNetHost.TeamThings) : null;
 
     /// <summary>
     ///     What the host tells with the teams: none while the box is off
@@ -114,9 +151,17 @@ internal static class TeamBanner
             : null;
     }
 
-    internal static void Learn(Dictionary<int, (int Icon, int Color)>? banners) => _told = new(banners ?? []);
+    internal static void Learn(Dictionary<int, (int Icon, int Color)>? banners, Dictionary<int, string>? things = null)
+    {
+        _told = new(banners ?? []);
+        _toldThings = new(things ?? []);
+    }
 
-    internal static void Forget() => _told = [];
+    internal static void Forget()
+    {
+        _told = [];
+        _toldThings = [];
+    }
 
     /// <summary>
     ///     The team's banner in a row: its emblem tinted with its colour, then a chip of that colour. Nothing when the
@@ -129,7 +174,9 @@ internal static class TeamBanner
         }
 
         var color = ColorOf(banner.Color);
-        if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
+        if (ThingOf(teamId) is { } thing) {
+            Frame(row, color, EClass.sources.things.map[thing].GetSprite(), size, true, null);
+        } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
             var icon = row.CardIcon(null, size);
             icon.sprite = sprite;
             icon.color = color;
@@ -137,6 +184,95 @@ internal static class TeamBanner
         }
 
         Swatch(row, color, size * 0.35f, size, false, null);
+    }
+
+    /// <summary>
+    ///     A thing's sprite on a square of the team colour (the colour is the frame, the item keeps its own colours)
+    /// </summary>
+    internal static void Frame(YKLayout row, Color color, Sprite? sprite, float size, bool selected, System.Action? click)
+    {
+        Swatch(row, selected ? color : new(color.r, color.g, color.b, 0.35f), size, size, selected, click);
+        var back = row.transform.GetChild(row.transform.childCount - 1);
+        var go = new GameObject("Thing", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(back, false);
+        var rt = (RectTransform)go.transform;
+        (rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax) = (Vector2.zero, Vector2.one, new(2f, 2f), new(-2f, -2f));
+        var image = go.GetComponent<Image>();
+        image.sprite = sprite;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+    }
+
+    private const int PageSize = 30;
+    private const int PerRow = 10;
+    private static string _query = "";
+    private static int _page;
+
+    private static List<SourceThing.Row> Search()
+    {
+        var q = _query.Trim().ToLowerInvariant();
+        return EClass.sources.things.rows
+            .Where(r => !string.IsNullOrEmpty(r.id) && (q.Length == 0 || r.id.ToLowerInvariant().Contains(q) ||
+                                                        (r.GetName() ?? "").ToLowerInvariant().Contains(q)))
+            .Where(r => r.GetSprite() != null)
+            .OrderBy(r => r.GetName() ?? r.id)
+            .ToList();
+    }
+
+    /// <summary>
+    ///     A search field over every thing of the game (name in the player's language, or id), results paged
+    /// </summary>
+    private static void BuildThingPicker(YKLayout card, int teamId, (int Icon, int Color) current)
+    {
+        var search = card.InputText(_query);
+        search.field.characterLimit = 40;
+        if (search.field.placeholder is Text hint) {
+            hint.text = "emp_ui_team_banner_search".lang();
+        }
+
+        var list = card.Vertical();
+        list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        list.Layout.spacing = 4f;
+        search.field.onValueChanged.AddListener(text => {
+            _query = text;
+            _page = 0;
+            FillThings(list, teamId, current);
+        });
+        FillThings(list, teamId, current);
+    }
+
+    private static void FillThings(YKLayout list, int teamId, (int Icon, int Color) current)
+    {
+        foreach (Transform child in list.transform) {
+            Object.Destroy(child.gameObject);
+        }
+
+        var found = Search();
+        var pages = Mathf.Max(1, (found.Count + PageSize - 1) / PageSize);
+        _page = Mathf.Clamp(_page, 0, pages - 1);
+        var chosen = ThingOf(teamId);
+        var colour = ColorOf(current.Color);
+        YKLayout? row = null;
+        var n = 0;
+        foreach (var thing in found.Skip(_page * PageSize).Take(PageSize)) {
+            if (n++ % PerRow == 0) {
+                row = list.Row();
+            }
+
+            var id = thing.id;
+            Frame(row!, colour, thing.GetSprite(), 30f, id == chosen, () => Teams.Ask(TeamAsk.Banner, current.Icon, current.Color, id));
+        }
+
+        var bar = list.ButtonRow();
+        bar.RowButton("<", () => {
+            _page--;
+            FillThings(list, teamId, current);
+        });
+        bar.Text($"{_page + 1} / {pages}");
+        bar.RowButton(">", () => {
+            _page++;
+            FillThings(list, teamId, current);
+        });
     }
 
     /// <summary>
@@ -178,22 +314,13 @@ internal static class TeamBanner
         var current = Of(teamId) ?? (Emblems.FirstOrDefault().Id, 0);
         var colour = ColorOf(current.Color);
         card.TextSmall("emp_ui_team_banner_emblem".lang(), FontColor.Gray);
-        YKLayout row = card.Row();
-        var n = 0;
-        foreach (var (id, sprite) in Emblems) {
-            if (n++ % 9 == 0 && n > 1) {
-                row = card.Row();
-            }
-
-            var emblem = id;
-            Swatch(row, colour, 30f, 30f, id == current.Icon, () => Teams.Ask(TeamAsk.Banner, emblem, current.Color), sprite);
-        }
+        BuildThingPicker(card, teamId, current);
 
         card.TextSmall("emp_ui_team_banner_color".lang(), FontColor.Gray);
-        row = card.Row();
+        var row = card.Row();
         for (var c = 0; c < ColorCount; c++) {
             var index = c;
-            Swatch(row, ColorOf(c), 24f, 24f, c == current.Color, () => Teams.Ask(TeamAsk.Banner, current.Icon, index));
+            Swatch(row, ColorOf(c), 24f, 24f, c == current.Color, () => Teams.Ask(TeamAsk.Banner, current.Icon, index, ThingOf(teamId) ?? ""));
         }
     }
 

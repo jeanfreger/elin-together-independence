@@ -43,6 +43,16 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Team id -> the source id of the thing chosen as its emblem. An older save has none: its element emblem draws
+    /// </summary>
+    [ElinGameIOProperty("team_things")]
+    internal static Dictionary<int, string> TeamThings
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Zone uid -> the team of the player who claimed it, none for a land claimed by a Wanderer
     /// </summary>
     [ElinGameIOProperty("zone_team")]
@@ -407,6 +417,7 @@ internal partial class ElinNetHost
             Bills = TeamBills.Told(),
             Story = TeamStory.Told(),
             Banners = TeamBanner.Told(),
+            Things = TeamBanner.ToldThings(),
         });
     }
 }
