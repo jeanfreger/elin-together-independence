@@ -72,6 +72,24 @@ internal static class PlayerPeoplePatch
         }
     }
 
+    /// <summary>
+    ///     ...nor counted with them: a player's character stays a member of the base (RemoveRemoteChara), and the
+    ///     game's count (residents tab "4/6", the base's happiness and food, its report) took one slot per character any
+    ///     player ever made there (issue #25). A world loaded without a session still has its players' characters:
+    ///     those are never residents either
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.CountMembers))]
+    internal static void OnCountMembers(FactionBranch __instance, FactionMemberType type, bool onlyAlive, ref int __result)
+    {
+        foreach (var c in __instance.members) {
+            if (c.memberType == type && (!onlyAlive || !c.isDead) && (type != FactionMemberType.Default || c.trait.IsCountAsResident) &&
+                (Active ? IsPlayerChara(c) : c.GetBool("remote_chara"))) {
+                __result--;
+            }
+        }
+    }
+
     internal class ListPeoplePlayers : ListPeople
     {
         public override string TextTab => "emp_people_players".lang() + " (" + Players().Count() + ")";
