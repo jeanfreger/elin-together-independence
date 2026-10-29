@@ -229,18 +229,52 @@ internal static class TeamBanner
         rt.anchorMin = rt.anchorMax = rt.pivot = new(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero;
         var image = go.GetComponent<Image>();
+        // the game's sprites carry wide transparent margins: only the drawn part fills the whole square
+        sprite = Cropped(sprite);
         image.sprite = sprite;
         image.preserveAspect = true;
         if (sprite != null) {
-            if (sprite.texture != null) {
-                sprite.texture.filterMode = FilterMode.Point;
-            }
-
-            var scale = size * 0.8f / Mathf.Max(sprite.rect.width, sprite.rect.height, 1f);
+            var scale = size / Mathf.Max(sprite.rect.width, sprite.rect.height, 1f);
             rt.sizeDelta = new(sprite.rect.width * scale, sprite.rect.height * scale);
         }
 
         image.raycastTarget = false;
+    }
+
+    private static readonly Dictionary<Sprite, Sprite> _cropped = [];
+
+    /// <summary>The sprite cut to its opaque pixels, point filtered (cached per sprite); itself when it cannot be read</summary>
+    private static Sprite? Cropped(Sprite? sprite)
+    {
+        if (sprite == null) {
+            return null;
+        }
+
+        if (_cropped.TryGetValue(sprite, out var done)) {
+            return done;
+        }
+
+        try {
+            var src = Patches.MultiplayerHubPatch.Read(sprite);
+            var box = Patches.MultiplayerHubPatch.AlphaBox(src.Pixels, src.W, src.H);
+            var px = new Color32[box.width * box.height];
+            for (var y = 0; y < box.height; y++) {
+                System.Array.Copy(src.Pixels, (box.y + y) * src.W + box.x, px, y * box.width, box.width);
+            }
+
+            var tex = new Texture2D(box.width, box.height, TextureFormat.RGBA32, false) {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            tex.SetPixels32(px);
+            tex.Apply(false, false);
+            done = Sprite.Create(tex, new Rect(0, 0, box.width, box.height), new Vector2(0.5f, 0.5f), 100f);
+        } catch (System.Exception) {
+            done = sprite;
+        }
+
+        _cropped[sprite] = done;
+        return done;
     }
 
     private const int PageSize = 30;

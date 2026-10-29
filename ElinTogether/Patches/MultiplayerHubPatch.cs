@@ -149,7 +149,7 @@ internal static class MultiplayerHubPatch
         return sprite;
     }
 
-    private static (Color32[] Pixels, int W, int H) Read(Sprite sprite)
+    internal static (Color32[] Pixels, int W, int H) Read(Sprite sprite)
     {
         // the sprite's atlas is not necessarily readable: copy the rectangle through a render texture
         var r = sprite.textureRect;
@@ -172,7 +172,7 @@ internal static class MultiplayerHubPatch
         }
     }
 
-    private static RectInt AlphaBox(Color32[] px, int w, int h)
+    internal static RectInt AlphaBox(Color32[] px, int w, int h)
     {
         int x0 = w, y0 = h, x1 = -1, y1 = -1;
         for (var y = 0; y < h; y++) {
