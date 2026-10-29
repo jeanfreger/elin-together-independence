@@ -89,10 +89,27 @@ internal static class TeamBanner
     private static Dictionary<int, string> Things => KeepsBook ? ElinNetHost.TeamThings : _toldThings;
 
     /// <summary>
-    ///     The id of the game's thing the leader chose as the emblem, when it chose one (else the old element emblem)
+    ///     The team's emblem as its canonical <c>e1|</c> text (<see cref="TeamEmblem" />), an old single-thing value
+    ///     upgraded on the banner colour. Null when the team has none (else the old element emblem draws)
     /// </summary>
     internal static string? ThingOf(int teamId) =>
-        On && Things.TryGetValue(teamId, out var id) && Normalize(id) is { } typed ? typed : null;
+        On && Things.TryGetValue(teamId, out var stored) && EmblemOf(teamId, stored) is { } emblem ? TeamEmblem.Format(emblem) : null;
+
+    /// <summary>The team's emblem, read from its stored text (ids not known to this game are left out)</summary>
+    internal static Emblem? EmblemOf(int teamId) =>
+        On && Things.TryGetValue(teamId, out var stored) ? EmblemOf(teamId, stored) : null;
+
+    private static Emblem? EmblemOf(int teamId, string stored)
+    {
+        var bg = Book.TryGetValue(teamId, out var banner) ? banner.Color : 0;
+        if (TeamEmblem.Parse(stored, bg) is not { } emblem) {
+            return null;
+        }
+
+        // (a guest without a mod's thing still draws the rest)
+        var layers = emblem.Layers.Where(l => Normalize(l.Thing) != null).ToList();
+        return layers.Count == 0 ? null : emblem with { Layers = layers };
+    }
 
     /// <summary>
     ///     The typed form of a stored emblem id: "t:sword" (a thing) or "c:putty" (a monster). An old untyped value is a
@@ -143,16 +160,22 @@ internal static class TeamBanner
             return false;
         }
 
+        if (Throttled(chara.uid)) {
+            EmpLog.Debug("Team {TeamId} banner: too many changes, refused", team);
+            return false;
+        }
+
         if (thing.Length > 0) {
-            // any thing or monster of the game; an id the game does not know is refused
-            if (Normalize(thing) is not { } typed) {
+            // an emblem of up to 8 things or monsters of the game (an old single id is upgraded to one layer); any
+            // text that does not read, a field out of range or an id the game does not know is refused
+            if (TeamEmblem.Canonical(thing, color, Normalize) is not { } canonical) {
                 return false;
             }
 
-            thing = typed;
-            ElinNetHost.TeamThings[team] = thing;
-            ElinNetHost.TeamBanners[team] = [ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2 ? old[0] : 0, color];
-            EmpLog.Information("Team {TeamId} banner: thing {Thing}, colour {Color}", team, thing, color);
+            var bg = TeamEmblem.Parse(canonical)!.Background;
+            ElinNetHost.TeamThings[team] = canonical;
+            ElinNetHost.TeamBanners[team] = [ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2 ? old[0] : 0, bg];
+            EmpLog.Information("Team {TeamId} banner: emblem {Emblem}", team, canonical);
             return true;
         }
 
@@ -164,6 +187,28 @@ internal static class TeamBanner
         ElinNetHost.TeamBanners[team] = [icon, color];
         EmpLog.Information("Team {TeamId} banner: emblem {Icon}, colour {Color}", team, icon, color);
         return true;
+    }
+
+    // leader uid -> the times of its last banner asks (host only): 1 per 2 s and 20 per minute
+    private static readonly Dictionary<int, Queue<float>> _asks = [];
+
+    private static bool Throttled(int uid)
+    {
+        var now = Time.realtimeSinceStartup;
+        if (!_asks.TryGetValue(uid, out var times)) {
+            _asks[uid] = times = new();
+        }
+
+        while (times.Count > 0 && now - times.Peek() > 60f) {
+            times.Dequeue();
+        }
+
+        if (times.Count >= 20 || (times.Count > 0 && now - times.Last() < 2f)) {
+            return true;
+        }
+
+        times.Enqueue(now);
+        return false;
     }
 
     internal static void Remove(int teamId)
@@ -194,6 +239,7 @@ internal static class TeamBanner
     {
         _told = [];
         _toldThings = [];
+        _asks.Clear();
     }
 
     /// <summary>
@@ -207,8 +253,8 @@ internal static class TeamBanner
         }
 
         var color = ColorOf(banner.Color);
-        if (ThingOf(teamId) is { } thing) {
-            Frame(row, color, SpriteOf(thing), size, true, null);
+        if (EmblemOf(teamId) is { } emblem) {
+            Frame(row, color, SpriteOf(emblem.Layers[0].Thing), size, true, null);
         } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
             // the emblem on a square of the colour, like an item (no detached colour bar beside it)
             Frame(row, color, sprite, size, true, null);
@@ -373,7 +419,7 @@ internal static class TeamBanner
         var found = Search();
         var pages = Mathf.Max(1, (found.Count + PageSize - 1) / PageSize);
         _page = Mathf.Clamp(_page, 0, pages - 1);
-        var chosen = ThingOf(teamId);
+        var chosen = EmblemOf(teamId)?.Layers[0].Thing;
         var colour = ColorOf(current.Color);
         YKLayout? row = null;
         var n = 0;
@@ -443,7 +489,8 @@ internal static class TeamBanner
         var row = card.Row();
         for (var c = 0; c < ColorCount; c++) {
             var index = c;
-            Swatch(row, ColorOf(c), 24f, 24f, c == current.Color, () => Teams.Ask(TeamAsk.Banner, current.Icon, index, ThingOf(teamId) ?? ""));
+            Swatch(row, ColorOf(c), 24f, 24f, c == current.Color, () => Teams.Ask(TeamAsk.Banner, current.Icon, index,
+                EmblemOf(teamId) is { } emblem ? TeamEmblem.Format(emblem with { Background = index }) : ""));
         }
     }
 
