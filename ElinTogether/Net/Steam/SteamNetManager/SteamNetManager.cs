@@ -309,6 +309,14 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     {
         var connection = status.m_hConn;
 
+        // the callback is process-wide: an incoming connection is only ours on our own listen socket
+        // (an outgoing one is tracked in _peers, the cases below look it up there)
+        if (IsHost && status.m_info.m_hListenSocket != HSteamListenSocket.Invalid
+            && status.m_info.m_hListenSocket != _listenSocket
+            && !_devListenSockets.ContainsKey(status.m_info.m_hListenSocket)) {
+            return;
+        }
+
         switch (status.m_info.m_eState) {
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting:
                 if (IsHost) {
@@ -320,7 +328,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
                 // this should only call for host
                 // but check just in case
-                if (IsHost) {
+                if (IsHost && (_peers.Any(p => p.Connection == connection) || status.m_info.m_hListenSocket != HSteamListenSocket.Invalid)) {
                     AddConnection(connection);
                 }
 

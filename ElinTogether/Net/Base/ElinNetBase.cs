@@ -91,6 +91,13 @@ public abstract partial class ElinNetBase : EMono
             return;
         }
 
+        // Destroy is deferred: when this component is no longer the session's (replaced since), closing its link
+        // must not reach the Session now owned by the new one (bench 2026-10-29: new client reset by the old's close)
+        if (Session.Transport != this && Session.ZoneSession != this) {
+            Router.OnPeerConnectedEvent -= OnPeerConnected;
+            Router.OnPeerDisconnectedEvent -= OnPeerDisconnected;
+        }
+
         Stop();
         Socket.Dispose();
 
