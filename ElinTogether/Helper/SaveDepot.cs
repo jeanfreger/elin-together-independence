@@ -38,6 +38,10 @@ internal static class SaveDepot
     private const float BeatSeconds = 60f;
     private const long MaxUnzipped = 2L * 1024 * 1024 * 1024;
 
+    // an answer of the server application: a zipped world (a big one is some tens of MB), or a line of text
+    private const int MaxAnswer = 512 * 1024 * 1024;
+    private const int MaxLine = 64 * 1024;
+
     // GitHub keeps every world it receives and asks not to be written too often
     private const float SendSeconds = 300f;
 
@@ -695,6 +699,11 @@ internal static class SaveDepot
 
         var status = ReadLine(stream);
         var length = int.Parse(ReadLine(stream));
+        // the array is made before anything comes: a depot saying 2 GB got them (security audit 2026-10-29)
+        if (length > MaxAnswer) {
+            throw new IOException($"the depot announced {length} bytes, more than a world");
+        }
+
         byte[]? answer = null;
         if (length > 0) {
             answer = new byte[length];
@@ -720,6 +729,9 @@ internal static class SaveDepot
             }
 
             line.WriteByte((byte)b);
+            if (line.Length > MaxLine) {
+                throw new IOException("the depot sent a line too long");
+            }
         }
 
         return Encoding.UTF8.GetString(line.ToArray());
