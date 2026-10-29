@@ -43,13 +43,28 @@ public class ClaimZoneDelta : ElinDelta
         }
 
         EmpLog.Information("Land {ZoneUid} claimed for player {Uid}", ZoneUid, sender.uid);
-        using var _ = Simulate();
-        deed.ModNum(-1);
-        Teams.Claimer = sender;
-        try {
-            _zone.ClaimZone(false, sender.pos.GetNearestPoint(false, true, false) ?? sender.pos);
-        } finally {
-            Teams.Claimer = null;
+        using (Simulate()) {
+            deed.ModNum(-1);
+            Teams.Claimer = sender;
+            try {
+                _zone.ClaimZone(false, sender.pos.GetNearestPoint(false, true, false) ?? sender.pos);
+            } finally {
+                Teams.Claimer = null;
+            }
+        }
+
+        // what TraitDeed.OnRead does after the claim, for the start zone: the home quest and the main quest move on (in the
+        // sender's story). Outside the simulation: the phase changes reach the other games
+        if (_zone == game.StartZone) {
+            using (TeamOwnStory.AsSender(host, OriginPeer)) {
+                if (game.quests.Get<QuestHome>() != null) {
+                    game.quests.Home.ChangePhase(1);
+                }
+
+                if (QuestMain.Phase < 200) {
+                    game.quests.Main.ChangePhase(200);
+                }
+            }
         }
     }
 }
