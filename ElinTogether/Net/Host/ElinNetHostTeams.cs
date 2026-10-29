@@ -388,3 +388,17 @@ internal partial class ElinNetHost
         });
     }
 }
+
+internal partial class ElinNetHost
+{
+    /// <summary>
+    ///     Host box "Leaderboards" (Helper/Leaderboards.cs): player chara uid -> [deepest floor reached, duels won],
+    ///     noted by the host. An older save has none
+    /// </summary>
+    [ElinGameIOProperty("leader_stats")]
+    internal static Dictionary<int, int[]> LeaderStats
+    {
+        get => field ??= [];
+        set;
+    }
+}
