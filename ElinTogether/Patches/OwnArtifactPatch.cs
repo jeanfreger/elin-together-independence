@@ -32,6 +32,9 @@ internal static class OwnArtifactPatch
             .Where(c => c.IsPCFactionOrMinion && Side(c) != mine);
 
         __state = [];
+        // (issue 34: what the purge saw, so a report shows whose side each holder was taken for)
+        EmpLog.Debug("Artifact {Id} taken by {Taker} (side {Side}), spared holders {Others}", af.id, taker.uid, mine,
+            others.Select(c => $"{c.uid}:{Side(c)}").ToList());
         foreach (var chara in others) {
             foreach (var kept in chara.things.List(t => !t.isReplica && t != af && (t.id == af.id || t.HasTag(CTAG.godArtifact)))) {
                 kept.isReplica = true;
