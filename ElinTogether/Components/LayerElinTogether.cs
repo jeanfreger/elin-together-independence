@@ -423,7 +423,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         switch (tab) {
             case TabChat.TabName:
                 return ChatLog.Unread;
-            case "emp_tab_team" when NetSession.Instance.Rules.UseTeams && EClass.pc != null:
+            case "emp_tab_team" when EClass.core.IsGameStarted && NetSession.Instance.InGame && NetSession.Instance.Rules.UseTeams:
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);
                 return team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
