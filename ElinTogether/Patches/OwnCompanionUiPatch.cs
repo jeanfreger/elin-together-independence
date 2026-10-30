@@ -16,11 +16,13 @@ namespace ElinTogether.Patches;
 internal static class OwnCompanionUiPatch
 {
     /// <summary>
-    ///     A companion of another player
+    ///     A companion of another player. Transport, not Connection: a guest alone in an away zone has no
+    ///     Connection (it plays that zone as single player) but the party still holds the other players'
+    ///     companions, and its bar listed the host's (GitHub issue 36)
     /// </summary>
     internal static bool IsOthers(Chara c)
     {
-        return NetSession.Instance.Connection is not null && !c.IsPC && !c.GetBool("remote_chara") &&
+        return NetSession.Instance.Transport is not null && !c.IsPC && !c.GetBool("remote_chara") &&
                CompanionHelper.OwnerOf(c) is { } owner && owner != EClass.pc;
     }
 
