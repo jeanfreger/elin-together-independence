@@ -264,6 +264,11 @@ internal static class TeamBanner
     internal static void Draw(YKLayout row, int teamId, float size = 48f)
     {
         if (Of(teamId) is not { } banner) {
+            // (a team that made no emblem yet: a square of its colour, so every team has its mark, user 2026-10-30)
+            if (On && teamId != Teams.Wanderers) {
+                Frame(row, ChipColor(teamId), null, size, true, null);
+            }
+
             return;
         }
 

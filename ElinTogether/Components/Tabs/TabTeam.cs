@@ -196,7 +196,7 @@ internal class TabTeam : TabEmpBase
         var card = left.Card(Teams.NameOf(mine));
         // (the emblem beside the facts, as a portrait beside a sheet's: not on a line of its own over them)
         YKLayout facts = card;
-        if (TeamBanner.Of(mine) != null) {
+        if (TeamBanner.On) {
             var head = card.Row();
             head.Layout.childAlignment = TextAnchor.UpperLeft;
             head.Layout.spacing = 14f;

@@ -50,7 +50,16 @@ internal class TabLands : TabEmpBase
         // on the right (a card per land ran under the window's bottom edge)
         var (left, right) = this.Book();
         var picked = lands.Contains(_picked) ? _picked : lands[0];
-        var list = left.Card("emp_ui_tab_lands".lang()).ListArea(lands.Count, 5, 44f);
+        var card = left.Card("emp_ui_tab_lands".lang());
+        // (whose lands: the team's emblem and name over them)
+        if (TeamBanner.On) {
+            var head = card.Row();
+            head.Layout.spacing = 10f;
+            TeamBanner.Draw(head, mine, 32f);
+            head.Text(Teams.NameOf(mine));
+        }
+
+        var list = card.ListArea(lands.Count, 5, 44f);
         foreach (var land in lands) {
             var target = land;
             list.PickLine(Teams.ZoneName(land), Where(land), land == picked, () => {

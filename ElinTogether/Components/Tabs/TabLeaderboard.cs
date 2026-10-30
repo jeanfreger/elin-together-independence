@@ -101,6 +101,9 @@ internal static class TabLeaderboard
                 row.Text($"#{i + 1}").LayoutElement().minWidth = 48f;
                 if (board != Leaderboards.Wealth) {
                     row.Portrait(Teams.FindChara(uid), RowH);
+                } else {
+                    // (the team board: each team's emblem where a player's portrait goes)
+                    TeamBanner.Draw(row, uid, RowH);
                 }
 
                 row.Text(answer.Names[i], mine ? FontColor.Good : FontColor.Default).LayoutElement().flexibleWidth = 1f;
