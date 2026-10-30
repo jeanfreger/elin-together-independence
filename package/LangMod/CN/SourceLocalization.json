@@ -1240,5 +1240,6 @@
     "LangGeneral.emp_ui_report_need.text": "要发送，请在每个框中至少写 {0} 个字符：{1}",
     "LangGeneral.emp_ui_report_preparing.text": "正在生成报告……",
     "LangGeneral.emp_ui_sv_cfg_share_log_reports.text": "问题报告附上房主的日志",
-    "LangGeneral.emp_ui_sv_desc_share_log_reports.text": "客机报告问题时，会附上房主日志的末尾（模组日志最近 10 分钟和 Player.log 末尾，最多 300 KB，每名客机每分钟一次）。报告在 GitHub 上公开：会先删除 Steam ID、IP 地址和 Windows 用户名。关闭：客机的报告只包含自己的日志。"
+    "LangGeneral.emp_ui_sv_desc_share_log_reports.text": "客机报告问题时，会附上房主日志的末尾（模组日志最近 10 分钟和 Player.log 末尾，最多 300 KB，每名客机每分钟一次）。报告在 GitHub 上公开：会先删除 Steam ID、IP 地址和 Windows 用户名。关闭：客机的报告只包含自己的日志。",
+    "LangGeneral.emp_ui_mods_only_server.text": "此服务器仅使用 {0}。为了加入，Elin 将在不加载你其他模组的情况下重启一次；下次启动 Elin 时它们会恢复。现在重启吗？"
 }

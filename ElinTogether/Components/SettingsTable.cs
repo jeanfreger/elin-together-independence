@@ -545,7 +545,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.PermadeathRevive, true);
         yield return (EmpConfig.Server.KickKeepOutMinutes, 60);
         yield return (EmpConfig.Server.PublishMods, true);
-        yield return (EmpConfig.Server.LookModsOwn, false);
+        // look-only mods (pictures, portraits, sounds, translations) are each player's own (user 2026-10-30)
+        yield return (EmpConfig.Server.LookModsOwn, true);
         // StrictValidationMode: on after stage 1 (C, council pending); it is a file-only switch, left as it is here
         yield return (EmpConfig.Server.MembersOnly, false);
         // travel and time: (C, council pending) personal pace with a 24 hour lead
