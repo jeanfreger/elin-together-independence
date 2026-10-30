@@ -38,7 +38,8 @@ public class TerrainHeightDelta : ElinDelta
 
         for (var i = 0; i + Width <= Cells.Length; i += Width) {
             int x = Cells[i], z = Cells[i + 1];
-            if (x < 0 || z < 0 || x >= map.Size || z >= map.Size) {
+            // (not on the way to Vernis's mine, MineWay)
+            if (x < 0 || z < 0 || x >= map.Size || z >= map.Size || MineWay.Protects(x, z)) {
                 continue;
             }
 

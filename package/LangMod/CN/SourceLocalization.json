@@ -1262,8 +1262,9 @@
     "LangGeneral.emp_ui_report_tip_private.text": "Steam ID、IP 地址和用户名会被删除。",
     "LangGeneral.emp_ui_report_tip_host.text": "如果房主允许，客机的报告会附上房主的日志。",
     "LangGeneral.emp_tip_tab_report.text": "向开发者报告问题",
-    "LangGeneral.emp_ui_sv_cfg_commons_start_land.text": "起始土地属于所有人",
-    "LangGeneral.emp_ui_sv_desc_commons_start_land.text": "起始草原像城镇一样属于所有人：没有主人，任何队伍都不能占有，也没有税单。不论其他建造规则如何，每名玩家都可以在那里建造、挖掘、摆放和拿起家具。它仍是世界的据点（房主的家），容器记录照常记录。关闭：起始土地如前，是房主的据点。",
+    "LangGeneral.emp_ui_sv_cfg_commons_start_land.text": "起始土地和维尔尼斯属于所有人",
+    "LangGeneral.emp_ui_sv_desc_commons_start_land.text": "起始草原和维尔尼斯像城镇一样属于所有人：没有主人，任何队伍都不能占有，也没有税单。不论其他建造规则如何，每名玩家都可以在那里建造、挖掘、摆放和拿起家具。草原仍是世界的据点（房主的家）。维尔尼斯的居民、商店和任务照常进行，通往矿坑的入口周围5格内任何人都不能建造。关闭：起始土地如前是房主的据点，维尔尼斯仍是城镇。",
     "LangGeneral.emp_land_commons.text": "公共土地",
-    "LangGeneral.emp_ui_land_commons_line.text": "{0}：没有主人，每名玩家都可以在那里建造。"
+    "LangGeneral.emp_ui_land_commons_line.text": "{0}：没有主人，每名玩家都可以在那里建造。",
+    "LangGeneral.emp_mine_way.text": "这是通往矿坑的路：任何人都不能在这里建造。"
 }

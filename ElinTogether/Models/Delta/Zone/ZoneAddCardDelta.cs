@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -61,6 +62,13 @@ public class ZoneAddCardDelta : ElinDelta
         if (card.isDestroyed) {
             EmpLog.Warning("Attempting to add destroyed item {Uid} to the zone at {@Pos}", card.uid, Pos);
             TaskCache.CancelClientAct(net, this, Card);
+            return;
+        }
+
+        // an installed thing is not moved onto, nor off, the way to Vernis's mine (MineWay): put back where it is
+        if (net is ElinNetHost wayHost && FromPeer && card is Thing { IsInstalled: true } && card.parent == zone &&
+            (MineWay.ProtectsCard(card) || MineWay.Protects(Pos.X, Pos.Z, System.Math.Max(card.W, card.H) - 1))) {
+            SendBack(wayHost, Card);
             return;
         }
 

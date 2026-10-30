@@ -75,6 +75,12 @@ public class CardAddThingDelta : ElinDelta
             return;
         }
 
+        // an installed thing on the way to Vernis's mine is nobody's to take (MineWay)
+        if (net is ElinNetHost && FromPeer && MineWay.ProtectsCard(thing)) {
+            SendBack(net, Thing);
+            return;
+        }
+
         if (ShippingHelper.IsShippingBox(parent)) {
             // the host knows who sent it, everyone tags it before stacking (goods of two players never merge)
             if (net is ElinNetHost shippingHost && OriginPeer != 0 &&

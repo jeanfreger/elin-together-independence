@@ -129,12 +129,15 @@ internal class TabLands : TabEmpBase
     /// </summary>
     private static void BuildCommons(YKLayout page)
     {
-        if (Commons.Zone is not { } zone) {
+        var zones = Commons.Zones.ToList();
+        if (zones.Count == 0) {
             return;
         }
 
         var card = page.Card("emp_land_commons".lang(), EmpUi.Icon("icon_influence"));
-        card.TextSmall("emp_ui_land_commons_line".Loc(zone.Name), FontColor.Gray);
+        foreach (var zone in zones) {
+            card.TextSmall("emp_ui_land_commons_line".Loc(zone.Name), FontColor.Gray);
+        }
     }
 
     /// <summary>

@@ -740,10 +740,10 @@ internal partial class EmpConfig
             "Server",
             "CommonsStartLand",
             false,
-            "The start land (the home meadow) belongs to everyone, like a town: nobody owns it, no team can take it, it has no tax bill, and every player builds, digs, places and picks up furniture there whatever the other building rules say. " +
-            "It stays the world's base (the host's home), and the container log still records it\n" +
-            "Otherwise the start land is the host's base, as before\n" +
-            "起始土地（家园草原）像城镇一样属于所有人：没有主人，任何队伍都不能占有，没有税单，每名玩家都可以在那里建造、挖掘、摆放和拿起家具，不受其他建造规则限制。它仍是世界的据点（房主的家），容器记录照常记录。关闭时起始土地如前，是房主的据点");
+            "The start land (the home meadow) and Vernis belong to everyone, like a town: nobody owns them, no team can take them, they have no tax bill, and every player builds, digs, places and picks up furniture there whatever the other building rules say. " +
+            "The meadow stays the world's base (the host's home). In Vernis its people, shops and quests go on, and nobody may build within 5 cells of the way down to the mine\n" +
+            "Otherwise the start land is the host's base and Vernis a town, as before\n" +
+            "起始土地（家园草原）和维尔尼斯像城镇一样属于所有人：没有主人，任何队伍都不能占有，没有税单，每名玩家都可以在那里建造、挖掘、摆放和拿起家具，不受其他建造规则限制。草原仍是世界的据点（房主的家）。维尔尼斯的居民、商店和任务照常，通往矿坑的入口周围5格内任何人都不能建造。关闭时起始土地如前是房主的据点，维尔尼斯仍是城镇");
 
         Server.SiblingLands = config.Bind(
             "Server",
