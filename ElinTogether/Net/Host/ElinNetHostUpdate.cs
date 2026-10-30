@@ -416,6 +416,8 @@ internal partial class ElinNetHost
     {
         // 0.5hz session player states update
         Scheduler.Subscribe(UpdateRemotePlayerStates, 0.5f);
+        // 1hz roster of the whole server, for the menus (sent on a change, see ElinNetHostRoster)
+        Scheduler.Subscribe(UpdateServerRoster, 1f);
         // 5hz world snapshot reconciliation
         Scheduler.Subscribe(WorldStateSnapshotUpdate, 5f);
         // 50hz delta dispatch

@@ -94,6 +94,11 @@ internal static class Leaderboards
             uids.Add(player.CharaUid);
         }
 
+        // (the players on other maps too: the server's roster)
+        foreach (var player in NetSession.Instance.ServerRoster) {
+            uids.Add(player.CharaUid);
+        }
+
         foreach (var chara in host.ActiveRemoteCharas.Values) {
             uids.Add(chara.uid);
         }

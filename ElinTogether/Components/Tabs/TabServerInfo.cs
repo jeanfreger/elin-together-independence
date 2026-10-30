@@ -57,7 +57,8 @@ internal class TabServerInfo : TabEmpBase
 
         var host = session.CurrentPlayers.FirstOrDefault(p => p.Index == 0);
         card.KeyValue("emp_info_st_host".lang(), host?.User.Name is { Length: > 0 } hostName ? hostName : EClass.game?.cards.globalCharas.Find(host?.CharaUid ?? 0)?.Name ?? "?");
-        card.KeyValue("emp_info_st_players".lang(), session.VisiblePlayers.Count().ToString());
+        // (the whole server, players on other maps included)
+        card.KeyValue("emp_info_st_players".lang(), session.ServerPlayerCount.ToString());
         if (session.Rules.UseTeams) {
             card.KeyValue("emp_info_st_teams".lang(), Teams.Ids().Count(i => i != Teams.Wanderers).ToString());
         }

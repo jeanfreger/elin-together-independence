@@ -79,7 +79,8 @@ internal class TabPlay : TabEmpBase
         if (net.IsAway) {
             card.KeyValue("emp_ui_kv_state".lang(), "emp_ui_play_reconnecting".lang());
         }
-        card.KeyValue("emp_ui_kv_players".lang(), net.VisiblePlayers.Count().ToString());
+        // (the whole server, players on other maps included)
+        card.KeyValue("emp_ui_kv_players".lang(), net.ServerPlayerCount.ToString());
         card.KeyValue("emp_ui_kv_host".lang(), host);
         if (EClass._zone is { } zone) {
             card.KeyValue("emp_ui_kv_where".lang(), zone.NameWithLevel);

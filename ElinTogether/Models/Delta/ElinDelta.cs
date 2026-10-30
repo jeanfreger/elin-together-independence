@@ -223,6 +223,8 @@ namespace ElinTogether.Models;
 // Bug reports: a guest's report asks for the host's log (user 2026-10-30)
 [Union(1255, typeof(HostLogRequest))]
 [Union(1256, typeof(HostLogAnswer))]
+// Every player of the server, away ones too, for the menus (user 2026-10-30)
+[Union(1259, typeof(ServerRosterDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
