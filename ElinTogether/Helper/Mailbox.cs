@@ -325,6 +325,37 @@ internal static class Mailbox
         return null;
     }
 
+    /// <summary>
+    ///     A letter from the world itself (no sender, never sent back), holding one thing: what the host gives a player
+    ///     who is away or whose bag is full, instead of a parcel any player could pick up (user 2026-10-30)
+    /// </summary>
+    internal static bool Post(int toUid, Thing thing, string text, string fromName)
+    {
+        if (!Keeps) {
+            return false;
+        }
+
+        string packed;
+        try {
+            packed = Convert.ToBase64String(LZ4Bytes.Create(thing).Bytes);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "A letter for {Uid} could not be written", toUid);
+            return false;
+        }
+
+        var book = ElinNetHost.MailLetters;
+        var id = Math.Max(ElinNetHost.MailLastId, book.Keys.DefaultIfEmpty().Max()) + 1;
+        ElinNetHost.MailLastId = id;
+        book[id] = Row(toUid, 0, 0, Now(), FlagReturned, 0, text, fromName, [packed]);
+        thing.Destroy();
+        EmpLog.Information("Letter {Id} from the world to {To}: {Thing}", id, toUid, thing.id);
+        if (NetSession.Instance.Transport is ElinNetHost host) {
+            TellOwner(host, toUid, true);
+        }
+
+        return true;
+    }
+
     private static string Refuse(Chara from, string what, string reason)
     {
         EmpLog.Warning("Refused a letter of {Uid}: {What}", from.uid, what);

@@ -98,7 +98,8 @@ internal static class PlayerWhisper
             FromUid = EClass.pc.uid,
             ToUid = uid,
             Text = text,
-            Name = EClass.pc.RemoteState?.User.Name ?? EClass.pc.Name,
+            // (away on a map of one's own the state's name is empty: the host refused "a line signed ", 2026-10-30)
+            Name = EClass.pc.RemoteState?.User.Name is { Length: > 0 } steam ? steam : EClass.pc.Name,
         };
         switch (NetSession.Instance.Transport) {
             case ElinNetHost host:

@@ -479,9 +479,9 @@ internal class TabPlayers : TabEmpBase
         if (player.IsHost) {
             detail = "emp_ui_player_host".lang() + "  " + detail;
         }
-        // where each one is: the server's players travel alone a lot (user 2026-10-30)
+        // where each one is: the server's players travel alone a lot (user 2026-10-30); first, as a long line is cut
         if (player.Where is { Length: > 0 } where) {
-            detail += ", " + where;
+            detail = where + "  " + detail;
         }
 
         var badges = PlayerBadge.None;

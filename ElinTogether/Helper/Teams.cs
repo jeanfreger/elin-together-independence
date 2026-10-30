@@ -781,13 +781,16 @@ internal static class Teams
 
         ElinNetHost.TeamDeeds[teamId] = chara.uid;
         var deed = ThingGen.Create("deed");
-        if (chara.IsPC) {
+        // never on the ground, where another player could take it (user 2026-10-30): the bag, else the founder's letters
+        if (chara.IsPC && !chara.things.IsFull(deed)) {
             chara.Pick(deed);
         } else if (chara.IsAliveInCurrentZone && EClass._map.charas.Contains(chara) && !chara.things.IsFull(deed)) {
             // in its bag the way any change the host makes to a player's things reaches that player
             using (ElinDelta.Simulate()) {
                 chara.AddThing(deed);
             }
+        } else if (Mailbox.On && Mailbox.Post(chara.uid, deed, "emp_team_deed_mail".Loc(chara.NameSimple), NameOf(teamId))) {
+            // (taken from the Multiplayer menu's Mail tab, into the bag)
         } else {
             var parcel = ThingGen.CreateParcel(null, deed);
             parcel.c_idRefName = "emp_team_deed_mail".Loc(chara.NameSimple);
