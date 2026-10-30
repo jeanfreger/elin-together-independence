@@ -75,23 +75,36 @@ internal class TabChat : TabEmpBase
         _ => "emp_ui_chat_all".lang(),
     };
 
-    // where a line can go: everyone (or this map), the team, then each other player online when private lines are on
-    private static List<(string Label, Chara? To, bool Team)> Targets()
+    // where a line can go: everyone (or this map), the team, then each other player online when private lines are on:
+    // every player of the server, on another map too (the host passes the line on, user 2026-10-30)
+    private static List<(string Label, int To, string? Name, bool Team)> Targets()
     {
-        var list = new List<(string, Chara?, bool)> { (ChannelName(ChatLog.All), null, false) };
+        var list = new List<(string, int, string?, bool)> { (ChannelName(ChatLog.All), 0, null, false) };
         if (InTeam()) {
-            list.Add(("emp_ui_chat_team".lang(), null, true));
+            list.Add(("emp_ui_chat_team".lang(), 0, null, true));
         }
 
         if (NetSession.Instance.Rules.PrivateChat) {
-            foreach (var p in NetSession.Instance.VisiblePlayers.Where(p => p.CharaUid != EClass.pc.uid).OrderBy(p => p.User.Name)) {
-                if (Teams.FindChara(p.CharaUid) is { } other) {
-                    list.Add(("emp_ui_chat_to".Loc(p.User.Name.IsEmpty(other.Name)), other, false));
-                }
+            foreach (var (uid, name) in PrivateTargets().OrderBy(t => t.Name, System.StringComparer.OrdinalIgnoreCase)) {
+                list.Add(("emp_ui_chat_to".Loc(name), uid, name, false));
             }
         }
 
         return list;
+    }
+
+    // the other players a private line can go to: the server's roster, or this map's players before one arrived
+    private static IEnumerable<(int Uid, string Name)> PrivateTargets()
+    {
+        var session = NetSession.Instance;
+        var me = EClass.pc.uid;
+        if (session.ServerRoster.Count > 0) {
+            return session.ServerRoster.Where(p => p.CharaUid != me)
+                .Select(p => (p.CharaUid, string.IsNullOrWhiteSpace(p.Name) ? p.CharaName : p.Name)).ToList();
+        }
+
+        return session.VisiblePlayers.Where(p => p.CharaUid != me && Teams.FindChara(p.CharaUid) is not null)
+            .Select(p => (p.CharaUid, p.User.Name.IsEmpty(Teams.FindChara(p.CharaUid)!.Name))).ToList();
     }
 
     private void BuildWriter(YKLayout card)
@@ -125,8 +138,8 @@ internal class TabChat : TabEmpBase
             var target = Targets().ElementAtOrDefault(_target);
             if (target.Team) {
                 ChatLog.SendTeam(text);
-            } else if (target.To is { } other) {
-                PlayerWhisper.Send(other, text);
+            } else if (target.To != 0) {
+                PlayerWhisper.Send(target.To, target.Name, text);
             } else {
                 // (the way the game's own chat box sends a line: the player says it on the map, the mod passes it on)
                 ActionMode.Adv.OnEnterChat(text);

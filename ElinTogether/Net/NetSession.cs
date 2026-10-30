@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using ElinTogether.Helper;
+using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using Object = UnityEngine.Object;
 
@@ -85,6 +86,24 @@ public class NetSession : EClass
     /// </summary>
     internal IEnumerable<NetPeerState> VisiblePlayers =>
         CurrentPlayers.Where(p => !(p.Index == 0 && Helper.ServerAvatar.IsUid(p.CharaUid)));
+
+    /// <summary>
+    ///     Every connected player of the server, on the host's map or away (user 2026-10-30: the players list showed only
+    ///     the same map's), as the host last sent it (ServerRosterDelta); the host builds its own. Never the server's
+    ///     stand-in. The menus read it; the sync reads <see cref="CurrentPlayers" />. Empty before the first one arrives
+    /// </summary>
+    internal List<RosterEntry> ServerRoster { get; private set; } = [];
+
+    internal void SetServerRoster(List<RosterEntry> players)
+    {
+        ServerRoster = players.FindAll(p => !Helper.ServerAvatar.IsUid(p.CharaUid));
+    }
+
+    /// <summary>
+    ///     How many players the server has: the roster, or this map's when none arrived yet (a host of an older version)
+    /// </summary>
+    internal int ServerPlayerCount => ServerRoster.Count > 0 ? ServerRoster.Count : VisiblePlayers.Count();
+
     public SteamNetLobbyManager Lobby => field ??= new();
     public NetPeerState? Self { get; internal set; }
 
@@ -188,6 +207,7 @@ public class NetSession : EClass
             SharedSpeed = 0;
             Self = null;
             CurrentPlayers.Clear();
+            ServerRoster = [];
             Lobby.LeaveLobby();
 
             ResourceFetch.InvalidateTemp();

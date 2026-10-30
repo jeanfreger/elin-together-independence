@@ -252,7 +252,8 @@ internal static class Teams
         }
 
         // (not on this map: the name the session player list carries)
-        var user = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == charaUid)?.User.Name;
+        var user = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == charaUid)?.User.Name ??
+                   NetSession.Instance.ServerRoster.Find(p => p.CharaUid == charaUid)?.Name;
         return string.IsNullOrWhiteSpace(user) ? "?" : user!;
     }
 

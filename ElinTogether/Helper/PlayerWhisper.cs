@@ -19,8 +19,22 @@ internal static class PlayerWhisper
     private static string NameOf(int uid, string? fallback)
     {
         var state = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == uid);
+        if (state is null) {
+            // (a player on another map: the server's roster knows its name)
+            var far = NetSession.Instance.ServerRoster.Find(p => p.CharaUid == uid)?.Name;
+            return string.IsNullOrWhiteSpace(far) ? fallback ?? "?" : far!;
+        }
+
         // (a player without a name of its own: its character's)
-        return state is null ? fallback ?? "?" : state.User.Name.IsEmpty(fallback ?? "?").TagColor(PeerColorizer.GetColor(state.Index));
+        return state.User.Name.IsEmpty(fallback ?? "?").TagColor(PeerColorizer.GetColor(state.Index));
+    }
+
+    /// <summary>
+    ///     A connected player, on this map or on another one (the server's roster), a line can reach through the host
+    /// </summary>
+    private static bool Reachable(Chara other)
+    {
+        return other.IsPlayer || NetSession.Instance.ServerRoster.Exists(p => p.CharaUid == other.uid);
     }
 
     /// <summary>
@@ -28,11 +42,21 @@ internal static class PlayerWhisper
     /// </summary>
     internal static void Open(Chara other)
     {
-        var name = NameOf(other.uid, other.Name);
-        if (!other.IsPlayer) {
-            ChatBubbleEvent.PopChat(name, "emp_whisper_offline".lang(name));
+        if (!Reachable(other)) {
+            var offline = NameOf(other.uid, other.Name);
+            ChatBubbleEvent.PopChat(offline, "emp_whisper_offline".lang(offline));
             return;
         }
+
+        Open(other.uid, other.Name);
+    }
+
+    /// <summary>
+    ///     The same for a player by its character uid, also one on another map (the Players tab, the server's roster)
+    /// </summary>
+    internal static void Open(int uid, string? charaName)
+    {
+        var name = NameOf(uid, charaName);
 
         // (Dialog.InputName for the chat, with the hint set before the window shows)
         var d = Layer.Create<Dialog>("DialogInput");
@@ -42,7 +66,7 @@ internal static class PlayerWhisper
         d.input.Text = "";
         d.onEnterInput = (cancel, text) => {
             if (!cancel && !text.IsEmpty()) {
-                Send(other, text);
+                Send(uid, charaName, text);
             }
         };
         d.list.AddButton(null, Lang.Get("ok"), () => {
@@ -55,15 +79,24 @@ internal static class PlayerWhisper
 
     internal static void Send(Chara other, string text)
     {
-        var name = NameOf(other.uid, other.Name);
-        if (!other.IsPlayer) {
-            ChatBubbleEvent.PopChat(name, "emp_whisper_offline".lang(name));
+        if (!Reachable(other)) {
+            var offline = NameOf(other.uid, other.Name);
+            ChatBubbleEvent.PopChat(offline, "emp_whisper_offline".lang(offline));
             return;
         }
 
+        Send(other.uid, other.Name, text);
+    }
+
+    /// <summary>
+    ///     A line to a player by its character uid: the host passes it on wherever that player is (Relay)
+    /// </summary>
+    internal static void Send(int uid, string? charaName, string text)
+    {
+        var name = NameOf(uid, charaName);
         var delta = new WhisperDelta {
             FromUid = EClass.pc.uid,
-            ToUid = other.uid,
+            ToUid = uid,
             Text = text,
             Name = EClass.pc.RemoteState?.User.Name ?? EClass.pc.Name,
         };

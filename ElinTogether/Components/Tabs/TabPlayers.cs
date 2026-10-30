@@ -56,8 +56,8 @@ internal class TabPlayers : TabEmpBase
         TabMail.Release(this);
     }
 
-    // the player whose page is open on the right (by account), kept over reopenings
-    private static ulong _picked;
+    // the player whose page is open on the right (by character), kept over reopenings
+    private static int _picked;
 
     /// <summary>
     ///     The journal's two pages: the players on the left, the picked one's facts and actions on the right
@@ -113,30 +113,81 @@ internal class TabPlayers : TabEmpBase
 
     private static string TeamLabel() => (_myTeam ? "[x] " : "") + "emp_ui_pl_myteam".lang();
 
-    private static string NameOfPlayer(NetPeerState p) =>
-        string.IsNullOrWhiteSpace(p.User.Name) ? p.FindChara()?.Name ?? "?" : p.User.Name;
-
-    private static List<NetPeerState> Visible(List<NetPeerState> all)
+    /// <summary>
+    ///     A line of the list: a player of the server's roster (ServerRoster, away ones included), with this map's state
+    ///     and character when it plays here. Before any roster arrived (a host of an older version), this map's players
+    /// </summary>
+    private sealed class Row(RosterEntry? entry, NetPeerState? state, Chara? chara)
     {
-        IEnumerable<NetPeerState> q = all;
+        internal readonly RosterEntry? Entry = entry;
+        internal readonly NetPeerState? State = state;
+
+        // null: not on this map (the roster's facts only)
+        internal readonly Chara? Chara = chara;
+
+        internal int Uid => Entry?.CharaUid ?? State!.CharaUid;
+        internal bool IsHost => Entry?.IsHost ?? State!.Index == 0;
+        internal bool IsMe => EClass.pc is { } pc ? Uid == pc.uid : State?.User.IsMe ?? false;
+        internal ulong Account => Entry?.Steam ?? (ulong)State!.User;
+
+        // the host's peer id of that player (what the host's kick takes)
+        internal int PeerIndex => Entry?.Peer ?? State!.Index;
+        internal string CharaName => Chara?.Name ?? Entry?.CharaName ?? "?";
+        internal int Level => Chara?.LV ?? Entry?.Level ?? 0;
+        internal string Name => (Entry?.Name ?? State?.User.Name) is { } n && !string.IsNullOrWhiteSpace(n) ? n : CharaName;
+        internal float Ping => State is { } s ? s.AvgPingMs > 0 ? s.AvgPingMs : s.LastPingMs : Entry?.PingMs ?? 0;
+        internal bool Idle => State?.Idle ?? Entry?.Idle ?? false;
+        internal string? Where => Chara?.currentZone?.NameWithLevel ?? Entry?.Where;
+        // (this game's team list, else the host's word for a player it knows less of)
+        internal int Team => Teams.TeamOf(Uid) is var t && (t != Teams.Wanderers || Entry is null) ? t : Entry.Team;
+
+        // a picture only: a far player's copy in this world may be old
+        internal Chara? Picture => Chara ?? EClass.game?.cards.globalCharas.Find(Uid);
+    }
+
+    private static List<Row> AllRows()
+    {
+        var session = NetSession.Instance;
+        var here = session.VisiblePlayers.ToList();
+        if (session.ServerRoster.Count == 0) {
+            return here.Select(p => new Row(null, p, p.FindChara())).ToList();
+        }
+
+        var rows = new List<Row>();
+        foreach (var entry in session.ServerRoster) {
+            var state = here.FirstOrDefault(p => p.CharaUid == entry.CharaUid);
+            var chara = state?.FindChara();
+            rows.Add(new(entry, chara is null ? null : state, chara));
+        }
+
+        // (one's own line before the host's next roster has it)
+        if (EClass.pc is { } pc && !rows.Exists(r => r.Uid == pc.uid) && here.FirstOrDefault(p => p.CharaUid == pc.uid) is { } self) {
+            rows.Add(new(null, self, self.FindChara()));
+        }
+
+        return rows;
+    }
+
+    private static List<Row> Visible(List<Row> all)
+    {
+        IEnumerable<Row> q = all;
         if (_search.Length > 0) {
-            q = q.Where(p => NameOfPlayer(p).IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                             (p.FindChara()?.Name ?? "").IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0);
+            q = q.Where(p => p.Name.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             p.CharaName.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0);
         }
         if (_myTeam && EClass.pc is { } pc) {
             var mine = Teams.TeamOf(pc.uid);
-            q = q.Where(p => p.FindChara() is { } c && Teams.TeamOf(c.uid) == mine);
+            q = q.Where(p => p.Team == mine);
         }
 
-        float Ping(NetPeerState p) => p.AvgPingMs > 0 ? p.AvgPingMs : p.LastPingMs;
-        // (the host and you first, whatever the order)
-        var ordered = q.OrderBy(p => p.Index == 0 ? 0 : p.User.IsMe ? 1 : 2);
+        // (you first, then the host, whatever the order)
+        var ordered = q.OrderBy(p => p.IsMe ? 0 : p.IsHost ? 1 : 2);
         return (SortKeys[_sort] switch {
-            "level" => ordered.ThenByDescending(p => p.FindChara()?.LV ?? 0),
-            "ping" => ordered.ThenBy(Ping),
-            "team" => ordered.ThenBy(p => p.FindChara() is { } c ? Teams.NameOf(Teams.TeamOf(c.uid)) : ""),
+            "level" => ordered.ThenByDescending(p => p.Level),
+            "ping" => ordered.ThenBy(p => p.Ping),
+            "team" => ordered.ThenBy(p => Teams.NameOf(p.Team)),
             _ => ordered,
-        }).ThenBy(NameOfPlayer, StringComparer.OrdinalIgnoreCase).ToList();
+        }).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static void FillBook(YKVertical left, YKVertical right)
@@ -150,11 +201,11 @@ internal class TabPlayers : TabEmpBase
             Destroy(child.gameObject);
         }
 
-        var all = NetSession.Instance.VisiblePlayers.ToList();
+        var all = AllRows();
         var players = Visible(all);
         var pages = Mathf.Max(1, (players.Count + PageSize - 1) / PageSize);
         _page = Mathf.Clamp(_page, 0, pages - 1);
-        var picked = all.FirstOrDefault(p => (ulong)p.User == _picked) ?? all.FirstOrDefault(p => p.User.IsMe) ?? all.FirstOrDefault();
+        var picked = all.FirstOrDefault(p => p.Uid == _picked) ?? all.FirstOrDefault(p => p.IsMe) ?? all.FirstOrDefault();
         var card = left.Card("emp_ui_players_title".Loc(players.Count));
         // (five rows in the page under the search and the sort: more scroll inside the card)
         var shown = players.Skip(_page * PageSize).Take(PageSize).ToList();
@@ -162,7 +213,7 @@ internal class TabPlayers : TabEmpBase
         foreach (var player in shown) {
             var target = player;
             BuildPlayerLine(rows, player, player == picked, () => {
-                _picked = target.User;
+                _picked = target.Uid;
                 FillBook(left, right);
             });
         }
@@ -206,16 +257,13 @@ internal class TabPlayers : TabEmpBase
 
     /// <summary>
     ///     The right page: the player's name, the facts of the character sheet (character, level, team, ping, role),
-    ///     then what can be done, one button each (the entries the "..." menu had)
+    ///     then what can be done, one button each (the entries the "..." menu had). A player on another map: the facts
+    ///     the host's roster gives
     /// </summary>
-    private static void BuildPlayerPage(YKVertical page, NetPeerState player)
+    private static void BuildPlayerPage(YKVertical page, Row player)
     {
-        var chara = player.FindChara();
-        var name = string.IsNullOrWhiteSpace(player.User.Name) ? chara?.Name ?? "?" : player.User.Name;
-        if (chara is null) {
-            page.Card(name).TextSmall("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid), FontColor.Gray);
-            return;
-        }
+        var chara = player.Chara;
+        var name = player.Name;
 
         // the character sheet's head: portrait and sprite on the left with some air, then the name as a title (in full,
         // no header bullet over the portrait) and the facts under it
@@ -226,7 +274,9 @@ internal class TabPlayers : TabEmpBase
         // (a row fits its MIN height by default, 32: the row must take its preferred one, the taller of portrait and
         // facts, so Actions starts under the whole head)
         head.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        head.Portrait(chara);
+        if (player.Picture is { } picture) {
+            head.Portrait(picture);
+        }
         var lines = head.Vertical();
         // (the game's TopicDefault lines report no preferred height: a column that controls heights squashes them to
         // zero, all drawn on one line; left alone they keep the prefab's 22 and the column sums those)
@@ -235,15 +285,17 @@ internal class TabPlayers : TabEmpBase
         lines.LayoutElement().flexibleWidth = 1f;
         lines.Layout.spacing = 2f;
         lines.Text(name).SetSize(UIHelper.LabelSize + 4);
-        if (chara.GetStr(PlayerTitleDelta.TitleKey) is { Length: > 0 } title) {
+        if (chara?.GetStr(PlayerTitleDelta.TitleKey) is { Length: > 0 } title) {
             lines.KeyValue("emp_ui_kv_title".lang(), title);
         }
 
-        lines.KeyValue("emp_ui_kv_character".lang(), chara.Name);
-        lines.KeyValue("emp_ui_kv_level".lang(), chara.LV.ToString());
-        lines.KeyValue("emp_ui_kv_race_job".lang(), $"{chara.race.GetText()}, {chara.job.GetText()}");
+        lines.KeyValue("emp_ui_kv_character".lang(), player.CharaName);
+        lines.KeyValue("emp_ui_kv_level".lang(), player.Level.ToString());
+        if (chara is not null) {
+            lines.KeyValue("emp_ui_kv_race_job".lang(), $"{chara.race.GetText()}, {chara.job.GetText()}");
+        }
         if (NetSession.Instance.Rules.UseTeams) {
-            var teamId = Teams.TeamOf(chara.uid);
+            var teamId = player.Team;
             if (TeamBanner.On && teamId != Teams.Wanderers && TeamBanner.EmblemSprite(teamId) is { } emblem) {
                 var teamRow = lines.Row();
                 teamRow.Layout.spacing = 6f;
@@ -253,18 +305,20 @@ internal class TabPlayers : TabEmpBase
                 lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(teamId));
             }
         }
-        lines.KeyValue("emp_ui_kv_where".lang(), chara.currentZone?.NameWithLevel);
+        lines.KeyValue("emp_ui_kv_where".lang(), player.Where);
         // (no ping for yourself, nor for the host's own line)
-        if (player.Index != 0 && !player.User.IsMe) {
-            var ms = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
+        if (!player.IsHost && !player.IsMe) {
+            var ms = player.Ping;
             lines.KeyValue("emp_ui_kv_ping".lang(), ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
         }
         lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
         lines.KeyValue("emp_ui_kv_session".lang(), SessionOf(player));
-        AddRecords(lines, chara);
-        AddDeeds(page, chara);
+        if (chara is not null) {
+            AddRecords(lines, chara);
+            AddDeeds(page, chara);
+        }
 
-        var actions = ActionsFor(player, chara);
+        var actions = ActionsFor(player);
         if (actions.Count == 0) {
             return;
         }
@@ -277,14 +331,14 @@ internal class TabPlayers : TabEmpBase
     private static readonly Dictionary<ulong, float> _seen = [];
     private static Game? _seenGame;
 
-    private static string SessionOf(NetPeerState player)
+    private static string SessionOf(Row player)
     {
         if (!ReferenceEquals(_seenGame, EClass.game)) {
             _seen.Clear();
             _seenGame = EClass.game;
         }
 
-        var key = (ulong)player.User;
+        var key = player.Account;
         if (!_seen.TryGetValue(key, out var since)) {
             _seen[key] = since = Time.realtimeSinceStartup;
         }
@@ -335,12 +389,12 @@ internal class TabPlayers : TabEmpBase
         }
     }
 
-    private static string RoleOf(NetPeerState player)
+    private static string RoleOf(Row player)
     {
-        var role = player.Index == 0 ? "emp_ui_player_host".lang()
-            : ModerationDelta.AdminIds.Contains(player.User) ? "emp_ui_role_admin".lang()
-            : ModerationDelta.ModeratorIds.Contains(player.User) ? "emp_ui_role_mod".lang() : "emp_ui_role_player".lang();
-        if (ModerationDelta.FrozenIds.Contains(player.User)) {
+        var role = player.IsHost ? "emp_ui_player_host".lang()
+            : ModerationDelta.AdminIds.Contains(player.Account) ? "emp_ui_role_admin".lang()
+            : ModerationDelta.ModeratorIds.Contains(player.Account) ? "emp_ui_role_mod".lang() : "emp_ui_role_player".lang();
+        if (ModerationDelta.FrozenIds.Contains(player.Account)) {
             role += ", " + "emp_ui_role_frozen".lang();
         }
         if (player.Idle) {
@@ -410,26 +464,24 @@ internal class TabPlayers : TabEmpBase
     }
 
     /// <summary>
-    ///     One row per player (council 2026-10-26): portrait, name, character and level, team, ping, badges, and the
-    ///     "..." menu
+    ///     One row per player (council 2026-10-26): portrait, name, character and level, where it is, team, ping, badges,
+    ///     and the "..." menu
     /// </summary>
-    private static void BuildPlayerLine(YKLayout parent, NetPeerState player, bool picked, Action onPick)
+    private static void BuildPlayerLine(YKLayout parent, Row player, bool picked, Action onPick)
     {
-        var chara = player.FindChara();
-        if (chara is null) {
-            parent.Text("emp_ui_invalid_chara".Loc(player.Index, player.CharaUid));
-            return;
-        }
-
         // (a player whose Steam name is empty is shown by the name of the character)
-        var name = (string.IsNullOrWhiteSpace(player.User.Name) ? chara.Name : player.User.Name);
-        if (player.User.IsMe) {
+        var name = player.Name;
+        if (player.IsMe) {
             name += "  " + "emp_ui_player_you".lang();
         }
 
-        var detail = "emp_ui_player_detail".Loc(chara.Name, chara.LV);
-        if (player.Index == 0) {
+        var detail = "emp_ui_player_detail".Loc(player.CharaName, player.Level);
+        if (player.IsHost) {
             detail = "emp_ui_player_host".lang() + "  " + detail;
+        }
+        // where each one is: the server's players travel alone a lot (user 2026-10-30)
+        if (player.Where is { Length: > 0 } where) {
+            detail += ", " + where;
         }
 
         var badges = PlayerBadge.None;
@@ -437,61 +489,59 @@ internal class TabPlayers : TabEmpBase
         if (player.Idle) {
             badges |= PlayerBadge.Idle;
         }
-        if (ModerationDelta.AdminIds.Contains(player.User)) {
+        if (ModerationDelta.AdminIds.Contains(player.Account)) {
             badges |= PlayerBadge.Admin;
-        } else if (ModerationDelta.ModeratorIds.Contains(player.User)) {
+        } else if (ModerationDelta.ModeratorIds.Contains(player.Account)) {
             badges |= PlayerBadge.Moderator;
         }
-        if (ModerationDelta.FrozenIds.Contains(player.User)) {
+        if (ModerationDelta.FrozenIds.Contains(player.Account)) {
             badges |= PlayerBadge.Frozen;
         }
 
-        // (the host's own line has no ping: index 0)
-        var ping = player.Index == 0 ? -1 : EmpUi.PingBarsFor(player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs);
-        var teamId = Teams.TeamOf(chara.uid);
+        // (the host's own line has no ping)
+        var ping = player.IsHost || player.IsMe ? -1 : EmpUi.PingBarsFor(player.Ping);
+        var teamId = player.Team;
         var inTeam = NetSession.Instance.Rules.UseTeams && teamId != Teams.Wanderers;
         var team = inTeam ? Teams.NameOf(teamId) : null;
-        parent.PickRow(new(name, detail, chara, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null,
+        parent.PickRow(new(name, detail, player.Picture, team, ping, badges, inTeam ? TeamBanner.ChipColor(teamId) : null,
             inTeam ? TeamBanner.EmblemSprite(teamId) : null), picked, onPick);
     }
 
     /// <summary>
-    ///     The "..." entries of a player's row: the same for everyone, the admin ones only when permitted
+    ///     The "..." entries of a player's row: the same for everyone, the admin ones only when permitted. A player on
+    ///     another map: what goes through the host (a private line, a letter, the personal lists, moderation)
     /// </summary>
-    private static List<(string Label, Action Act)> ActionsFor(NetPeerState player, Chara chara)
+    private static List<(string Label, Action Act)> ActionsFor(Row player)
     {
         var actions = new List<(string, Action)>();
-        // away: the connection is being rebuilt, nothing to do to anyone
-        if (NetSession.Instance.IsAway) {
-            return actions;
-        }
-
+        var chara = player.Chara;
+        var away = NetSession.Instance.IsAway;
         var isHost = NetSession.Instance.Transport is ElinNetHost;
         // Reconnect: a guest's own line only, or the host on a guest's line
         // (IsHost also reads true on an away client, and reconnecting would drop its zone)
-        if (isHost ^ player.User.IsMe) {
-            actions.Add(("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index)));
+        if (!away && player.State is { } state && (isHost ^ player.IsMe)) {
+            actions.Add(("emp_ui_reconnect".lang(), () => ReconnectPlayer(state.Index)));
         }
 
         // what a player may do to another, with the host's switches (the same entries as in the game's own menu)
-        if (!player.User.IsMe) {
-            var other = player.User;
-            var otherName = other.Name;
-            var here = chara.IsAliveInCurrentZone;
+        if (!player.IsMe) {
+            var other = player.Account;
+            var otherName = player.Name;
+            var uid = player.Uid;
+            var here = !away && chara is { IsAliveInCurrentZone: true };
             if (PlayerWhisper.Enabled) {
-                actions.Add(("emp_ui_act_whisper".lang(), () => PlayerWhisper.Open(chara)));
+                actions.Add(("emp_ui_act_whisper".lang(), () => PlayerWhisper.Open(uid, otherName)));
             }
             if (PlayerTrade.Enabled && here) {
-                actions.Add(("emp_act_trade".lang(), () => PlayerTrade.Invite(chara.uid)));
+                actions.Add(("emp_act_trade".lang(), () => PlayerTrade.Invite(uid)));
             }
             if (PlayerDuel.Enabled && here && !PlayerDuel.InDuel) {
-                actions.Add(("emp_act_duel".lang(), () => PlayerDuel.Challenge(chara.uid)));
+                actions.Add(("emp_act_duel".lang(), () => PlayerDuel.Challenge(uid)));
             }
             // a letter, also kept for a player who leaves before reading it (host box "Mailbox")
             if (Mailbox.On) {
-                var to = chara.uid;
                 actions.Add(("emp_ui_mail_write_to".lang(), () => {
-                    TabMail.WriteTo(to);
+                    TabMail.WriteTo(uid);
                     SetSubTab("players", MailSubTab);
                     LayerElinTogether.Instance?.Reopen();
                 }));
@@ -507,52 +557,55 @@ internal class TabPlayers : TabEmpBase
             }));
 
             // a leader's invitation, as the Team page offers it (the host checks the same again)
-            if (EClass.pc is { } pc && Teams.LedBy(pc.uid) != Teams.Wanderers && Teams.TeamOf(chara.uid) != Teams.TeamOf(pc.uid) &&
-                Teams.InviteOf(chara.uid) == Teams.Wanderers) {
-                var uid = chara.uid;
+            if (!away && EClass.pc is { } pc && Teams.LedBy(pc.uid) != Teams.Wanderers && Teams.TeamOf(uid) != Teams.TeamOf(pc.uid) &&
+                Teams.InviteOf(uid) == Teams.Wanderers) {
                 actions.Add(("emp_ui_team_invite".Loc(Teams.PlayerName(uid)), () => Teams.Ask(TeamAsk.Invite, uid)));
             }
         }
 
-        AddAdminActions(actions, player);
+        if (!away) {
+            AddAdminActions(actions, player);
+        }
+
         return actions;
     }
 
     /// <summary>
     ///     Moderation: the host and the admins, on the line of a player who is neither the host nor an admin
     /// </summary>
-    private static void AddAdminActions(List<(string, Action)> actions, NetPeerState player)
+    private static void AddAdminActions(List<(string, Action)> actions, Row player)
     {
         var isHost = NetSession.Instance.Transport is ElinNetHost;
-        ulong target = player.User;
+        var target = player.Account;
         var self = NetSession.Instance.Self;
         ulong me = self?.User ?? UserData.Me;
-        var mine = self is not null ? player.Index == self.Index : player.User.IsMe;
+        var mine = player.IsMe;
         var admin = isHost || ModerationDelta.AdminIds.Contains(me);
         var extras = isHost ? ElinNetHost.AdminExtrasOn : NetSession.Instance.Rules.AdminExtras;
         var moderator = !admin && extras && ModerationDelta.ModeratorIds.Contains(me);
+        var peerIndex = player.PeerIndex;
         if (mine && admin) {
             if (extras) {
-                actions.Add(("emp_ui_set_jail".lang(), () => Order("setjail", 0, player.Index)));
+                actions.Add(("emp_ui_set_jail".lang(), () => Order("setjail", 0, peerIndex)));
             }
             if (ContainerLog.On) {
                 actions.Add(("emp_ui_container_logs".lang(), () => ContainerLog.Ask(0)));
             }
         }
 
-        if (player.Index == 0 || mine || ModerationDelta.AdminIds.Contains(target) || !(admin || moderator) ||
+        if (player.IsHost || mine || ModerationDelta.AdminIds.Contains(target) || !(admin || moderator) ||
             (moderator && ModerationDelta.ModeratorIds.Contains(target))) {
             return;
         }
 
-        actions.Add(("emp_ui_kick".lang(), () => Order("kick", target, player.Index)));
+        actions.Add(("emp_ui_kick".lang(), () => Order("kick", target, peerIndex)));
         actions.Add(((ModerationDelta.IsMuted(target) ? "emp_ui_unmute" : "emp_ui_mute").lang(),
-            () => Order(ModerationDelta.IsMuted(target) ? "unmute" : "mute", target, player.Index)));
+            () => Order(ModerationDelta.IsMuted(target) ? "unmute" : "mute", target, peerIndex)));
         if (!admin) {
             return;
         }
 
-        actions.Add(("emp_ui_ban".lang(), () => Order("ban", target, player.Index)));
+        actions.Add(("emp_ui_ban".lang(), () => Order("ban", target, peerIndex)));
         if (isHost) {
             actions.Add(("emp_ui_make_admin".lang(), () => {
                 (NetSession.Instance.Transport as ElinNetHost)?.MakeAdmin(target, true);
@@ -565,8 +618,8 @@ internal class TabPlayers : TabEmpBase
         }
 
         var held = ModerationDelta.FrozenIds.Contains(target);
-        actions.Add(((held ? "emp_ui_unfreeze" : "emp_ui_freeze").lang(), () => Order(held ? "unfreeze" : "freeze", target, player.Index)));
-        actions.Add(("emp_ui_jail".lang(), () => Order("jail", target, player.Index)));
+        actions.Add(((held ? "emp_ui_unfreeze" : "emp_ui_freeze").lang(), () => Order(held ? "unfreeze" : "freeze", target, peerIndex)));
+        actions.Add(("emp_ui_jail".lang(), () => Order("jail", target, peerIndex)));
         if (isHost) {
             var mod = ModerationDelta.ModeratorIds.Contains(target);
             actions.Add(((mod ? "emp_ui_unmake_mod" : "emp_ui_make_mod").lang(), () => {
