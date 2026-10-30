@@ -107,6 +107,14 @@ public class CharaActPerformDelta : ElinDelta
             return null;
         }
 
+        // riding and symbiosis are every player's acts, not elements of its character in the host's game: a guest
+        // rides or carries its own companion (or gets off), never another player's (a public server refused every
+        // guest's ride, "act 6018 is not one of …", 2026-10-30)
+        if (ActId is ABILITY.ActRide or ABILITY.ActParasite && sender is not null &&
+            (TargetCard?.Find() is not Chara mount || mount.uid == sender.uid || OwnsOrCompanion(sender, mount))) {
+            return null;
+        }
+
         return $"act {ActId} is not one of {actor.uid}'s";
     }
 
