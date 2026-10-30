@@ -807,17 +807,17 @@ internal partial class EmpConfig
             "Server",
             "TeamKnowledge",
             false,
-            "Each player has its own recipes, crafted list and codex: teammates share one, a player without a team has its own. The save keeps everything anyone knows. Always on for the official public server\n" +
+            "Each player has its own recipes, crafted list and codex: teammates share one, a player without a team has its own. The save keeps everything anyone knows. Always on for the Elin Together public server\n" +
             "Otherwise everyone shares one book of recipes and one codex, as before\n" +
-            "每个玩家有自己的配方、制作记录和图鉴：队友共享一套，没有队伍的玩家有自己的一套。存档保留所有人知道的一切。官方公共服务器上始终开启；关闭时所有人如前共用一套配方和图鉴");
+            "每个玩家有自己的配方、制作记录和图鉴：队友共享一套，没有队伍的玩家有自己的一套。存档保留所有人知道的一切。Elin Together 公共服务器上始终开启；关闭时所有人如前共用一套配方和图鉴");
 
         Server.TeamBoxes = config.Bind(
             "Server",
             "TeamBoxes",
             false,
-            "Each team (a player without a team: alone) keeps its own bank and its own delivery box. What the old boxes hold stays shared. Needs Teams. Always on for the official public server\n" +
+            "Each team (a player without a team: alone) keeps its own bank and its own delivery box. What the old boxes hold stays shared. Needs Teams. Always on for the Elin Together public server\n" +
             "Unticked, every team's box is merged back into the shared one\n" +
-            "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧箱子里的东西仍然共享。需要开启队伍；官方公共服务器上始终开启。取消勾选时，各队的箱子并回共享箱子");
+            "每个队伍（没有队伍的玩家单独算）拥有自己的银行和快递箱，旧箱子里的东西仍然共享。需要开启队伍；Elin Together 公共服务器上始终开启。取消勾选时，各队的箱子并回共享箱子");
 
         Server.TeamBills = config.Bind(
             "Server",
@@ -890,17 +890,17 @@ internal partial class EmpConfig
             "Server",
             "TeamOwnStory",
             false,
-            "Experimental. Each player lives the story at its own pace (Ash's quest, the exploration of Nymelle, every dialog choice, the key items, Loytel's debt and the extra tax), teammates together: a team shares one story, a player without a team has its own. Everyone starts at the story point the world is at when the box is ticked. Farris joins the first base only; a player or team reaching a floor someone already cleared takes the story on from there. Always on for the official public server\n" +
+            "Experimental. Each player lives the story at its own pace (Ash's quest, the exploration of Nymelle, every dialog choice, the key items, Loytel's debt and the extra tax), teammates together: a team shares one story, a player without a team has its own. Everyone starts at the story point the world is at when the box is ticked. Farris joins the first base only; a player or team reaching a floor someone already cleared takes the story on from there. Always on for the Elin Together public server\n" +
             "The save keeps the host's own story (as it was when the box was ticked): unticked, or the save opened without the mod, the world goes on with it. Otherwise all players share one story progression, as before\n" +
-            "实验性。每个玩家按自己的节奏经历剧情（阿什的任务、尼梅尔的探索、所有对话选择、关键物品、欠洛伊特的债务和额外税金），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。官方公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
+            "实验性。每个玩家按自己的节奏经历剧情（阿什的任务、尼梅尔的探索、所有对话选择、关键物品、欠洛伊特的债务和额外税金），队友一起：一个队伍共享一条剧情，没有队伍的玩家有自己的剧情。勾选时所有人从世界当前的剧情进度开始。法里斯只加入第一个据点；到达已被他人通过的楼层的玩家或队伍从那里继续。Elin Together 公共服务器上始终开启。存档保留房主自己的剧情：取消勾选或不带模组打开存档时，世界沿用它。关闭时所有玩家如前共享一条剧情进度");
 
         Server.TeamOwnGuilds = config.Bind(
             "Server",
             "TeamOwnGuilds",
             false,
-            "With 'Each player or team lives its own story': each player or team also has its own place in the Fighters', Mages', Thieves' and Merchants' guilds (membership, rank, contribution, guild quests). Everyone starts with the guilds the world has when the box is ticked. Off even on the official public server\n" +
+            "With 'Each player or team lives its own story': each player or team also has its own place in the Fighters', Mages', Thieves' and Merchants' guilds (membership, rank, contribution, guild quests). Everyone starts with the guilds the world has when the box is ticked. Off even on the Elin Together public server\n" +
             "Unticked, or the save opened without the mod: the guilds of the host's own story. Otherwise one membership for the group, as before\n" +
-            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。官方公共服务器上也默认关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭时整个团体共用一个成员身份，如前");
+            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。Elin Together 公共服务器上也默认关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭时整个团体共用一个成员身份，如前");
 
         Server.GlobalChat = config.Bind(
             "Server",
