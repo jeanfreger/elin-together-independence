@@ -52,6 +52,16 @@ internal static class ChatLog
         }
     }
 
+    /// <summary>Back to the title: the next game starts with no line of the last one</summary>
+    [ElinPreSceneInit]
+    private static void OnTitle(Scene.Mode mode)
+    {
+        if (mode == Scene.Mode.Title) {
+            Clear();
+            _seen = Version;
+        }
+    }
+
     /// <summary>A new session starts with no line of the previous one</summary>
     internal static void Clear()
     {
