@@ -35,12 +35,15 @@ internal static class OwnSettings
     /// <summary>
     ///     Before the game of a client goes away (a world received, see ElinNetClient.OnSaveDataProbe, or the game
     ///     left, see OwnSettingsPatch)
+    ///     <paramref name="now" />: written down while the game goes on (its respawn point or home changed, see
+    ///     <see cref="WatchRespawn" />), so that a game that ends without a word (a crash, the window closed) still
+    ///     finds it; the game going away notes it again
     /// </summary>
-    internal static void Keep()
+    internal static void Keep(bool now = false)
     {
         // a second world before the first one stood on a map: what was kept for the first is still good
         if (!EClass.core.IsGameStarted || Game.id != ResourceFetch.EmpSaveId || EClass.pc is not { } pc ||
-            EClass.player is not { } player || ReferenceEquals(_kept?.From, player)) {
+            EClass.player is not { } player || (!now && ReferenceEquals(_kept?.From, player))) {
             return;
         }
 
@@ -50,7 +53,8 @@ internal static class OwnSettings
             EClass.ui.widgets.UpdateConfigs();
 
             var kept = new Kept {
-                From = player,
+                // (noted while the game goes on: the game going away is still to be noted)
+                From = now ? _kept?.From : player,
                 Seed = EClass.game.seed,
                 Chara = pc.uid,
                 Config = EClass.game.config,
@@ -87,6 +91,8 @@ internal static class OwnSettings
                 KnownSongs = player.knownSongs,
                 HangIcons = player.hangIcons,
                 SpawnZone = player.uidSpawnZone,
+                OwnSpawn = true,
+                HomeZone = pc._cints[2],
                 LastTown = player.uidLastTown,
                 Hotbars = player.hotbars,
                 PartySetups = player.partySetups,
@@ -179,6 +185,42 @@ internal static class OwnSettings
         }
     }
 
+    // the respawn point and home last seen in this game, see WatchRespawn
+    private static (Player? Of, int Spawn, int Home) _watched;
+
+    /// <summary>
+    ///     Each frame on a client: the player set its respawn point or its home (the zone core, a waystone): noted at
+    ///     once, see <see cref="Keep" />
+    /// </summary>
+    internal static void WatchRespawn()
+    {
+        if (!EClass.core.IsGameStarted || Game.id != ResourceFetch.EmpSaveId || EClass.player is not { } player ||
+            EClass.pc is not { _cints: not null } pc) {
+            return;
+        }
+
+        (Player? Of, int Spawn, int Home) seen = (player, player.uidSpawnZone, pc._cints[2]);
+        if (seen == _watched) {
+            return;
+        }
+
+        var changed = ReferenceEquals(_watched.Of, player);
+        _watched = seen;
+        if (changed) {
+            EmpLog.Information("Respawn point of this player now {SpawnZone}, home {HomeZone}", seen.Spawn, seen.Home);
+            Keep(true);
+        }
+    }
+
+    /// <summary>
+    ///     Where a player with neither a respawn point nor a home wakes up after its death: the start site, or the last
+    ///     town, never nowhere (a guest's home can be unset, CharaImport.Adopt)
+    /// </summary>
+    internal static Zone? RespawnFallback()
+    {
+        return EClass.game.StartZone ?? EClass.game.spatials.Find(EClass.player.uidLastTown);
+    }
+
     /// <summary>
     ///     The new game is in place, not started yet (before Game.OnGameInstantiated, which reads the widgets, and
     ///     Player.OnLoad, which reads dataWindow): the settings of this player go in, in place of the host's
@@ -254,6 +296,20 @@ internal static class OwnSettings
             // listed the host's companions (its own keep their numbers in the host's copy). None noted: empty
             player.partySetups = kept?.PartySetups ?? new Player.PartySetup[Player.MaxPartySetup];
 
+            // where this player wakes up after its death (TraitCoreZone, TraitWaystone: Player.spawnZone, then its
+            // home, see Scene): its own, never the one of the copy, which is the host's (its meadow). Left as it was,
+            // a guest who set its home on its own land, or had never set a respawn point, woke up on the host's
+            // meadow, and the next note wrote the host's meadow down as the guest's own. A file of an older version
+            // may hold that copy: the host's value there is dropped (its home, then the start site decide)
+            var copySpawn = player.uidSpawnZone;
+            player.uidSpawnZone = kept is { SpawnZone: not 0 and var spawn } && (kept.OwnSpawn || spawn != copySpawn) ? spawn : 0;
+            // and the home it set (TraitCoreZone "set as home"), on its character, which the host's copy may not hold
+            if (kept is { HomeZone: not 0 and var home } && EClass.game.spatials.map.ContainsKey(home)) {
+                chara._cints[2] = home;
+            }
+
+            _watched = (player, player.uidSpawnZone, chara._cints[2]);
+
             if (kept is null) {
                 return;
             }
@@ -284,8 +340,7 @@ internal static class OwnSettings
             player.customLightMod = kept.LightMod;
             player.memo = kept.Memo ?? "";
             player.memo2 = kept.Memo2 ?? "";
-            // where this player revives (waystone, core zone, last town): the host's in a copy of its world
-            player.uidSpawnZone = kept.SpawnZone;
+            // (its respawn point: above, before an empty note returns)
             player.uidLastTown = kept.LastTown;
 
             // what this player collected or learned (the hoard, crafts and sketches seen, tunes heard and played), not
@@ -485,6 +540,12 @@ internal static class OwnSettings
         public Dictionary<string, KnownSong>? KnownSongs;
         public Dictionary<string, string>? HangIcons;
         public int SpawnZone;
+
+        // SpawnZone is the player's own (written since 2026-10-30; an older file may hold the host's meadow)
+        public bool OwnSpawn;
+
+        // the home of its character (Chara.homeZone)
+        public int HomeZone;
         public int LastTown;
         public Player.PartySetup[]? PartySetups;
 

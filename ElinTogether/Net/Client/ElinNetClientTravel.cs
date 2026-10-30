@@ -100,13 +100,24 @@ internal partial class ElinNetClient
             // it, it cannot leave the host's map alone and stays where it was revived
             _deathTravel = null;
             if (player.deathZoneMove && Session.Rules.AllowIndependentTravel) {
-                // a guest's home can be unset (CharaImport.Adopt): the start site, or the last town, never nowhere
-                zone ??= game.StartZone ?? game.spatials.Find(player.uidLastTown);
+                // neither a respawn point nor a home of its own (OwnSettings.Carry): the start site, or the last town
+                zone ??= OwnSettings.RespawnFallback();
                 _deathTravel = zone is null ? null : (zone, transition);
             }
 
             player.deathZoneMove = false;
             return false;
+        }
+
+        // away alone the game revived it (Scene, the death choice) and sends it to its respawn point, then its home:
+        // with neither of its own (OwnSettings.Carry), where the host's map sends it (above)
+        if (zone is null && player.deathZoneMove && !pc.isDead) {
+            zone = OwnSettings.RespawnFallback();
+            if (zone == pc.currentZone && zone is not null) {
+                player.deathZoneMove = false;
+                pc.Teleport(_zone.GetSpawnPos(pc, ZoneTransition.EnterState.Return).GetNearestPoint() ?? _map.GetCenterPos(), true, true);
+                return false;
+            }
         }
 
         if (zone is null) {
