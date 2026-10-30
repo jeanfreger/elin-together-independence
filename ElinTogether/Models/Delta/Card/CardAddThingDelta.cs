@@ -140,6 +140,24 @@ public class CardAddThingDelta : ElinDelta
             }
 
             EmpLog.Debug("Add thing {Uid} into parent {ParentUid}", thing.uid, parent.uid);
+
+            // a player handing gear to a companion or resident (the trade window, a gift): the game puts it on at
+            // once (InvOwner.Transaction.Process, Chara.GiveGift call TryEquip). A guest's game did that on its
+            // own copy only (its equips of others are not told), so here the gear lay loose in the bag, and the
+            // wearer's idle AI put it away in a shared chest (TryPutSharedItems): it vanished from the guest's
+            // companion a moment later (issue #38). The same call here, told to everyone
+            if (net is ElinNetHost && OriginPeer != 0 && parent is Chara { IsPlayer: false } wearer &&
+                added is { isDestroyed: false } && added.parent == wearer) {
+                if (!wearer.body.slots.Exists(s => s.thing == added)) {
+                    // a stale flag would make vanilla skip it or toggle the slot it points to
+                    added.c_equippedSlot = 0;
+                }
+
+                if (!added.isEquipped) {
+                    using var _ = Simulate();
+                    wearer.TryEquip(added);
+                }
+            }
         }
     }
 
