@@ -50,8 +50,9 @@ internal partial class ElinNetHost
         var table = ServerAvatarTable;
         if (ServerAvatar.Is(pc)) {
             // a world the server saved already: nothing to exchange, only the table to keep right
-            table[AvatarSchema] = 1;
+            table[AvatarSchema] = Math.Max(table[AvatarSchema], 1);
             table[AvatarUid] = pc.uid;
+            RetireServerOwnChara(game.cards.globalCharas.Find((int)table[AvatarOwnerUid]));
             MirrorOwnerStanding();
             return false;
         }
@@ -109,13 +110,14 @@ internal partial class ElinNetHost
             standIn.currentZone = null;
         }
 
-        table[AvatarSchema] = 1;
+        table[AvatarSchema] = Math.Max(table[AvatarSchema], 1);
         table[AvatarOwnerUser] = (long)owner;
         table[AvatarOwnerUid] = former.uid;
         table[AvatarOwnerZone] = zone?.uid ?? 0;
         table[AvatarOwnerX] = x;
         table[AvatarOwnerZ] = z;
         table[AvatarUid] = standIn.uid;
+        RetireServerOwnChara(former);
         MirrorOwnerStanding();
         EmpLog.Information("Server: the character {Owner} of player {User} is a player's now, the server plays {StandIn}",
             former.uid, owner, standIn.uid);
@@ -128,6 +130,53 @@ internal partial class ElinNetHost
 
         EmpLog.Warning("Server: the world could not be saved after the exchange of characters, played as it is");
         return false;
+    }
+
+    // schema value: the owner's character is the server's own and plays nowhere (RetireServerOwnChara)
+    private const long AvatarRetired = 2;
+
+    /// <summary>
+    ///     User 2026-10-30, "the server is not invisible and is considered a player": the official world is made by a
+    ///     new game whose character ("Elin Together", OfficialWorld) claimed the start land. Exchanged for the stand-in,
+    ///     it became the character of an absent player of the server's own account: listed among the players, given a
+    ///     share of every story reward by mail, a delivery box, a seat in the stories. It is nobody's: once the
+    ///     stand-in plays the seat, it is taken out of every list of players (it stays in the world, off any map, flagged
+    ///     a remote character so the host never shows it, for the stand-in to give its place back to when the server
+    ///     stops, see GiveBackToOwner). What was on its way to it by mail (copies of what the players earned) is
+    ///     dropped. Run at every start of a server, so a world made before this is repaired by its next start. A world
+    ///     a player made (any other character) is never touched
+    /// </summary>
+    private static void RetireServerOwnChara(Chara? own)
+    {
+        if (own is null || ServerAvatar.Is(own) || own == pc || !OfficialWorld.IsServerOwn(own)) {
+            return;
+        }
+
+        var uid = own.uid;
+        own.SetBool(OfficialWorld.ServerOwnFlag, true);
+        own.SetBool("remote_chara", true);
+        foreach (var user in SavedRemoteCharas.Where(p => p.Value == uid).Select(p => p.Key).ToList()) {
+            SavedRemoteCharas.Remove(user);
+        }
+
+        foreach (var (user, roster) in PlayerRosters.ToList()) {
+            roster.Remove(uid);
+            if (roster.Count == 0) {
+                PlayerRosters.Remove(user);
+            }
+        }
+
+        PcOrphans.Remove(uid);
+
+        var parcels = game.cards.listPackage.Where(t => t.GetInt(TeamMail.ParcelKey) == uid).ToList();
+        foreach (var parcel in parcels) {
+            game.cards.listPackage.Remove(parcel);
+            parcel.Destroy();
+        }
+
+        ServerAvatarTable[AvatarSchema] = AvatarRetired;
+        EmpLog.Information("Server: the world's own character {Uid} is no player ({Parcels} parcels on their way to it dropped)",
+            uid, parcels.Count);
     }
 
     /// <summary>
@@ -145,7 +194,9 @@ internal partial class ElinNetHost
     internal static int AvatarOwnerCharaUid()
     {
         var table = ServerAvatarTable;
-        return table[AvatarOwnerUser] != 0 && SavedRemoteCharas.TryGetValue((ulong)table[AvatarOwnerUser], out var uid)
+        // (the server's own character, retired: the one the world was made with, whatever its account plays now)
+        return table[AvatarSchema] < AvatarRetired && table[AvatarOwnerUser] != 0 &&
+               SavedRemoteCharas.TryGetValue((ulong)table[AvatarOwnerUser], out var uid)
             ? uid
             : (int)table[AvatarOwnerUid];
     }

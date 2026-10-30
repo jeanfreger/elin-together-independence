@@ -62,7 +62,19 @@ internal static class TeamMail
     private static void BeforeReceive(FactionBranch __instance)
     {
         _held.Clear();
-        if (!TeamBoxes.On || !Teams.BasesOwned || EClass.player.simulatingZone || EClass.game?.cards?.listPackage is not { Count: > 0 } list) {
+        // (a guest's copy of the world never delivers the world's parcels: Patches/WorldKeeper, WorldParcels)
+        if (NetSession.Instance.Transport is ElinNetClient || EClass.player.simulatingZone ||
+            EClass.game?.cards?.listPackage is not { Count: > 0 } list) {
+            return;
+        }
+
+        // a dedicated server only ever takes the world's parcels at the commons, everyone's meadow (user 2026-10-30)
+        var server = ServerAvatar.Is(EClass.pc);
+        if (server && Commons.Is(__instance.owner)) {
+            KeepOffCommons(list);
+        }
+
+        if (!TeamBoxes.On || !Teams.BasesOwned) {
             return;
         }
 
@@ -73,7 +85,8 @@ internal static class TeamMail
             }
 
             var unit = StoryOwner.Of(uid);
-            if (unit > 0 && Teams.HasBase(unit)) {
+            // (a server never stands at a player's base: held there, it would wait for ever)
+            if (unit > 0 && Teams.HasBase(unit) && !server) {
                 if (unit != here) {
                     list.Remove(parcel);
                     _held.Add(parcel);
@@ -86,6 +99,36 @@ internal static class TeamMail
             list.Remove(parcel);
             TeamBoxes.Box(unit, 1).AddThing(parcel);
             EmpLog.Information("A parcel for player {Uid} went to the delivery box of {Owner}", uid, StoryOwner.Name(unit));
+        }
+    }
+
+    /// <summary>
+    ///     What the month makes for nobody in particular (a tax bill or a salary parcel with no name on it: the game's
+    ///     own month, box off, or one older than the boxes) never lies in the commons' mail for any passer-by to take:
+    ///     a salary goes to the world's bank, a bill to the world's bank box (still counted, still payable)
+    /// </summary>
+    private static void KeepOffCommons(List<Thing> list)
+    {
+        if (EClass.game.cards.container_deposit is not { } bank) {
+            return;
+        }
+
+        foreach (var parcel in list.ToArray()) {
+            if (parcel.GetInt(ParcelKey) > 0) {
+                continue;
+            }
+
+            if (parcel.id is "bill_tax" or "bill") {
+                list.Remove(parcel);
+                bank.AddCard(parcel);
+                EmpLog.Information("A {Id} of nobody went to the world's bank, not to the commons", parcel.id);
+            } else if (parcel.id == "parcel" && parcel.things.Count > 0 && parcel.things.All(t => t.id == "money")) {
+                list.Remove(parcel);
+                var money = parcel.things.Sum(t => t.Num);
+                bank.ModCurrency(money);
+                parcel.Destroy();
+                EmpLog.Information("A salary of {Money} went to the world's bank, not to the commons", money);
+            }
         }
     }
 
@@ -105,7 +148,7 @@ internal static class TeamMail
     [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.PutInMailBox))]
     private static bool OnPutInMailBox(Thing t, bool outside)
     {
-        if (outside || !TeamBoxes.On || !Teams.BasesOwned || t.GetInt(ParcelKey) is not (var uid and > 0)) {
+        if (outside || NetSession.Instance.Transport is ElinNetClient || !TeamBoxes.On || !Teams.BasesOwned || t.GetInt(ParcelKey) is not (var uid and > 0)) {
             return true;
         }
 

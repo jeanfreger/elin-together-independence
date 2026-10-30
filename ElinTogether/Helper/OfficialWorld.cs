@@ -18,8 +18,23 @@ namespace ElinTogether.Helper;
 /// </summary>
 public static class OfficialWorld
 {
-    // the character of the world owner: on the server it becomes the Elin Together account's own player character
+    // the character of the world owner: on the server it is retired, the stand-in plays the seat (ServerAvatar)
     internal const string OwnerName = "Elin Together";
+
+    /// <summary>
+    ///     On the character a new official world is made with: the server's own, never a player's (user 2026-10-30:
+    ///     "the server is not invisible and is considered a player"). See ElinNetHost.RetireServerOwnChara
+    /// </summary>
+    internal const string ServerOwnFlag = "emp_server_own";
+
+    /// <summary>
+    ///     That character is the one a server made its world with (-empnewworld). A world made before the flag knows it
+    ///     by the name it was given
+    /// </summary>
+    internal static bool IsServerOwn(Chara? chara)
+    {
+        return chara is not null && (chara.GetBool(ServerOwnFlag) || chara.c_altName == OwnerName);
+    }
 
     private static readonly string? _requested = Arg("-empnewworld");
     private static int _step;
@@ -57,6 +72,7 @@ public static class OfficialWorld
         EmpLog.Information("New world: creating {Save}", saveId);
         Game.Create(saveId);
         EClass.pc.c_altName = OwnerName;
+        EClass.pc.SetBool(ServerOwnFlag, true);
 
         // without the title's actor the game starts where its debug setting says: the normal start (the home
         // meadow, at the prologue's place), as a player's new game ends
