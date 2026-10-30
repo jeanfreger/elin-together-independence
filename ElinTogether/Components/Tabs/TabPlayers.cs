@@ -475,12 +475,15 @@ internal class TabPlayers : TabEmpBase
             name += "  " + "emp_ui_player_you".lang();
         }
 
-        var detail = "emp_ui_player_detail".Loc(player.CharaName, player.Level);
+        // (one cut line: the character's name only when it is not the row's name already)
+        var detail = player.CharaName == player.Name
+            ? "emp_ui_kv_level".lang() + " " + player.Level
+            : "emp_ui_player_detail".Loc(player.CharaName, player.Level);
         if (player.IsHost) {
             detail = "emp_ui_player_host".lang() + "  " + detail;
         }
         // where each one is: the server's players travel alone a lot (user 2026-10-30); first, as a long line is cut
-        if (player.Where is { Length: > 0 } where) {
+        if (player.Where is { Length: > 0 } where && where != EClass._zone?.NameWithLevel) {
             detail = where + "  " + detail;
         }
 
