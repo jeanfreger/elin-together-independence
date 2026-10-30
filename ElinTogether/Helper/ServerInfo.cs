@@ -72,7 +72,13 @@ internal static class ServerInfo
     internal static void Arrived()
     {
         _pending = true;
+        if (Since <= 0f) {
+            Since = UnityEngine.Time.realtimeSinceStartup;
+        }
     }
+
+    /// <summary>When this game started hosting or joined (real time), for the Status page's session time</summary>
+    internal static float Since { get; set; }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]

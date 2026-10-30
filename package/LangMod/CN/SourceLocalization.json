@@ -1114,5 +1114,16 @@
     "LangGeneral.emp_ui_kv_duels.text": "决斗胜场",
     "LangGeneral.emp_ui_pl_deeds.text": "近期事迹",
     "LangGeneral.emp_ui_time_hm.text": "{0}小时{1}分钟",
-    "LangGeneral.emp_ui_time_m.text": "{0}分钟"
+    "LangGeneral.emp_ui_time_m.text": "{0}分钟",
+    "LangGeneral.emp_info_status.text": "服务器状态",
+    "LangGeneral.emp_info_status_off.text": "在多人游戏中显示。",
+    "LangGeneral.emp_info_st_host.text": "主机",
+    "LangGeneral.emp_info_st_players.text": "在线玩家",
+    "LangGeneral.emp_info_st_teams.text": "队伍",
+    "LangGeneral.emp_info_st_date.text": "世界日期",
+    "LangGeneral.emp_info_st_session.text": "本次会话",
+    "LangGeneral.emp_info_st_ping.text": "延迟",
+    "LangGeneral.emp_info_st_restart.text": "重启倒计时",
+    "LangGeneral.emp_info_st_mod.text": "Elin Together",
+    "LangGeneral.emp_info_st_game.text": "Elin"
 }

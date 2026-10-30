@@ -355,6 +355,10 @@ internal partial class ElinNetHost
     private static float _restartAt;
     private static readonly List<int> RestartWarnings = [];
 
+    /// <summary>Minutes before an announced restart, or -1 when none is due (the Status page)</summary>
+    internal static int RestartInMinutes => RestartWarnings.Count == 0 && _restartAt <= Time.realtimeSinceStartup ? -1
+        : Mathf.Max(0, Mathf.CeilToInt((_restartAt - Time.realtimeSinceStartup) / 60f));
+
     // the official server's daily restart (2026-10-28): the warning ends in a stop, written as the operator's stop file
     // (saved, players sent away, then the application starts it again). A game a player hosts is never closed by it
     private static bool _restartStops;

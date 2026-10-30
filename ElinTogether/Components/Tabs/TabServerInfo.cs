@@ -28,6 +28,7 @@ internal class TabServerInfo : TabEmpBase
         }
 
         var pages = new List<(string, System.Action<YKVertical>)> {
+            ("emp_info_status".lang(), BuildStatus),
             ("emp_info_motd".lang(), page => BuildNote(page, "motd.txt", "emp_info_motd", ServerInfo.Motd)),
             ("emp_ui_sub_rules".lang(), page => BuildNote(page, "rules.txt", "emp_info_rules", ServerInfo.RulesText)),
         };
@@ -39,6 +40,42 @@ internal class TabServerInfo : TabEmpBase
         // (the Help pages close the row: the strip has one tab less)
         pages.AddRange(TabHelp.Pages());
         SubTabs("info", pages);
+    }
+
+    /// <summary>
+    ///     The server at a glance (user 2026-10-30): who hosts, who is here, the teams, the world's date, this game's
+    ///     session and ping, an announced restart, the versions. Only what this game knows; nothing is asked for it
+    /// </summary>
+    private static void BuildStatus(YKVertical page)
+    {
+        var card = page.Card("emp_info_status".lang());
+        var session = NetSession.Instance;
+        if (!session.InGame) {
+            TabTeam.EmptyPage(card, InfoIcons, "emp_info_status_off".lang());
+            return;
+        }
+
+        var host = session.CurrentPlayers.FirstOrDefault(p => p.Index == 0);
+        card.KeyValue("emp_info_st_host".lang(), host?.User.Name is { Length: > 0 } hostName ? hostName : EClass.game?.cards.globalCharas.Find(host?.CharaUid ?? 0)?.Name ?? "?");
+        card.KeyValue("emp_info_st_players".lang(), session.CurrentPlayers.Count.ToString());
+        if (session.Rules.UseTeams) {
+            card.KeyValue("emp_info_st_teams".lang(), Teams.Ids().Count(i => i != Teams.Wanderers).ToString());
+        }
+
+        card.KeyValue("emp_info_st_date".lang(), EClass.world.date.GetText(Date.TextFormat.Widget));
+        var minutes = ServerInfo.Since > 0f ? (int)((UnityEngine.Time.realtimeSinceStartup - ServerInfo.Since) / 60f) : 0;
+        card.KeyValue("emp_info_st_session".lang(), minutes >= 60 ? "emp_ui_time_hm".Loc(minutes / 60, minutes % 60) : "emp_ui_time_m".Loc(minutes));
+        if (session.Transport is ElinNetClient && session.Self is { } self) {
+            card.KeyValue("emp_info_st_ping".lang(), $"{(int)(self.AvgPingMs > 0 ? self.AvgPingMs : self.LastPingMs)} ms");
+        }
+
+        if (IsHost && ElinNetHost.RestartInMinutes >= 0) {
+            card.KeyValue("emp_info_st_restart".lang(), "emp_ui_time_m".Loc(ElinNetHost.RestartInMinutes));
+        }
+
+        card.Divider();
+        card.KeyValue("emp_info_st_mod".lang(), ModInfo.BuildVersion);
+        card.KeyValue("emp_info_st_game".lang(), BaseCore.Instance.version.GetText());
     }
 
     private static bool IsHost => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
