@@ -152,6 +152,16 @@ public class InvOwnerOnProcessDelta : ElinDelta
                 };
                 break;
             case TraitAltar altar: {
+                // a guest's right click on its bag ("Offer") asks the host for the thing first (ThingRequest): the
+                // host takes it out of the bag and holds it nowhere until that guest's game puts it somewhere. The
+                // guest offers it from its bag, which the host is never told: back there here first, silently (the
+                // guest has it there), or the offering was dropped below and the thing came back 10 s later
+                // (ThingRequest.InvalidateDangling, issue #35)
+                if (net is ElinNetHost backHost && thing.parent is null && parent is not null &&
+                    backHost.ActiveRemoteCharas.TryGetValue(OriginPeer, out var asker) && parent.GetRootCard() == asker) {
+                    parent.AddThing(thing, false);
+                }
+
                 if (thing.GetRootCard() is not Chara { IsRemotePlayer: true } offerer) {
                     return;
                 }
