@@ -1106,5 +1106,13 @@
     "LangGeneral.emp_ui_chat_hint.text": "输入消息…",
     "LangGeneral.emp_ui_chat_send.text": "发送",
     "LangGeneral.emp_ui_chat_empty.text": "还没有消息。",
-    "LangGeneral.emp_ui_chat_team_tag.text": "{0}（队伍）"
+    "LangGeneral.emp_ui_chat_team_tag.text": "{0}（队伍）",
+    "LangGeneral.emp_ui_kv_title.text": "称号",
+    "LangGeneral.emp_ui_kv_race_job.text": "种族、职业",
+    "LangGeneral.emp_ui_kv_session.text": "在线时长",
+    "LangGeneral.emp_ui_kv_deepest.text": "最深层数",
+    "LangGeneral.emp_ui_kv_duels.text": "决斗胜场",
+    "LangGeneral.emp_ui_pl_deeds.text": "近期事迹",
+    "LangGeneral.emp_ui_time_hm.text": "{0}小时{1}分钟",
+    "LangGeneral.emp_ui_time_m.text": "{0}分钟"
 }

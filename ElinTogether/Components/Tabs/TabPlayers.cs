@@ -218,10 +218,23 @@ internal class TabPlayers : TabEmpBase
         lines.LayoutElement().flexibleWidth = 1f;
         lines.Layout.spacing = 2f;
         lines.Text(name).SetSize(UIHelper.LabelSize + 4);
+        if (chara.GetStr(PlayerTitleDelta.TitleKey) is { Length: > 0 } title) {
+            lines.KeyValue("emp_ui_kv_title".lang(), title);
+        }
+
         lines.KeyValue("emp_ui_kv_character".lang(), chara.Name);
         lines.KeyValue("emp_ui_kv_level".lang(), chara.LV.ToString());
+        lines.KeyValue("emp_ui_kv_race_job".lang(), $"{chara.race.GetText()}, {chara.job.GetText()}");
         if (NetSession.Instance.Rules.UseTeams) {
-            lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(Teams.TeamOf(chara.uid)));
+            var teamId = Teams.TeamOf(chara.uid);
+            if (TeamBanner.On && teamId != Teams.Wanderers && TeamBanner.EmblemSprite(teamId) is { } emblem) {
+                var teamRow = lines.Row();
+                teamRow.Layout.spacing = 6f;
+                TeamEmblemBaker.Place(teamRow.transform, emblem, 28f);
+                teamRow.Text("emp_ui_kv_team".lang() + ": " + Teams.NameOf(teamId));
+            } else {
+                lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(teamId));
+            }
         }
         lines.KeyValue("emp_ui_kv_where".lang(), chara.currentZone?.NameWithLevel);
         // (no ping for yourself, nor for the host's own line)
@@ -230,6 +243,9 @@ internal class TabPlayers : TabEmpBase
             lines.KeyValue("emp_ui_kv_ping".lang(), ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
         }
         lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
+        lines.KeyValue("emp_ui_kv_session".lang(), SessionOf(player));
+        AddRecords(lines, chara);
+        AddDeeds(page, chara);
 
         var actions = ActionsFor(player, chara);
         if (actions.Count == 0) {
@@ -238,6 +254,68 @@ internal class TabPlayers : TabEmpBase
 
         // as wide as their labels, two to a line where they fit (one full-width bar each ran off the page)
         page.Card("emp_ui_pl_actions".lang()).ButtonFlow(actions);
+    }
+
+    // when this game first saw each account in the session (honest: not the host's join time, nothing is sent)
+    private static readonly Dictionary<ulong, float> _seen = [];
+    private static Game? _seenGame;
+
+    private static string SessionOf(NetPeerState player)
+    {
+        if (!ReferenceEquals(_seenGame, EClass.game)) {
+            _seen.Clear();
+            _seenGame = EClass.game;
+        }
+
+        var key = (ulong)player.User;
+        if (!_seen.TryGetValue(key, out var since)) {
+            _seen[key] = since = Time.realtimeSinceStartup;
+        }
+
+        var minutes = Mathf.FloorToInt((Time.realtimeSinceStartup - since) / 60f);
+        return minutes >= 60 ? "emp_ui_time_hm".Loc(minutes / 60, minutes % 60) : "emp_ui_time_m".Loc(minutes);
+    }
+
+    /// <summary>
+    ///     Deepest floor and duels won, as the host's boards tell (only the first ten of each board are sent, so a player
+    ///     outside them shows nothing). Needs the Leaderboards box
+    /// </summary>
+    private static void AddRecords(YKVertical lines, Chara chara)
+    {
+        if (!Leaderboards.On) {
+            return;
+        }
+
+        foreach (var (board, label) in new[] { (Leaderboards.Deepest, "emp_ui_kv_deepest"), (Leaderboards.Duels, "emp_ui_kv_duels") }) {
+            if (Leaderboards.Of(board) is null) {
+                Leaderboards.Ask(board);
+            }
+
+            if (Leaderboards.Of(board) is { } answer && Array.IndexOf(answer.Uids, chara.uid) is >= 0 and var at) {
+                lines.KeyValue(label.lang(), answer.Scores[at].ToString());
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The last three lines of the activity journal done by that player (the ones this viewer may read)
+    /// </summary>
+    private static void AddDeeds(YKVertical page, Chara chara)
+    {
+        if (!ActivityJournal.On || EClass.pc is not { } pc) {
+            return;
+        }
+
+        var deeds = ActivityJournal.Entries().Where(e => e.Actor == chara.uid && ActivityJournal.Visible(e, pc.uid))
+            .Reverse().Take(3).ToList();
+        if (deeds.Count == 0) {
+            return;
+        }
+
+        var card = page.Card("emp_ui_pl_deeds".lang());
+        foreach (var deed in deeds) {
+            card.TextSmall(ActivityJournal.Line(deed), FontColor.Gray);
+        }
     }
 
     private static string RoleOf(NetPeerState player)
