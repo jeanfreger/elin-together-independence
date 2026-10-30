@@ -16,6 +16,12 @@ public class OnBarterDelta : ElinDelta
     [Key(1)]
     public ShopGates? Gates { get; set; }
 
+    /// <summary>
+    ///     The host's restock date after its OnBarter: most opens do not restock, so the timer must not be reset
+    /// </summary>
+    [Key(2)]
+    public int? StockExpire { get; set; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (ShopOwner.Find() is not { } shopOwner) {
@@ -41,7 +47,7 @@ public class OnBarterDelta : ElinDelta
             return;
         }
 
-        shopOwner.c_dateStockExpire = world.date.GetRaw(24 * shopOwner.trait.RestockDay);
+        shopOwner.c_dateStockExpire = StockExpire ?? world.date.GetRaw(24 * shopOwner.trait.RestockDay);
 
         var inv = LayerInventory.listInv.Find(l => l.invs[0].owner.owner == shopOwner)?.invs[0];
         if (inv is null) {

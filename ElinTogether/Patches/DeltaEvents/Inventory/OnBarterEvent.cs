@@ -36,10 +36,15 @@ internal class OnBarterEvent
     }
 
     [HarmonyPostfix]
-    internal static void OnBarterEnd((OnBarterDelta? delta, ElinDelta.PatchScope scope) __state)
+    internal static void OnBarterEnd(Trait __instance, (OnBarterDelta? delta, ElinDelta.PatchScope scope) __state)
     {
         if (__state.delta is null) {
             return;
+        }
+
+        if (NetSession.Instance.IsHost) {
+            // the date this open left, restocked or not (issue #40: clients reset it to a full RestockDay)
+            __state.delta.StockExpire = __instance.owner.c_dateStockExpire;
         }
 
         NetSession.Instance.Connection?.Delta.AddRemote(__state.delta);
