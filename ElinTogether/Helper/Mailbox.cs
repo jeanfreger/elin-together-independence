@@ -201,11 +201,14 @@ internal static class Mailbox
         var done = "";
         // (every request, refused ones too: each answer carries the whole mailbox, review 2026-10-30)
         var now = Time.realtimeSinceStartup;
-        if (_lastList.TryGetValue(chara.uid, out var last) && now - last < (request.Kind == MailRequestDelta.List ? ListGap : 0.3f)) {
-            return;
-        }
+        // (a send has its own 5 s rule, which answers why it was refused)
+        if (request.Kind != MailRequestDelta.Send) {
+            if (_lastList.TryGetValue(chara.uid, out var last) && now - last < (request.Kind == MailRequestDelta.List ? ListGap : 0.3f)) {
+                return;
+            }
 
-        _lastList[chara.uid] = now;
+            _lastList[chara.uid] = now;
+        }
         switch (request.Kind) {
             case MailRequestDelta.List:
                 break;
