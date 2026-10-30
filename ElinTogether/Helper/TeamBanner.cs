@@ -266,7 +266,8 @@ internal static class TeamBanner
         if (Of(teamId) is not { } banner) {
             // (a team that made no emblem yet: a square of its colour, so every team has its mark, user 2026-10-30)
             if (On && teamId != Teams.Wanderers) {
-                Frame(row, ChipColor(teamId), null, size, true, null);
+                // (the swatch alone: Frame with no sprite drew the game's 100 px white image over the header)
+                Swatch(row, ChipColor(teamId), size, size, true, null);
             }
 
             return;

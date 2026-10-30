@@ -451,7 +451,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             }
 
             var count = BadgeOf(id);
-            var want = count > 0 ? $"{label} {$"({count})".TagColor(new Color(0.85f, 0.2f, 0.15f))}" : label;
+            // (plain text: the tab's label shows rich-text tags as they are)
+            var want = count > 0 ? $"{label} ({count})" : label;
             if (text.text != want) {
                 text.text = want;
             }
