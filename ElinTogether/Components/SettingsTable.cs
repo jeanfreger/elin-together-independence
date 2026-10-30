@@ -347,6 +347,8 @@ internal static class SettingsTable
         // Joining
         yield return new("who_joins", "joining", false, Choice: WhoJoins, Apply: "join");
         yield return new("checks", "joining", true, Under: "who_joins", Apply: "join");
+        // (a text row, drawn by the page itself: the mods each player may have or not)
+        yield return new("client_mods", "joining", true, Under: "who_joins", Apply: "join");
         yield return new("same_game_version", "joining", true, EmpConfig.Server.SameGameVersion, Apply: "join");
         yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
         yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
@@ -490,7 +492,7 @@ internal static class SettingsTable
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
         EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
         EmpConfig.Server.LivingWorldMinutes, EmpConfig.Server.TeamMaxSize, EmpConfig.Server.TeamFoundCooldown,
-        EmpConfig.Server.AbandonDays, EmpConfig.Server.LandsPerTeam,
+        EmpConfig.Server.AbandonDays, EmpConfig.Server.LandsPerTeam, EmpConfig.Server.ClientOnlyMods,
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
@@ -574,6 +576,9 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.PublishMods, true);
         // look-only mods (pictures, portraits, sounds, translations) are each player's own (user 2026-10-30)
         yield return (EmpConfig.Server.LookModsOwn, true);
+        // a display mod with code, each player's own (user 2026-10-30: Somewhat Enhanced Display, Workshop 3781674985;
+        // its YK Framework is this mod's own dependency, on every side already)
+        yield return (EmpConfig.Server.ClientOnlyMods, "maccha_coffee_somewhat_enhanced_display");
         // StrictValidationMode: on after stage 1 (C, council pending); it is a file-only switch, left as it is here
         yield return (EmpConfig.Server.MembersOnly, false);
         // travel and time: (C, council pending) personal pace with a 24 hour lead
@@ -827,6 +832,11 @@ internal static class SettingsTable
             [EmpConfig.Server.AutoResync] = r.AutoResync,
             [EmpConfig.Server.SoftRecall] = r.SoftRecall,
         };
+        // (a host of an older version tells no list: not shown)
+        if (r.ClientOnlyMods is { } clientMods) {
+            values[EmpConfig.Server.ClientOnlyMods] = clientMods;
+        }
+
         return new(e => values.TryGetValue(e, out var v) ? v : null);
     }
 

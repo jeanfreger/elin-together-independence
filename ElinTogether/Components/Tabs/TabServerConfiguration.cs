@@ -160,6 +160,7 @@ internal class TabServerConfiguration : TabEmpBase
     ///     A friend is told only some rules: the others are not shown (a row it cannot read would say "off")
     /// </summary>
     private bool Told(SettingRow row) => row.Choice is { } c ? c.Entries.Any(e => _src.Raw(e) is not null)
+        : row.Id == "client_mods" ? _src.Raw(EmpConfig.Server.ClientOnlyMods) is not null
         : row.Entry is { } e && _src.Raw(e) is not null;
 
     private static bool IsChanged(SettingRow row, RuleSource src, RuleSource target)
@@ -363,6 +364,10 @@ internal class TabServerConfiguration : TabEmpBase
             return BuildSpecial(parent, row);
         }
 
+        if (row.Id == "client_mods") {
+            return BuildClientMods(parent, row);
+        }
+
         var changed = IsChanged(row, _src, _target);
         var block = parent.Vertical();
         block.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -474,6 +479,40 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         return new(row, box.gameObject, $"{row.Label} {row.Description}", false);
+    }
+
+    /// <summary>
+    ///     The mods each player may have or not (ClientOnlyMods): a text row, the host types the ids, a friend reads
+    ///     them. Written when the host leaves the box (Enter or a click elsewhere): a change draws the page again
+    /// </summary>
+    private Line BuildClientMods(YKVertical parent, SettingRow row)
+    {
+        var value = _src.Raw(EmpConfig.Server.ClientOnlyMods) as string ?? "";
+        var block = Vertical(parent);
+        block.Layout.padding = new(UIHelper.SubIndent, 0, 0, 0);
+        block.Layout.spacing = 2f;
+        block.Text(row.Label).SetSize(UIHelper.LabelSize);
+        if (_guest) {
+            block.TextSmall(value.Trim().Length > 0 ? value : "emp_ui_sv_client_mods_none".lang());
+        } else {
+            var input = block.InputText(value);
+            input.AllowAnyText();
+            input.field.characterLimit = 2000;
+            input.StyleAsSearch("emp_ui_sv_client_mods_hint".lang());
+            input.field.onEndEdit.AddListener(text => {
+                var clean = string.Join(",", ClientOnlyMods.Parse(text));
+                if (clean != EmpConfig.Server.ClientOnlyMods.Value) {
+                    Capture();
+                    SettingsTable.Write([(EmpConfig.Server.ClientOnlyMods, clean)]);
+                }
+            });
+        }
+
+        foreach (var text in row.Description.Split('\n')) {
+            block.TextSmall(text, FontColor.Gray);
+        }
+
+        return new(row, block.gameObject, $"{row.Label} {row.Description} {value}", false);
     }
 
     /// <summary>

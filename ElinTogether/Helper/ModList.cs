@@ -171,10 +171,15 @@ internal static class ModList
     ///     The reference against the mods active here, with one line in the log
     /// </summary>
     /// <param name="ownLooks">the list says each player keeps their own look-only mods: those here are not extra</param>
-    internal static Diff Compare(List<Mod> reference, string source, bool ownLooks = false)
+    /// <param name="clientOnly">
+    ///     the mods the host accepts on a player's side only (ClientOnlyMods): neither missing nor extra, whoever has them
+    /// </param>
+    internal static Diff Compare(List<Mod> reference, string source, bool ownLooks = false, HashSet<string>? clientOnly = null)
     {
-        reference = reference.Where(m => Norm(m.Id) != ModInfo.Guid).ToList();
-        var here = ownLooks ? Here.Where(m => !Looks.Contains(m.Workshop) && !Looks.Contains(Norm(m.Id))).ToList() : Here;
+        var free = clientOnly ?? [];
+        reference = reference.Where(m => Norm(m.Id) != ModInfo.Guid && !ClientOnlyMods.Lists(free, m.Id, m.Workshop)).ToList();
+        var here = (ownLooks ? Here.Where(m => !Looks.Contains(m.Workshop) && !Looks.Contains(Norm(m.Id))) : Here)
+            .Where(m => !ClientOnlyMods.Lists(free, m.Id, m.Workshop)).ToList();
         var workshops = new HashSet<string>(here.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
         var ids = new HashSet<string>(here.Select(m => Norm(m.Id)));
         var wanted = new HashSet<string>(reference.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
@@ -254,6 +259,11 @@ internal static class ModList
     {
         return id.Trim().ToLowerInvariant();
     }
+
+    /// <summary>
+    ///     The mods active in this game, this fork included
+    /// </summary>
+    internal static List<BaseModPackage> ActivePackages() => Active();
 
     private static List<BaseModPackage> Active()
     {

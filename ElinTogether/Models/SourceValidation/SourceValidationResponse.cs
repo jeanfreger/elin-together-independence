@@ -25,8 +25,9 @@ public class SourceValidationResponse
 
         return new() {
             SourceHashes = SourceDataValidator.Default.GetValidation(request.SourceNames),
+            // (the host's client-side mods are this player's own business: their DLLs are not reported)
             PluginHashes = flags.HasFlag(ValidationFlags.Plugins)
-                ? PluginDataValidator.Default.GetValidation()
+                ? PluginDataValidator.Default.GetValidation(Helper.ClientOnlyMods.Parse(request.ClientOnlyMods))
                 : [],
             FileHashes = new FileDataValidator(request.FilePaths).GetValidation(),
             ActMapping = ActMappingValidator.Default.GetValidation(),

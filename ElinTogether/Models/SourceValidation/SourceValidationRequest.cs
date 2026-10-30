@@ -20,4 +20,11 @@ public class SourceValidationRequest
     /// </summary>
     [Key(3)]
     public string? Mods { get; init; }
+
+    /// <summary>
+    ///     The mods the host accepts on a player's side only (ClientOnlyMods, comma separated): left out of the
+    ///     plugin hashes and of the comparison of the mods. An older host sends none
+    /// </summary>
+    [Key(4)]
+    public string? ClientOnlyMods { get; init; }
 }

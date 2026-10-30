@@ -33,7 +33,24 @@ internal partial class ElinNetClient
     /// <summary>
     ///     A row of <see cref="ShowRowList" />: a character (or save) to pick, an action under them, or a gap between the two
     /// </summary>
-    private record ChoiceRow(string Text, Action? Click, bool IsAction = false);
+    private record ChoiceRow(string Text, Action? Click, bool IsAction = false, string? Portrait = null);
+
+    /// <summary>
+    ///     The game's picture of that portrait id, when this game has it (a portrait from a mod the player lacks: none)
+    /// </summary>
+    private static UnityEngine.Sprite? PortraitSprite(string? id)
+    {
+        if (id.IsEmpty()) {
+            return null;
+        }
+
+        try {
+            return Portrait.modPortraits.GetItem(id, true)?.GetObject();
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "No picture for portrait {Id}", id);
+            return null;
+        }
+    }
 
     /// <summary>
     ///     The game's own list window (like the barter or the moongate list), one button per row.
@@ -46,7 +63,16 @@ internal partial class ElinNetClient
             list.callbacks = new UIList.Callback<ChoiceRow, ItemGeneral>
             {
                 onInstantiate = (row, item) => {
-                    item.DisableIcon();
+                    // a character's row shows its portrait beside its name, as the game's lists of people do
+                    if (PortraitSprite(row.Portrait) is { } face) {
+                        item.button1.icon.sprite = face;
+                        item.button1.icon.preserveAspect = true;
+                        item.button1.icon.rectTransform.sizeDelta = new(40f, 40f);
+                        item.DisableMask();
+                    } else {
+                        item.DisableIcon();
+                    }
+
                     // actions sit under the characters, in another colour
                     item.button1.mainText.SetText(row.Text, row.IsAction ? FontColor.Topic : FontColor.Default);
                     item.Build();
@@ -82,19 +108,25 @@ internal partial class ElinNetClient
             // (dead in a permadeath world: shown, waiting for a revive at a bartender, not playable; in a solo save:
             // shown, not playable until it comes back)
             .Select(c => c.Away is { } away
-                ? new ChoiceRow(c.Label + " " + "emp_ui_chara_away_tag".lang(away), null)
+                ? new ChoiceRow(c.Label + " " + "emp_ui_chara_away_tag".lang(away), null, Portrait: c.Portrait)
                 : c.Dead
-                    ? new ChoiceRow(c.Label + " " + "emp_ui_chara_dead_tag".lang(), null)
-                    : new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid })))
+                    ? new ChoiceRow(c.Label + " " + "emp_ui_chara_dead_tag".lang(), null, Portrait: c.Portrait)
+                    : new ChoiceRow(c.Label, () => Host.Send(new SessionCharaSelectResponse { Uid = c.Uid }), Portrait: c.Portrait))
             .ToList();
 
-        // then, in this order: a character from one of my saves (if the host allows it), a new character
-        rows.Add(new ChoiceRow("", null));
-        if (request.AllowImport) {
+        // then, in this order: a character from one of my saves (if the host allows it), a new character (while
+        // under the host's limit of characters). A first-time player's list starts here, with no gap above
+        if (rows.Count > 0) {
+            rows.Add(new ChoiceRow("", null));
+        }
+
+        if (request.AllowImport && !request.AtLimit) {
             rows.Add(new ChoiceRow("emp_ui_chara_import".lang(), () => ShowSaveChoice(request), true));
         }
 
-        rows.Add(new ChoiceRow("emp_ui_chara_new".lang(), () => Host.Send(new SessionCharaSelectResponse { Uid = 0 }), true));
+        if (!request.AtLimit) {
+            rows.Add(new ChoiceRow("emp_ui_chara_new".lang(), () => Host.Send(new SessionCharaSelectResponse { Uid = 0 }), true));
+        }
 
         // then deleting one of them, when the host allows it
         if (request.AllowDelete && request.Charas.Any(c => c.Away is null)) {
