@@ -61,6 +61,7 @@ internal partial class ElinNetClient : ElinNetBase
 
         UpdateTravelCheckpoint();
         UpdateHandoffWait();
+        UpdateResumeTravel();
         UpdateQuestInvite();
         UpdateTransferLock();
         UpdateSoftRejoinWait();

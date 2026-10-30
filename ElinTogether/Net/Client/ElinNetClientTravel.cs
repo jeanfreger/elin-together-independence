@@ -306,6 +306,7 @@ internal partial class ElinNetClient
 
         if (depart.Guest is { } address) {
             JoinZoneSession(travel.Zone, address);
+            _visitTravel = (travel.Zone.uid, travel.Transition);
             return;
         }
 
@@ -460,6 +461,7 @@ internal partial class ElinNetClient
     /// </summary>
     internal void OnGuestLeftZone()
     {
+        _visitTravel = null;
         Session.RemoveZoneSession();
 
         if (_pendingTravel is not { } travel) {
@@ -486,11 +488,81 @@ internal partial class ElinNetClient
 
         // meanwhile we play on alone: the host gives the zone to one of us (or calls us back),
         // see TakeOverZone, and only if it stays silent we go back
+        var visit = _visitTravel;
+        _visitTravel = null;
+        _pendingTravel = null;
+
+        // GitHub issue 42: the owner left while we were still on our way in (its world loaded here, not the map
+        // yet). The zone it hands over cannot be taken without a map to stand on (TakeOverZone), and the 30 s wait
+        // ended on the host's map, far from where the player went. Back to the host now, then on to that zone by
+        // the same travel, which the host grants as any free zone
+        if (visit is { } going && Session.AwayZone?.uid == going.ZoneUid && _zone?.uid != going.ZoneUid) {
+            EmpLog.Warning("Zone session ended ({Reason}) before its map came, back to the host, then on to zone {ZoneUid}",
+                reason, going.ZoneUid);
+            _resumeTravel = (going.ZoneUid, going.Transition, Time.realtimeSinceStartup + ResumeTravelSeconds);
+            _handoffDeadline = Time.realtimeSinceStartup;
+            return;
+        }
+
+        // meanwhile we play on alone: the host gives the zone to one of us (or calls us back),
+        // see TakeOverZone, and only if it stays silent we go back
         EmpLog.Warning("Zone session ended ({Reason}), waiting for the host to hand the zone over",
             reason);
 
-        _pendingTravel = null;
         _handoffDeadline = Time.realtimeSinceStartup + HandoffWaitSeconds;
+    }
+
+    /// <summary>
+    ///     The zone of the zone session we were joining, by the travel that led there (issue 42)
+    /// </summary>
+    private (int ZoneUid, ZoneTransition Transition)? _visitTravel;
+
+    /// <summary>
+    ///     That zone, travelled to again once back on the host's map, until the deadline
+    /// </summary>
+    private (int ZoneUid, ZoneTransition Transition, float Until)? _resumeTravel;
+
+    private const float ResumeTravelSeconds = 180f;
+
+    private float _resumeAt;
+
+    private void UpdateResumeTravel()
+    {
+        if (_resumeTravel is not { } going) {
+            return;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        if (now > going.Until) {
+            _resumeTravel = null;
+            _resumeAt = 0;
+            return;
+        }
+
+        // standing on the host's map again, the world copy loaded and placed
+        if (Session.IsAway || _rejoining || _pendingTravel is not null || _pendingGrant is not null || !core.IsGameStarted ||
+            _zone is null || _awaitingActivation != 0 || pc?.currentZone != _zone) {
+            _resumeAt = 0;
+            return;
+        }
+
+        if (_resumeAt <= 0) {
+            _resumeAt = now + 2f;
+            return;
+        }
+
+        if (now < _resumeAt) {
+            return;
+        }
+
+        _resumeTravel = null;
+        _resumeAt = 0;
+        if (game.spatials.Find(going.ZoneUid) is not { } zone || zone == _zone || pc.isDead || !Session.Rules.AllowIndependentTravel) {
+            return;
+        }
+
+        EmpLog.Information("Going on to {ZoneFullName}, where the player went when its owner left", zone.ZoneFullName);
+        pc.MoveZone(zone, going.Transition);
     }
 
     private void UpdateHandoffWait()
