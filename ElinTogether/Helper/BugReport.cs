@@ -17,27 +17,39 @@ using UnityEngine.Networking;
 namespace ElinTogether.Helper;
 
 /// <summary>
-///     The player's answers to the report form (user 2026-10-30: reports came as a title alone). Again: 0 yes, 1 no,
-///     2 not tried
+///     The player's answers to the report form, laid out as the game's own "Report Bugs" window (user 2026-10-30):
+///     a category, a one-line summary (the issue's title), the detail, whether it happens again (0 yes, 1 no, 2 not
+///     tried), and whether the video and the picture of the game screen go with it
 /// </summary>
-internal sealed record ReportAnswers(string Doing, string Happened, string Expected, int Again)
+internal sealed record ReportAnswers(int Category, string Summary, string Detail, int Again, bool Video, bool Picture)
 {
-    // what each answer needs at least to send the report
-    internal const int MinLength = 15;
+    // what the summary and the detail need at least to send the report
+    internal const int SummaryMin = 10;
+    internal const int DetailMin = 30;
 
-    // what each box takes (three answers and the context stay under the relay's 4000 characters)
-    internal const int MaxLength = 700;
+    // what each box takes (the detail and the context stay under the relay's 4000 characters)
+    internal const int SummaryMax = 120;
+    internal const int DetailMax = 1500;
 
     internal static readonly string[] AgainWords = ["Yes", "No", "Not tried"];
 
-    internal string Title => BugReport.Redact(BugReport.FirstLine(Happened));
+    // the categories as the issue names them; the form's labels are emp_ui_report_cat_<id>
+    internal static readonly string[] CategoryIds = ["bug", "lost", "disconnect", "desync", "idea"];
+    internal static readonly string[] CategoryWords = ["Bug", "Lost item", "Disconnection", "Desync", "Suggestion"];
 
-    /// <returns>null when every answer is long enough, else the label ids of the short ones</returns>
+    internal string CategoryWord => CategoryWords[Mathf.Clamp(Category, 0, CategoryWords.Length - 1)];
+
+    internal string AgainWord => AgainWords[Mathf.Clamp(Again, 0, AgainWords.Length - 1)];
+
+    /// <summary>The issue's title: "[Category] Summary"</summary>
+    internal string Title => $"[{CategoryWord}] {BugReport.Redact(BugReport.FirstLine(Summary ?? ""))}";
+
+    /// <returns>null when the summary and the detail are long enough, else the label ids of the short ones</returns>
     internal string[]? Missing()
     {
         var shortOnes = new[] {
-            ("emp_ui_report_doing", Doing), ("emp_ui_report_happened", Happened), ("emp_ui_report_expected", Expected),
-        }.Where(a => (a.Item2 ?? "").Trim().Length < MinLength).Select(a => a.Item1).ToArray();
+            ("emp_ui_report_summary", Summary, SummaryMin), ("emp_ui_report_detail", Detail, DetailMin),
+        }.Where(a => (a.Item2 ?? "").Trim().Length < a.Item3).Select(a => a.Item1).ToArray();
         return shortOnes.Length == 0 ? null : shortOnes;
     }
 }
@@ -66,15 +78,17 @@ internal static class BugReport
     ///     Writes the zip and gives its path, or null with the reason logged. What needs the game is read here; the
     ///     logs are copied (and redacted line by line, tens of MB on a long day) on a worker thread
     /// </summary>
-    /// <param name="pictures">false: without the replay's video (sent to the relay as a file of its own)</param>
+    /// <param name="video">the replay's video (false when sent: it goes to the relay as a file of its own)</param>
+    /// <param name="picture">the picture of the game screen as screen.jpg (false when sent: the relay's last.jpg)</param>
     /// <param name="report">the player's answers and the automatic context (report.txt)</param>
     /// <param name="host">the host's log, for a guest's report</param>
-    private static IEnumerator Make(bool pictures, string? report, HostLog? host, Action<string?> done)
+    private static IEnumerator Make(bool video, bool picture, string? report, HostLog? host, Action<string?> done)
     {
         var data = Application.persistentDataPath;
         var info = Describe();
-        var video = pictures ? ReplayBuffer.Video() : null;
-        var work = System.Threading.Tasks.Task.Run(() => Write(data, info, video, report, host));
+        var avi = video ? ReplayBuffer.Video() : null;
+        var jpg = picture ? ReplayBuffer.GamePicture() : null;
+        var work = System.Threading.Tasks.Task.Run(() => Write(data, info, avi, jpg, report, host));
         while (!work.IsCompleted) {
             yield return null;
         }
@@ -90,7 +104,7 @@ internal static class BugReport
     }
 
     // (on a worker thread: no game, no log; a failure is the task's)
-    private static string Write(string data, string info, byte[]? video, string? report, HostLog? host)
+    private static string Write(string data, string info, byte[]? video, byte[]? picture, string? report, HostLog? host)
     {
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         var folder = Directory.Exists(desktop) ? desktop : data;
@@ -116,6 +130,12 @@ internal static class BugReport
             if (video is not null) {
                 using var entry = zip.CreateEntry("replay.avi", System.IO.Compression.CompressionLevel.NoCompression).Open();
                 entry.Write(video, 0, video.Length);
+            }
+
+            // the game screen when the report was opened (a JPEG: not compressed again)
+            if (picture is not null) {
+                using var entry = zip.CreateEntry("screen.jpg", System.IO.Compression.CompressionLevel.NoCompression).Open();
+                entry.Write(picture, 0, picture.Length);
             }
 
             foreach (var name in new[] { "Player.log", "Player-prev.log" }) {
@@ -377,26 +397,33 @@ internal static class BugReport
     private const int MaxText = 3900;
 
     /// <summary>
-    ///     The issue's text: the automatic context first (what the player did last, the windows, under the mouse, the
-    ///     zone), then the three answers as sections, whether it happens again, and where the host's log is
+    ///     The issue's text: the category, the summary, whether it happens again and the detail first (the form's
+    ///     order), then what goes with it (video, picture, the host's log), then the automatic context (what the player
+    ///     did last, the windows, under the mouse, the zone)
     /// </summary>
     internal static string Compose(ReportAnswers answers, HostLog host)
     {
         static string Cut(string text, int most) => text.Length <= most ? text : text.Substring(0, most) + "…";
 
-        var tail = new StringBuilder();
-        tail.AppendLine("#### What were you doing?").AppendLine().AppendLine(Cut(answers.Doing.Trim(), ReportAnswers.MaxLength)).AppendLine();
-        tail.AppendLine("#### What happened?").AppendLine().AppendLine(Cut(answers.Happened.Trim(), ReportAnswers.MaxLength)).AppendLine();
-        tail.AppendLine("#### What did you expect?").AppendLine().AppendLine(Cut(answers.Expected.Trim(), ReportAnswers.MaxLength)).AppendLine();
-        tail.AppendLine($"**Does it happen again?** {ReportAnswers.AgainWords[Mathf.Clamp(answers.Again, 0, ReportAnswers.AgainWords.Length - 1)]}").AppendLine();
-        tail.AppendLine(host.Note == "attached"
+        var head = new StringBuilder();
+        head.AppendLine($"**Category:** {answers.CategoryWord}").AppendLine();
+        head.AppendLine($"**Summary:** {Cut((answers.Summary ?? "").Trim().Replace('\n', ' '), ReportAnswers.SummaryMax)}").AppendLine();
+        head.AppendLine($"**Does it happen again?** {answers.AgainWord}").AppendLine();
+        head.AppendLine("#### Detail").AppendLine().AppendLine(Cut((answers.Detail ?? "").Trim(), ReportAnswers.DetailMax)).AppendLine();
+        head.AppendLine(!answers.Video ? "**Video:** not attached (the player's box was off)"
+            : ReplayBuffer.HasFrames ? "**Video:** attached (the last 30 seconds before the report was opened)"
+            : "**Video:** none (the screen recording is off or had no picture yet)").AppendLine();
+        head.AppendLine(!answers.Picture ? "**Game picture:** not attached (the player's box was off)"
+            : ReplayBuffer.HasGamePicture ? "**Game picture:** attached (the game screen just before the report was opened)"
+            : "**Game picture:** none (the screen recording is off or had no picture yet)").AppendLine();
+        head.AppendLine(host.Note == "attached"
             ? "**Host's log:** attached in report.zip as host-Session.log (its last 10 minutes) and host-Player.log (Steam ids, IP addresses and user names removed)"
-            : $"**Host's log:** {host.Note}");
+            : $"**Host's log:** {host.Note}").AppendLine();
 
-        // the context takes what room is left (the answers are never cut for it)
-        var room = MaxText - tail.Length - 60;
-        var context = "#### Context (automatic)\n\n```\n" + Cut(ReportContext.Text(), Math.Max(room, 200)).Replace("```", "'''") + "\n```\n\n";
-        return Redact(context + tail);
+        // the context takes what room is left (the player's words are never cut for it)
+        var room = MaxText - head.Length - 60;
+        var context = "#### Context (automatic)\n\n```\n" + Cut(ReportContext.Text(), Math.Max(room, 200)).Replace("```", "'''") + "\n```\n";
+        return Redact(head + context);
     }
 
     // ---------------------------------------------------------------- sent from the game (user, 2026-10-27)
@@ -435,7 +462,7 @@ internal static class BugReport
         var words = Compose(answers, host);
         // (the video goes beside the zip to the relay: not twice)
         string? zip = null;
-        yield return Make(false, words, host, z => zip = z);
+        yield return Make(false, false, words, host, z => zip = z);
 
         if (Relay.Length == 0) {
             OpenIssuePage(answers.Title, words, zip);
@@ -443,7 +470,7 @@ internal static class BugReport
             yield break;
         }
 
-        yield return Post(answers.Title, words, zip, done);
+        yield return Post(answers, words, zip, done);
     }
 
     /// <summary>"Prepare a bug report": the same answers and the host's log, in a zip on the desktop only</summary>
@@ -456,11 +483,12 @@ internal static class BugReport
     {
         HostLog host = new();
         yield return FetchHostLog(h => host = h);
-        yield return Make(true, Compose(answers, host), host, done);
+        yield return Make(answers.Video, answers.Picture, Compose(answers, host), host, done);
     }
 
-    private static IEnumerator Post(string title, string words, string? zip, Action<string?> done)
+    private static IEnumerator Post(ReportAnswers answers, string words, string? zip, Action<string?> done)
     {
+        var title = answers.Title;
         string payload;
         try {
             var bytes = zip is not null && new FileInfo(zip).Length <= MaxZip ? File.ReadAllBytes(zip) : null;
@@ -472,7 +500,7 @@ internal static class BugReport
                 version = ModInfo.BuildVersion,
                 // shown in the issue itself (user, 2026-10-27: everything in the report, public): the replay's sheet and
                 // its last pictures as images, the ends of the two logs as text
-                files = ShownFiles(),
+                files = ShownFiles(answers),
             });
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             EmpLog.Warning(ex, "The bug report could not be read to send it");
@@ -511,16 +539,16 @@ internal static class BugReport
     // what the issue can hold as text: the end of each log (where the bug is; the zip has them whole)
     private const int LogTail = 24 * 1024;
 
-    private static List<object> ShownFiles()
+    private static List<object> ShownFiles(ReportAnswers answers)
     {
         var files = new List<object>();
-        if (ReplayBuffer.Video() is { } video) {
+        if (answers.Video && ReplayBuffer.Video() is { } video) {
             files.Add(new { name = "replay.avi", content = Convert.ToBase64String(video) });
         }
 
-        // the screen at the moment of the report, shown in the issue
-        if (ReplayBuffer.Snapshot() is { Count: > 0 } pictures) {
-            files.Add(new { name = "last.jpg", content = Convert.ToBase64String(pictures[^1].Jpg) });
+        // the game screen just before the report was opened, shown in the issue (the relay's name for it: last.jpg)
+        if (answers.Picture && ReplayBuffer.GamePicture() is { } picture) {
+            files.Add(new { name = "last.jpg", content = Convert.ToBase64String(picture) });
         }
 
         var data = Application.persistentDataPath;

@@ -93,54 +93,67 @@ internal static class TabHelp
     }
 
     // the report's draft, kept while the window is closed and opened again, cleared once sent
-    private static string _doing = "";
-    private static string _happened = "";
-    private static string _expected = "";
+    private static int _category;
+    private static string _summary = "";
+    private static string _detail = "";
     private static int _again = 2;
+    private static bool _video = true;
+    private static bool _picture = true;
 
-    internal static ReportAnswers Draft => new(_doing, _happened, _expected, _again);
+    internal static ReportAnswers Draft => new(_category, _summary, _detail, _again, _video, _picture);
 
-    // something went wrong: one zip to send with the game's own log in it, or a GitHub issue with the player's answers
-    // (a guided form, user 2026-10-30: reports came as one title, "fortune drum never changes", nothing else)
+    // something went wrong: a GitHub issue with the player's words and logs, or one zip on the desktop. Laid out as the
+    // game's own "Report Bugs" window (LayerFeedback, user 2026-10-30): the form on the left page, thanks and tips on
+    // the right one
     private static void BuildReport(YKVertical page)
     {
-        var card = page.Card("emp_help_report".lang());
+        var (left, right) = page.Book();
+        var card = left.Card("emp_help_report".lang());
         // (the video stops while this page is shown: it keeps the 30 seconds before the report was opened)
         card.gameObject.AddComponent<ReplayBuffer.Hold>();
-        card.Text("emp_ui_report_what".lang());
-        card.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
 
         UIButton? send = null;
         UIText? hint = null;
-        var boxes = new List<UIInputText>();
 
         void Refresh()
         {
             var missing = Draft.Missing();
             send?.interactable = missing is null;
-            hint?.SetText(missing is null ? "" : "emp_ui_report_need".Loc(ReportAnswers.MinLength, string.Join(", ", missing.Select(id => id.lang()))));
+            hint?.SetText(missing is null ? "" : "emp_ui_report_missing".Loc(string.Join(", ", missing.Select(id =>
+                $"{id}_need".Loc(id == "emp_ui_report_summary" ? ReportAnswers.SummaryMin : ReportAnswers.DetailMin)))));
         }
 
-        void Box(string label, string value, System.Action<string> keep)
+        UIInputText Box(string label, string placeholder, string value, int most, float height, System.Action<string> keep)
         {
             card.Text(label.lang());
             var input = card.InputText(value);
-            boxes.Add(input);
-            input.field.characterLimit = ReportAnswers.MaxLength;
+            input.field.characterLimit = most;
             input.AllowAnyText();
-            // three or four lines each, the text from the top left, wrapped, Enter a new line
-            TextBox(input, 96f);
+            input.StyleAsSearch(placeholder.lang());
+            if (height > 0f) {
+                // the text from the top left, wrapped, Enter a new line
+                TextBox(input, height);
+            }
+
             input.field.onValueChanged.AddListener(text => {
                 keep(text);
                 Refresh();
             });
+            return input;
         }
 
-        Box("emp_ui_report_doing", _doing, t => _doing = t);
-        Box("emp_ui_report_happened", _happened, t => _happened = t);
-        Box("emp_ui_report_expected", _expected, t => _expected = t);
-        card.DropdownRow("emp_ui_report_again".lang(),
+        var category = card.DropdownRow("emp_ui_report_category".lang(),
+            [..ReportAnswers.CategoryIds.Select(id => $"emp_ui_report_cat_{id}".lang())], i => _category = i, _category);
+        var summary = Box("emp_ui_report_summary", "emp_ui_report_summary_hint", _summary, ReportAnswers.SummaryMax, 0f, t => _summary = t);
+        var detail = Box("emp_ui_report_detail", "emp_ui_report_detail_hint", _detail, ReportAnswers.DetailMax, 170f, t => _detail = t);
+        var again = card.DropdownRow("emp_ui_report_again".lang(),
             [.."yes,no,untried".Split(',').Select(o => $"emp_ui_report_again_{o}".lang())], i => _again = i, _again);
+
+        // what goes with it (the game's "Attach a screenshot" / "Attach a save data" boxes); the logs always do
+        var recording = EmpConfig.Client.RecordReplay.Value ? null : "emp_ui_report_att_needs_recording".lang();
+        card.ToggleRow("emp_ui_report_att_video".lang(), recording, _video, v => _video = v);
+        card.ToggleRow("emp_ui_report_att_picture".lang(), recording, _picture, v => _picture = v);
+        card.ToggleRow("emp_ui_report_att_logs".lang(), "emp_ui_report_att_logs_desc".lang(), true, _ => { }, readOnly: true);
 
         var buttons = card.ButtonRow();
         send = buttons.RowButton("emp_ui_report_send".lang(), () => {
@@ -150,12 +163,14 @@ internal static class TabHelp
             }
 
             // (each box's change clears its part of the draft)
-            foreach (var box in boxes) {
-                box.Text = "";
-            }
-
-            _doing = _happened = _expected = "";
+            summary.Text = "";
+            detail.Text = "";
+            _summary = _detail = "";
+            _category = 0;
             _again = 2;
+            category.value = 0;
+            again.value = 2;
+            Refresh();
             EmpPop.Information("emp_ui_report_sending".lang());
             BugReport.Send(answers, url => {
                 if (url is null) {
@@ -179,12 +194,21 @@ internal static class TabHelp
         });
         hint = card.TextSmall("", FontColor.Gray);
         Refresh();
-        card.TextSmall("emp_ui_report_desc".lang(), FontColor.Gray);
 
-        // the last seconds of the screen sent with the report (ReplayBuffer)
+        // the right page: thanks and short tips, as the game's window has them
+        var tips = right.Card("emp_ui_report_thanks".lang());
+        foreach (var tip in new[] { "before", "one", "lang", "private", "host" }) {
+            tips.Text(("emp_ui_report_tip_" + tip).lang());
+        }
+
+        tips.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
+        tips.TextSmall("emp_ui_report_desc".lang(), FontColor.Gray);
+
+        // the recording the video and the picture come from (ReplayBuffer)
         var replay = EmpConfig.Client.RecordReplay;
-        card.ToggleRow("emp_ui_cl_record_replay".lang(), null, replay.Value, v => replay.Value = v)
+        tips.ToggleRow("emp_ui_cl_record_replay".lang(), null, replay.Value, v => replay.Value = v)
             .SetTooltipLang(replay.Description.Description);
+        UIHelper.WrapTexts(right);
     }
 
     /// <summary>

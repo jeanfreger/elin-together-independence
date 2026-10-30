@@ -94,6 +94,7 @@ internal static class ReplayBuffer
 
             // (the capture comes upside down on Direct3D: flipped in the same blit)
             Graphics.Blit(full, _small, new Vector2(1, -1), new Vector2(0, 1));
+            KeepGameScreen(full);
         } finally {
             RenderTexture.ReleaseTemporary(full);
         }
@@ -130,6 +131,76 @@ internal static class ReplayBuffer
                 }
             });
         });
+    }
+
+    // ---------------------------------------------------------------- the picture of the game screen (user 2026-10-30)
+
+    // the game screen as last seen with the mod's window closed, sharp (up to PictureWidth wide), kept on the card:
+    // one blit a picture, read only when a report takes it. The report is opened from that window, so its own
+    // last frames show the window, not the game
+    private const int PictureWidth = 2560;
+    private const int PictureQuality = 85;
+    private static RenderTexture? _game;
+    private static DateTime _gameAt;
+
+    private static void KeepGameScreen(RenderTexture full)
+    {
+        if (ElinTogether.Components.LayerElinTogether.Instance is not null) {
+            return;
+        }
+
+        var width = Mathf.Min(full.width, PictureWidth);
+        var height = Mathf.Max(1, width * full.height / Mathf.Max(1, full.width));
+        if (_game is null || _game.width != width || _game.height != height) {
+            if (_game is not null) {
+                _game.Release();
+            }
+
+            _game = new(width, height, 0);
+        }
+
+        Graphics.Blit(full, _game, new Vector2(1, -1), new Vector2(0, 1));
+        _gameAt = DateTime.Now;
+    }
+
+    /// <summary>Whether a report has a picture of the game screen to take</summary>
+    internal static bool HasGamePicture => _game is not null || HasFrames;
+
+    /// <summary>Whether the video has a picture</summary>
+    internal static bool HasFrames
+    {
+        get {
+            lock (_frames) {
+                return _frames.Count > 0;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The game screen just before the mod's window was opened, as a JPEG (on the game's thread); the last frame
+    ///     of the video when there is none; null when nothing was recorded (Client.RecordReplay off)
+    /// </summary>
+    internal static byte[]? GamePicture()
+    {
+        if (_game is not null && _game.IsCreated()) {
+            var before = RenderTexture.active;
+            var read = new Texture2D(_game.width, _game.height, TextureFormat.RGB24, false);
+            try {
+                RenderTexture.active = _game;
+                read.ReadPixels(new(0, 0, _game.width, _game.height), 0, 0, false);
+                read.Apply(false);
+                return read.EncodeToJPG(PictureQuality);
+            } catch (Exception ex) {
+                EmpLog.Debug(ex, "The game picture of {At} could not be read", _gameAt);
+            } finally {
+                RenderTexture.active = before;
+                UnityEngine.Object.Destroy(read);
+            }
+        }
+
+        lock (_frames) {
+            return _frames.Count == 0 ? null : _frames.Last().Jpg;
+        }
     }
 
     private static void Keep(DateTime at, byte[] jpg)
