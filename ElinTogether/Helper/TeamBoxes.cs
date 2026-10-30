@@ -696,12 +696,51 @@ internal static class TeamBoxes
         _shipping = true;
         try {
             foreach (var owner in _live.Keys.ToArray()) {
-                if (Box(owner, Delivery).things.Count > 0) {
-                    As(owner, __instance.ShipPackages);
-                }
+                ShipOwner(owner, __instance);
             }
         } finally {
             _shipping = false;
+            _shipTo = 0;
+        }
+    }
+
+    // the player an owner's shipment is in the name of, while it is made (0: none)
+    private static int _shipTo;
+
+    /// <summary>
+    ///     User 2026-10-30 ("lots of tax bills and salaries spawned"): the delivery box is where the game takes what it
+    ///     ships to a base each morning, and also where an owner's mail waits (TeamMail, TeamBills). What waits there
+    ///     for its owner (a parcel or a bill in its name) is not shipped: it went out again every morning as a
+    ///     cardboard box with a delivery bill, both with no name, into the mail of the commons. What the owner put in
+    ///     to be shipped is, and the box and its bill go in the owner's name (TeamMail delivers them)
+    /// </summary>
+    private static void ShipOwner(int owner, GameDate date)
+    {
+        var box = Box(owner, Delivery);
+        var waiting = box.things.Where(t => t.GetInt(TeamMail.ParcelKey) > 0 || t.id is "bill_tax" or "bill").ToList();
+        if (box.things.Count == waiting.Count) {
+            return;
+        }
+
+        foreach (var thing in waiting) {
+            box.things.Remove(thing);
+        }
+
+        _shipTo = owner > 0 ? Teams.MembersOf(owner).FirstOrDefault() : -owner;
+        try {
+            As(owner, date.ShipPackages);
+        } finally {
+            _shipTo = 0;
+            box.things.AddRange(waiting);
+        }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(World), nameof(World.SendPackage))]
+    private static void OnSendPackage(Thing p)
+    {
+        if (_shipTo > 0 && p.GetInt(TeamMail.ParcelKey) == 0) {
+            p.SetInt(TeamMail.ParcelKey, _shipTo);
         }
     }
 

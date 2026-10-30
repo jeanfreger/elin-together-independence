@@ -90,3 +90,28 @@ internal static class WorldKeeperHooks
         return !WorldKeeper.Skip;
     }
 }
+
+/// <summary>
+///     User 2026-10-30 ("lots of tax bills and salaries spawned when a player claimed a deed"): the month's bill and
+///     salary, and the world's parcels on their way, are the world's book, kept by the game that hosts it. A guest's
+///     game holds a copy of that list (the world it was sent) and, once it has a base of its own on a map it holds
+///     alone, would make and deliver its own: copies nobody pays, in its base's mail, sent to the host with the map.
+///     Never in a guest's game, whatever the world keeper box says (that box is about the weather and the quests)
+/// </summary>
+[HarmonyPatch]
+internal static class WorldParcels
+{
+    internal static IEnumerable<MethodBase> TargetMethods()
+    {
+        yield return AccessTools.Method(typeof(Faction), nameof(Faction.OnAdvanceMonth));
+        yield return AccessTools.Method(typeof(World), nameof(World.SendPackage));
+        yield return AccessTools.Method(typeof(FactionBranch), nameof(FactionBranch.ReceivePackages));
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
+    internal static bool OnWorldParcels()
+    {
+        return NetSession.Instance.Transport is not ElinNetClient;
+    }
+}

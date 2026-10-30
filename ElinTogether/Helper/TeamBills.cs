@@ -157,13 +157,14 @@ internal static class TeamBills
         branches = taxed;
 
         // the extra tax a player chose to give is the world's: on the first bill only (each story its own: on its
-        // team's bill, see TeamOwnStory)
+        // team's bill, see TeamOwnStory). One bill per team; the lands of no team, one per player who claimed them
         var extra = EClass.player.extraTax;
-        foreach (var lands in branches.GroupBy(b => Teams.TeamOfZone(b.owner)).OrderBy(g => g.Key).ToArray()) {
-            var team = lands.Key;
+        foreach (var lands in branches.GroupBy(b => Payer(b.owner)).OrderBy(g => g.Key.Team).ThenBy(g => g.Key.Claimer).ToArray()) {
+            var (team, claimer) = lands.Key;
             extra = TeamOwnStory.ExtraTaxOf(team) ?? extra;
             var evasion = lands.Sum(b => b.Evalue(2119));
-            var tax = Evade(__instance.GetBaseTax(false), evasion) + Evade(FameTax(TeamFame(team)), evasion) + extra;
+            var fame = team == Teams.Wanderers && claimer > 0 && PersonalQuests.Enabled ? ElinNetHost.FameOfPlayer(claimer) : TeamFame(team);
+            var tax = Evade(__instance.GetBaseTax(false), evasion) + Evade(FameTax(fame), evasion) + extra;
             var bill = ThingGen.CreateBill(tax, true);
             bill.SetInt(35, extra);
             bill.refVal = team + 1;
@@ -172,7 +173,7 @@ internal static class TeamBills
             EmpLog.Information("Team {TeamId}: a tax bill of {Tax} for {Lands} lands", team, tax, lands.Count());
             Msg.Say("emp_team_bill".Loc(Teams.NameOf(team), Lang._currency(tax, "money")));
             // (paid by the bank at once when the policy says so: OnPaidBill lowers the team's count)
-            TeamBoxes.AsTeam(team, () => __instance.TryPayBill(bill));
+            Deliver(__instance, bill, team, claimer);
         }
 
         Msg.Say("bills", EClass.player.taxBills.ToString());
@@ -182,6 +183,63 @@ internal static class TeamBills
 
         Tell();
         return false;
+    }
+
+    /// <summary>
+    ///     Who pays for a land: its team, or for a land of no team the player who claimed it (0: not known, and the
+    ///     commons, which is nobody's)
+    /// </summary>
+    private static (int Team, int Claimer) Payer(Zone zone)
+    {
+        var team = Teams.TeamOfZone(zone);
+        return team != Teams.Wanderers || Commons.Is(zone) ? (team, 0) : (team, zone.GetInt(BaseIncome.ClaimerKey));
+    }
+
+    // the player a team's mail is in the name of (the Wanderers: the claimer)
+    private static int Recipient(int team, int claimer)
+    {
+        return team != Teams.Wanderers ? Teams.MembersOf(team).FirstOrDefault() : claimer;
+    }
+
+    /// <summary>
+    ///     User 2026-10-30 ("lots of tax bills and salaries spawned"): a bill went through the world's parcels
+    ///     (World.SendPackage) with no name on it, into the mail of whatever base took the world's parcels first, which
+    ///     on a dedicated server is always the commons (the start meadow, everyone's). A team's bill now goes straight
+    ///     to that owner's own delivery box (the claimer's, for a land of no team), in its name, paid by that owner's
+    ///     own bank when the policy says so. Box off, or nobody to bill: the game's own way
+    /// </summary>
+    private static void Deliver(Faction faction, Thing bill, int team, int claimer)
+    {
+        var recipient = Recipient(team, claimer);
+        if (!TeamBoxes.On || recipient <= 0) {
+            TeamBoxes.AsTeam(team, () => faction.TryPayBill(bill));
+            return;
+        }
+
+        var owner = StoryOwner.Of(team, recipient);
+        bill.SetInt(TeamMail.ParcelKey, recipient);
+        TeamBoxes.As(owner, () => {
+            if (faction.IsGlobalPolicyActive(2705) && EClass.game.cards.container_deposit.GetCurrency() > bill.c_bill) {
+                InvOwnerDeliver.PayBill(bill, fromBank: true);
+            } else {
+                TeamBoxes.Box(owner, 1).AddCard(bill);
+            }
+        });
+    }
+
+    /// <summary>
+    ///     Money of the world that is nobody's (a land of no owner known, the commons, what a split leaves): the world's
+    ///     bank on a dedicated server (its parcel lay in the commons' mail for anyone to take), else the game's own
+    ///     salary parcel
+    /// </summary>
+    private static void WorldMoney(int num)
+    {
+        if (ServerAvatar.Is(EClass.pc) && EClass.game.cards.container_deposit is { } bank) {
+            bank.ModCurrency(num);
+            return;
+        }
+
+        EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(num)));
     }
 
     // the income part of Faction.OnAdvanceMonth alone (the world's only land is the commons: no bill)
@@ -197,7 +255,7 @@ internal static class TeamBills
             bank.ModCurrency(num);
             Msg.Say("bankIncome", Lang._currency(num, "money"));
         } else {
-            EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(num)));
+            WorldMoney(num);
         }
     }
 
@@ -229,8 +287,9 @@ internal static class TeamBills
         // lands earn is not the host's. The guilds' salary (what the lands do not explain) goes with the first team
         // that has players, like the extra tax; with the teams' boxes on it is each owner's own (see GuildSalaries)
         // or the world's (the left-over below)
-        var shares = branches.GroupBy(b => Teams.TeamOfZone(b.owner)).OrderBy(g => g.Key)
-            .Select(g => (Members: Teams.MembersOf(g.Key).ToArray(),
+        // (a land of no team: its claimer's; the commons: nobody's, the world's)
+        var shares = branches.GroupBy(b => Payer(b.owner)).OrderBy(g => g.Key.Team).ThenBy(g => g.Key.Claimer)
+            .Select(g => (Members: (g.Key.Team != Teams.Wanderers ? Teams.MembersOf(g.Key.Team) : g.Key.Claimer > 0 ? [g.Key.Claimer] : []).ToArray(),
                 Share: g.Sum(b => b.GetResidentTax() + EClass.game.spatials.ranks.GetIncome(b.owner)))).ToList();
         var salary = Math.Max(0, num - shares.Sum(s => s.Share));
         var host = NetSession.Instance.Transport as ElinNetHost;
@@ -254,7 +313,8 @@ internal static class TeamBills
 
             left -= share;
             if (bankPays) {
-                TeamBoxes.BankOfTeam(Teams.TeamOf(members[0]))!.ModCurrency(share);
+                // (the owner's own bank: its team's, or the claimer's own for a land of no team)
+                (TeamBoxes.On ? TeamBoxes.Box(StoryOwner.Of(members[0]), 0) : TeamBoxes.BankOfTeam(Teams.TeamOf(members[0])))!.ModCurrency(share);
                 continue;
             }
 
@@ -267,7 +327,7 @@ internal static class TeamBills
         if (left > 0 && bankPays) {
             bank.ModCurrency(left);
         } else if (left > 0) {
-            EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(left)));
+            WorldMoney(left);
         }
     }
 

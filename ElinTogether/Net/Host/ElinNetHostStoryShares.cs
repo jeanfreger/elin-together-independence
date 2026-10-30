@@ -137,7 +137,7 @@ internal partial class ElinNetHost
     /// </summary>
     internal static void CatchUpStoryShares(Chara player)
     {
-        if (!EmpConfig.Server.OncePerPlayer.Value || StoryRewards.Count == 0) {
+        if (!EmpConfig.Server.OncePerPlayer.Value || StoryRewards.Count == 0 || ServerAvatar.Is(player)) {
             return;
         }
 
@@ -236,8 +236,9 @@ internal partial class ElinNetHost
             return;
         }
 
-        // every character a player plays in this world, the local one included
-        var players = SavedRemoteCharas.Values.Append(player.uidChara).Distinct()
+        // every character a player plays in this world, the local one included (a server's stand-in and its retired
+        // character are no players: PlayerCharaUids)
+        var players = PlayerCharaUids()
             .Select(uid => game.cards.globalCharas.Find(uid))
             .Where(c => c is { isDead: false })
             .ToList();
