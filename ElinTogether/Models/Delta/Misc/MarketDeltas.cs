@@ -52,7 +52,7 @@ public class MarketAskDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host && host.PlayerChara(OriginPeer) is { } from) {
-            Market.Handle(this, from, host.UserOf(OriginPeer), false, host);
+            Market.Handle(this, from, host.UserOf(OriginPeer), false, host, host.FromMuted(OriginPeer));
         }
     }
 }

@@ -138,7 +138,7 @@ internal static class TabMail
 
     private static string Title(MailLetter letter)
     {
-        var name = Returned(letter) ? "emp_ui_mail_returned_from".Loc(letter.FromName) : letter.FromName;
+        var name = Returned(letter) ? "emp_ui_mail_returned_from".Loc(Plain(letter.FromName)) : Plain(letter.FromName);
         return (Mailbox.Unclaimed(letter) ? "* " : "") + name;
     }
 
@@ -159,10 +159,10 @@ internal static class TabMail
 
     private static void BuildLetter(YKVertical page, MailLetter letter)
     {
-        var card = page.Card(Returned(letter) ? "emp_ui_mail_returned_from".Loc(letter.FromName) : letter.FromName);
+        var card = page.Card(Returned(letter) ? "emp_ui_mail_returned_from".Loc(Plain(letter.FromName)) : Plain(letter.FromName));
         card.KeyValue("emp_ui_mail_date".lang(), DateOf(letter.Sent));
         if (Returned(letter)) {
-            card.TextSmall("emp_ui_mail_returned_note".Loc(letter.FromName), FontColor.Gray);
+            card.TextSmall("emp_ui_mail_returned_note".Loc(Plain(letter.FromName)), FontColor.Gray);
         } else if ((letter.Flags & Mailbox.FlagTaken) == 0 && (letter.Items.Count > 0 || letter.Gold > 0)) {
             var left = (int)Math.Max(0, (letter.Sent + Mailbox.ReturnSeconds - Mailbox.Now()) / 86400);
             card.TextSmall("emp_ui_mail_returns_in".Loc(left), FontColor.Gray);
@@ -218,7 +218,7 @@ internal static class TabMail
 
         var index = Mathf.Max(0, directory.FindIndex(d => d.Uid == _to));
         _to = directory[index].Uid;
-        card.DropdownRow("emp_ui_mail_to".lang(), directory.Select(d => d.Name).ToList(), i => _to = directory[i].Uid, index);
+        card.DropdownRow("emp_ui_mail_to".lang(), directory.Select(d => Plain(d.Name)).ToList(), i => _to = directory[i].Uid, index);
 
         var text = card.InputText(_text);
         text.field.characterLimit = Mailbox.MaxText;
@@ -285,4 +285,7 @@ internal static class TabMail
             Redraw();
         });
     }
+
+    // a name from another player's game: shown as text, never as rich-text tags (review 2026-10-30)
+    private static string Plain(string? name) => (name ?? "?").Replace("<", "‹").Replace(">", "›");
 }

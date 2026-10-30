@@ -199,14 +199,15 @@ internal static class Mailbox
 
         string? reason = null;
         var done = "";
+        // (every request, refused ones too: each answer carries the whole mailbox, review 2026-10-30)
+        var now = Time.realtimeSinceStartup;
+        if (_lastList.TryGetValue(chara.uid, out var last) && now - last < (request.Kind == MailRequestDelta.List ? ListGap : 0.3f)) {
+            return;
+        }
+
+        _lastList[chara.uid] = now;
         switch (request.Kind) {
             case MailRequestDelta.List:
-                var now = Time.realtimeSinceStartup;
-                if (_lastList.TryGetValue(chara.uid, out var last) && now - last < ListGap) {
-                    return;
-                }
-
-                _lastList[chara.uid] = now;
                 break;
             case MailRequestDelta.Read:
                 if (ElinNetHost.MailLetters.TryGetValue(request.LetterId, out var read) && Int(read, ToAt) == chara.uid) {
@@ -248,6 +249,9 @@ internal static class Mailbox
             return "emp_mail_wait";
         }
 
+        // (a refused letter counts too: a stream of refused sends costs the host as much)
+        _lastSent[from.uid] = now;
+
         var text = (request.Text ?? "").Trim();
         var uids = request.Items ?? [];
         if (text.Length > MaxText) {
@@ -266,7 +270,9 @@ internal static class Mailbox
             return Refuse(from, "recipient " + request.To, "emp_mail_no_recipient");
         }
 
-        if (Waiting(request.To) >= MaxWaiting) {
+        // (and 3 from one sender: text letters cost nothing, one player could fill another's box, review 2026-10-30)
+        if (Waiting(request.To) >= MaxWaiting ||
+            ElinNetHost.MailLetters.Values.Count(r => Int(r, ToAt) == request.To && Int(r, FromAt) == from.uid) >= 3) {
             return "emp_mail_full";
         }
 
@@ -338,6 +344,11 @@ internal static class Mailbox
         }
 
         var gold = Int(row, GoldAt);
+        // (the gold existed with the sender, but a full purse would wrap past int, review 2026-10-30)
+        if ((long)to.GetCurrency() + gold > int.MaxValue) {
+            return "emp_mail_bag_full";
+        }
+
         var stacks = row.Length - ItemsAt;
         if (!PlayerTrade.HasRoom(to, stacks, gold)) {
             return "emp_mail_bag_full";

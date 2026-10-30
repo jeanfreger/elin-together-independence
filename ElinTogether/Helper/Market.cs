@@ -182,7 +182,7 @@ internal static class Market
     /// <summary>
     ///     A player's ask (the host's own player too: <paramref name="hostPlayer" />), answered to that player alone
     /// </summary>
-    internal static void Handle(MarketAskDelta ask, Chara from, ulong user, bool hostPlayer, ElinNetHost host)
+    internal static void Handle(MarketAskDelta ask, Chara from, ulong user, bool hostPlayer, ElinNetHost host, bool muted = false)
     {
         if (!KeepsBook) {
             return;
@@ -194,7 +194,8 @@ internal static class Market
             result = "emp_ui_market_off";
         } else {
             var now = Time.realtimeSinceStartup;
-            if (ask.Verb == MarketAskDelta.List && _asked.TryGetValue(from.uid, out var last) && now - last < AskSeconds) {
+            // (every ask, refused ones too: each answer carries the whole board, review 2026-10-30)
+            if (_asked.TryGetValue(from.uid, out var last) && now - last < (ask.Verb == MarketAskDelta.List ? AskSeconds : 0.5f)) {
                 return;
             }
 
@@ -202,7 +203,10 @@ internal static class Market
             var ads = Ads();
             switch (ask.Verb) {
                 case MarketAskDelta.Post:
-                    if (Refusal(ask, from, ads, out var ad) is { } why) {
+                    // (a muted player posts nothing, as it says nothing, review 2026-10-30)
+                    if (muted) {
+                        result = "emp_ui_muted";
+                    } else if (Refusal(ask, from, ads, out var ad) is { } why) {
                         result = why;
                     } else {
                         ElinNetHost.MarketAds[ad!.Id] = Pack(ad);
