@@ -1554,6 +1554,7 @@ internal partial class ElinNetHost
         }
 
         ZoneLeaseState.ApplyState(zone, release.ZoneState, release.IdCurrentSubset);
+        ZoneLeaseState.ApplyFortuneRoll(zone, release.FortuneRoll);
 
         // its base, simulated there alone (lease audit 2026-10-29, #2 and #4), and what it earned, paid once (#5)
         var managed = ManagesLeasedBase(zone, holder);

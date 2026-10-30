@@ -1276,6 +1276,7 @@ internal partial class ElinNetClient
             ZoneUid = zone.uid,
             ZoneState = ZoneLeaseState.GetState(zone),
             IdCurrentSubset = zone.idCurrentSubset,
+            FortuneRoll = ZoneLeaseState.GetFortuneRoll(zone),
             Map = map,
             // leaving for good: a visitor who takes the zone over compares its copy with this one
             MapSums = map is null || checkpoint || zone.map is null ? null : ZoneLeaseState.Sums(zone.map),

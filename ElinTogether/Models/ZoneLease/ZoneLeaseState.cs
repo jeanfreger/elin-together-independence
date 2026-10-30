@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ElinTogether.Helper.Extensions;
+using HarmonyLib;
+using Newtonsoft.Json;
 
 namespace ElinTogether.Models;
 
@@ -276,6 +278,46 @@ internal static class ZoneLeaseState
         // flags live in bits at runtime, _ints[0] is only refreshed when serializing
         state[0] = (int)zone.bits.Bits;
         return state;
+    }
+
+    /// <summary>
+    ///     The zone's fortune drum (Zone.fortuneRoll) is world data beside _ints, not in the map: a player who rolled
+    ///     it alone handed the zone back without it, the host kept its old one and every world copy brought that
+    ///     back. That player's prizes of the month never changed (a stale refresh date made the same month again)
+    ///     and the prizes it won were back on the list (GitHub issue 39)
+    /// </summary>
+    internal static string? GetFortuneRoll(Zone zone)
+    {
+        return FortuneRoll(zone) is { } data ? JsonConvert.SerializeObject(data, FortuneJson) : null;
+    }
+
+    // (private in Zone)
+    private static readonly AccessTools.FieldRef<Zone, FortuneRollData?> FortuneRoll =
+        AccessTools.FieldRefAccess<Zone, FortuneRollData?>("fortuneRoll");
+
+    // as the game writes it in its save (only its JsonProperty fields), without type names: read from another game
+    private static readonly JsonSerializerSettings FortuneJson = new() {
+        NullValueHandling = NullValueHandling.Ignore,
+        ContractResolver = ShouldSerializeContractResolver.Instance,
+    };
+
+    internal static void ApplyFortuneRoll(Zone zone, string? json)
+    {
+        if (json is null || json.Length > 64 * 1024) {
+            return;
+        }
+
+        try {
+            if (JsonConvert.DeserializeObject<FortuneRollData>(json, FortuneJson) is not { prizes: not null } data) {
+                return;
+            }
+
+            // (from another player's game: only prizes this game knows, as many as the game lists)
+            data.prizes = data.prizes.Where(p => p?.id is not null && EClass.sources.cards.map.ContainsKey(p.id)).Take(16).ToList();
+            FortuneRoll(zone) = data;
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "The fortune drum of zone {ZoneUid} handed back could not be read, the host keeps its own", zone.uid);
+        }
     }
 
     /// <summary>
