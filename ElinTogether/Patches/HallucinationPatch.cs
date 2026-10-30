@@ -27,6 +27,20 @@ internal static class HallucinationPatch
         Follow(__instance);
     }
 
+    /// <summary>
+    ///     A world read from a save sets the switch from whichever player character hallucinates in it, while no
+    ///     game is set yet to tell which one is the local player (Follow then gives up), and the mod's own way
+    ///     of loading a world copy never clears it (vanilla does, Game.OnBeforeInstantiate). A guest that rejoined
+    ///     from the title while another player hallucinated kept the effect without the condition (GitHub issue
+    ///     37). Once the world is loaded and the local player known, the switch follows that player again
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Game), nameof(Game.OnLoad))]
+    internal static void OnGameLoad()
+    {
+        Follow(null);
+    }
+
     private static void Follow(Condition? leaving)
     {
         // (not EClass.pc: while a game is being loaded the game object is not set yet and EClass.pc throws. A
