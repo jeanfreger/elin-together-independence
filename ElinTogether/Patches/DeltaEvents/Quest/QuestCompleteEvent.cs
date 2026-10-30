@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -12,6 +13,8 @@ internal static class QuestCompleteEvent
     internal static bool OnClientComplete(Quest __instance)
     {
         if (NetSession.Instance.IsHost) {
+            // a teammate's shared quest turned in from the host's journal pays what its owner took (TeamQuests)
+            (NetSession.Instance.Transport as ElinNetHost)?.HoldTeamQuestTerms(__instance);
             return true;
         }
 
@@ -56,6 +59,12 @@ internal static class QuestCompleteEvent
     internal static void OnQuestComplete(Quest __instance)
     {
         if (PersonalQuests.IsPersonal(__instance)) {
+            // the host turned in a shared quest (its own or a teammate's): the team gets its shares (TeamQuests)
+            if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } world && !PlayerStandIn.IsActive &&
+                NetSession.Instance.Connection == world) {
+                world.OnLocalQuestComplete(__instance);
+            }
+
             // on someone's map, that host gives the rewards; the quest is nobody else's business. Also when
             // it completes while a message from the host is applied: the kill that ends a hunt
             if (NetSession.Instance.Connection is ElinNetClient client && !PlayerStandIn.IsActive) {
@@ -116,6 +125,19 @@ internal static class QuestRewardPatch
 {
     private static Chara? _receiver;
     private static bool _nothing;
+    private static List<Thing>? _collect;
+
+    /// <summary>
+    ///     While the host makes a teammate's share of a shared quest (TeamQuests): what the quest drops is collected,
+    ///     not dropped
+    /// </summary>
+    internal static ScopeExit Collect(List<Thing> into)
+    {
+        _collect = into;
+        return new() {
+            OnExit = () => _collect = null,
+        };
+    }
 
     /// <summary>
     ///     The player the host runs a quest step for, if any
@@ -164,7 +186,7 @@ internal static class QuestRewardPatch
     [HarmonyPostfix]
     internal static void OnRewardDropped(Thing __result)
     {
-        if ((NetSession.Instance.Connection is ElinNetClient && !ElinDelta.IsApplying) || TeamOwnStory.Withheld(__result)) {
+        if (_collect is not null || (NetSession.Instance.Connection is ElinNetClient && !ElinDelta.IsApplying) || TeamOwnStory.Withheld(__result)) {
             return;
         }
 
@@ -174,6 +196,12 @@ internal static class QuestRewardPatch
     [HarmonyPrefix]
     internal static bool OnDropReward(Thing t, ref Thing __result)
     {
+        if (_collect is not null) {
+            _collect.Add(t);
+            __result = t;
+            return false;
+        }
+
         // (each player or team living its own story: a story step's reward its earner had already, from another
         // story or as a share, is not given again)
         if (TeamOwnStory.Withhold(t, _nothing ? _earner : _receiver)) {

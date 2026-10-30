@@ -77,6 +77,13 @@ public class TeamsDelta : ElinDelta
     [Key(10)]
     public Dictionary<int, string>? Things { get; init; }
 
+    /// <summary>
+    ///     The chara uids of the players who share their quests with their team (<see cref="TeamQuests" />); none while
+    ///     the box is off
+    /// </summary>
+    [Key(11)]
+    public int[]? QuestSharers { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";

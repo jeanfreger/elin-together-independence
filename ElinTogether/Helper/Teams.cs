@@ -85,6 +85,7 @@ internal static class Teams
         _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
+        TeamQuests.Learn(delta.QuestSharers);
         TeamBanner.Learn(delta.Banners, delta.Things);
         // (not the book told on joining: nothing changed then)
         if (known) {
@@ -927,6 +928,9 @@ internal static class Teams
                 Invites.Remove(chara.uid);
                 Refused.Add((id, chara.uid));
                 Say(LeaderOf(id), "emp_team_invite_refused", PlayerName(chara.uid));
+                Tell();
+                break;
+            case TeamAsk.ShareQuests when id is 0 or 1 && TeamQuests.SetSharing(chara, id == 1):
                 Tell();
                 break;
             case TeamAsk.Own when PersonalOwned:

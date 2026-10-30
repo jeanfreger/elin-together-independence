@@ -100,6 +100,11 @@ internal static class SharedQuests
         foreach (var gone in _told.Keys.Where(q => !quests.list.Contains(q)).ToArray()) {
             _told.Remove(gone);
 
+            // (a teammate's shared quest: its owner's to tell; one turned in away is told to the host there)
+            if (TeamQuests.OnGone(gone)) {
+                continue;
+            }
+
             if (PersonalQuests.IsPersonal(gone)) {
                 // completed, failed, given up: the host stops keeping it
                 PersonalQuests.TellHost(new PersonalQuestDelta {
@@ -122,6 +127,11 @@ internal static class SharedQuests
 
             _told[quest] = hash;
             var data = LZ4Bytes.Create(quest);
+
+            // a teammate's shared quest this player advanced: the host keeps it for its owner
+            if (TeamQuests.TellAdvanced(quest, data)) {
+                continue;
+            }
 
             if (PersonalQuests.IsPersonal(quest)) {
                 // only its taker holds it, the host keeps it for the next time it joins

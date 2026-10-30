@@ -216,6 +216,10 @@ namespace ElinTogether.Models;
 // Mailbox: letters between players, kept by the host
 [Union(1240, typeof(MailRequestDelta))]
 [Union(1241, typeof(MailStateDelta))]
+// Teammates share quests (user 2026-10-30)
+[Union(1250, typeof(TeamQuestListDelta))]
+[Union(1251, typeof(TeamQuestUpdateDelta))]
+[Union(1252, typeof(TeamQuestDoneDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
