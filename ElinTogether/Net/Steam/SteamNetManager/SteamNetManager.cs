@@ -313,6 +313,9 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         // (an outgoing one is tracked in _peers, the cases below look it up there)
         if (IsHost && status.m_info.m_hListenSocket != HSteamListenSocket.Invalid
             && status.m_info.m_hListenSocket != _listenSocket
+            // (the Steam socket a dedicated server opens next to its local port: the players from the internet come
+            // in there; left out, they entered the lobby and timed out, "no answer", user's two-PC test 2026-10-30)
+            && status.m_info.m_hListenSocket != _steamListenSocket
             && !_devListenSockets.ContainsKey(status.m_info.m_hListenSocket)) {
             return;
         }
