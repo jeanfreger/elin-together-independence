@@ -121,8 +121,9 @@ internal static class ContainerLog
             return false;
         }
 
-        var team = Teams.TeamOfZone(zone);
-        return team != Teams.Wanderers && team == Teams.TeamOf(reader.uid);
+        // (the land's team, or the player in no team whose own land it is)
+        var owner = Teams.LandOwnerOf(zone);
+        return owner != 0 && owner == StoryOwner.Of(reader.uid);
     }
 
     internal static ContainerLogAnswer Answer(int uid)
@@ -228,7 +229,7 @@ internal static class ContainerLog
             return true;
         }
 
-        var team = Teams.TeamOfZone(zone);
-        return team != Teams.Wanderers && team == Teams.TeamOf(EClass.pc.uid);
+        var owner = Teams.LandOwnerOf(zone);
+        return owner != 0 && owner == StoryOwner.Of(EClass.pc.uid);
     }
 }

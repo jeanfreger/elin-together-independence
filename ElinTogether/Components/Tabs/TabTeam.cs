@@ -479,7 +479,12 @@ internal class TabTeam : TabEmpBase
         }
 
         var card = page.Card("emp_ui_teams_title".lang());
-        var ids = Teams.Ids().ToList();
+        // (the teams; a player in no team sees its own line first, never one shared by every player in no team)
+        var ids = Teams.Ids().Where(id => id != Teams.Wanderers).ToList();
+        if (Teams.TeamOf(EClass.pc.uid) == Teams.Wanderers) {
+            ids.Insert(0, StoryOwner.Of(EClass.pc.uid));
+        }
+
         var list = card.ListArea(ids.Count, maxRows, TeamLineHeight);
         foreach (var team in ids) {
             var parts = new List<string>();
@@ -492,7 +497,7 @@ internal class TabTeam : TabEmpBase
 
             var row = list.Row();
             row.LayoutElement().minHeight = row.LayoutElement().preferredHeight = TeamLineHeight;
-            row.TextColumn(Teams.NameOf(team), string.Join("  ·  ", parts));
+            row.TextColumn(team < 0 ? Teams.PlayerName(-team) : Teams.NameOf(team), string.Join("  ·  ", parts));
         }
     }
 

@@ -149,6 +149,9 @@ internal partial class ElinNetHost
         if (Teams.TeamOf(away.uid) is var team and not Teams.Wanderers) {
             Teams.Join(back, team);
             Teams.Leave(away);
+        } else {
+            // (in no team: its own lands are the returning character's)
+            Teams.MoveLands(-away.uid, -back.uid);
         }
 
         AdminLog($"return character {away.uid} -> {back.uid} ({back.Name}) of {user} from {away.GetStr(CharaExport.AwaySaveKey)}: " +

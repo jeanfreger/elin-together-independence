@@ -270,7 +270,8 @@ internal partial class ElinNetHost
         }
 
         foreach (var peer in Socket.Peers.ToArray()) {
-            if (!SavedRemoteCharas.TryGetValue(peer.User, out var uid) || Teams.TeamOf(uid) != team) {
+            // (the owner as StoryOwner counts it: a team's players, or the one player in no team)
+            if (!SavedRemoteCharas.TryGetValue(peer.User, out var uid) || StoryOwner.Of(uid) != team) {
                 continue;
             }
 
@@ -296,7 +297,7 @@ internal partial class ElinNetHost
     internal void SendToSpawnZone(Chara chara, ISteamNetPeer peer, bool isNew)
     {
         var rules = NetSession.Instance.Rules;
-        if (IsZoneSession || !rules.UseTeams || !rules.AllowIndependentTravel || (!isNew && Teams.HasBase(Teams.TeamOf(chara.uid))) ||
+        if (IsZoneSession || !rules.UseTeams || !rules.AllowIndependentTravel || (!isNew && Teams.HasBase(StoryOwner.Of(chara.uid))) ||
             Teams.SpawnZone() is not { } zone || zone == _zone || !_spawned.Add(peer.User)) {
             return;
         }

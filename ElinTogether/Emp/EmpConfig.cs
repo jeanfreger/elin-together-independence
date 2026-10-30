@@ -693,7 +693,7 @@ internal partial class EmpConfig
             "Server",
             "Teams",
             false,
-            "Players can be in teams: the host keeps who is in which team in its save. A player in no team is a Wanderer\n" +
+            "Players can be in teams: the host keeps who is in which team in its save. A player in no team plays alone and shares nothing\n" +
             "Otherwise there are no teams and everything is as before\n" +
             "玩家可以组队：主机在存档中记录谁属于哪个队伍。不属于任何队伍的玩家是流浪者；关闭时没有队伍，一切如前");
 
@@ -817,7 +817,7 @@ internal partial class EmpConfig
             "Server",
             "TeamPvp",
             false,
-            "Two players of different teams are enemies to each other, outside towns and the spawn zone. Wanderers fight nobody\n" +
+            "Two players of different teams are enemies to each other, outside towns and the spawn zone. Players in no team fight nobody\n" +
             "A player killed by another dies only if \"Players can kill each other\" is on. Otherwise players of different teams cannot fight\n" +
             "不同队伍的玩家在城镇和出生区域之外互为敌人，流浪者不参与；只有开启玩家可以互相击杀时才会真正死亡。关闭时不同队伍的玩家不能战斗");
 
@@ -841,7 +841,7 @@ internal partial class EmpConfig
             "Server",
             "TeamBills",
             false,
-            "Each team gets its own monthly tax bill, for its own lands (lands of no team: the Wanderers' bill), on its members' highest fame. Unpaid bills are counted per team: four or more cost karma to that team's players only\n" +
+            "Each team gets its own monthly tax bill, for its own lands (lands of a player in no team: that player's own bill), on its members' highest fame. Unpaid bills are counted per team: four or more cost karma to that team's players only\n" +
             "Otherwise one bill for the whole world, as before\n" +
             "每个队伍为自己的土地单独收到每月税单（无队伍的土地：流浪者的税单），按其成员的最高名声计算。未付税单按队伍计数：四张及以上只扣该队伍玩家的善恶值；关闭时整个世界如前只有一张税单");
 

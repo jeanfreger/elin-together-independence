@@ -12,7 +12,8 @@ namespace ElinTogether.Helper;
 ///     Council 2026-10-25, host options "Teams" and "Team ownership of bases" (dev/PLAN_teams.md). Not Elin's
 ///     factions: everyone stays in the one player faction, a team is a label the host keeps in its save
 ///     (<see cref="ElinNetHost.TeamList" />) and tells every game (<see cref="TeamsDelta" />). Team 0, the
-///     Wanderers, is everyone in no team: an old world is all Wanderers and nothing is blocked
+///     "no team": a player in it is alone, never the teammate of another player without a team (user 2026-10-30), and
+///     the land it claims is its own (<see cref="LandOwnerOf" />). An old world with no team blocks nothing
 /// </summary>
 [HarmonyPatch]
 internal static class Teams
@@ -104,7 +105,7 @@ internal static class Teams
         }
 
         if (TeamOf(pc.uid) is var team && team != teamBefore) {
-            Msg.Say("emp_team_now".Loc(NameOf(team)));
+            Msg.Say(team == Wanderers ? "emp_team_now_none".lang() : "emp_team_now".Loc(NameOf(team)));
         }
 
         foreach (var (uid, id) in Requests) {
@@ -259,11 +260,37 @@ internal static class Teams
 
     internal static int TeamOfZone(Zone? zone)
     {
-        return zone is null || Commons.Is(zone) ? Wanderers : Zones.GetValueOrDefault(zone.uid);
+        return LandOwnerOf(zone) is > 0 and var team ? team : Wanderers;
     }
 
     /// <summary>
-    ///     The team holds a land (the Wanderers hold none)
+    ///     Whose land it is, counted as <see cref="StoryOwner" /> counts owners: its team, minus the claimer's chara uid
+    ///     for a land claimed by a player in no team (its own, user 2026-10-30), 0 for nobody's (the commons, a land
+    ///     claimed before teams or released by its team)
+    /// </summary>
+    internal static int LandOwnerOf(Zone? zone)
+    {
+        return zone is null || Commons.Is(zone) ? 0 : Zones.GetValueOrDefault(zone.uid);
+    }
+
+    /// <summary>
+    ///     The player in no team whose own land it is, 0 when none
+    /// </summary>
+    internal static int SoloOwnerOf(Zone? zone)
+    {
+        return LandOwnerOf(zone) is < 0 and var owner ? -owner : 0;
+    }
+
+    /// <summary>
+    ///     Whose land it is, as a name: the team's, the player's for a land of a player in no team
+    /// </summary>
+    internal static string LandOwnerName(Zone? zone)
+    {
+        return SoloOwnerOf(zone) is > 0 and var solo ? PlayerName(solo) : NameOf(TeamOfZone(zone));
+    }
+
+    /// <summary>
+    ///     The owner holds a land: a team, or minus the chara uid of a player in no team (<see cref="StoryOwner" />)
     /// </summary>
     internal static bool HasBase(int teamId)
     {
@@ -291,11 +318,12 @@ internal static class Teams
     /// </summary>
     internal static Zone? OwnLand(int charaUid, int preferredUid)
     {
-        if (!BasesOwned || TeamOf(charaUid) is var team && team == Wanderers) {
+        if (!BasesOwned) {
             return null;
         }
 
-        var uids = LandsOf(team).ToList();
+        // (a player in no team: its own lands)
+        var uids = LandsOf(StoryOwner.Of(charaUid)).ToList();
         var uid = uids.Contains(preferredUid) ? preferredUid : uids.FirstOrDefault(u => EClass.game.spatials.Find(u)?.branch is not null);
         return uid == 0 ? null : EClass.game.spatials.Find(uid) is { branch: not null } zone ? zone : null;
     }
@@ -366,12 +394,13 @@ internal static class Teams
     /// </summary>
     internal static int LevelOn(Chara chara, Zone? zone)
     {
-        var team = TeamOfZone(zone);
-        if (!BasesOwned || !chara.IsPlayer || team == Wanderers) {
+        // (a land of a player in no team is that player's alone, as a team's is its team's)
+        var owner = LandOwnerOf(zone);
+        if (!BasesOwned || !chara.IsPlayer || owner == 0) {
             return Build;
         }
 
-        var own = team == TeamOf(chara.uid);
+        var own = owner == StoryOwner.Of(chara.uid);
         if (!LandRulesOn) {
             // the game as it was: a team's land is its own to build, others visit
             return own ? Build : Visit;
@@ -383,7 +412,7 @@ internal static class Teams
         }
 
         // (closed to others while the team is away: the team's own level is never touched)
-        return OfflineClosed(rule) && !AnyOnline(team) ? Closed : OthersLevel(rule);
+        return OfflineClosed(rule) && !(owner > 0 ? AnyOnline(owner) : IsOnline(-owner)) ? Closed : OthersLevel(rule);
     }
 
     /// <summary>
@@ -447,7 +476,7 @@ internal static class Teams
     {
         SE.Beep();
         var owner = card is null ? 0 : OtherOwner(EClass.pc, card);
-        Msg.Say("emp_team_belongs".Loc(owner != 0 ? PlayerName(owner) : NameOf(TeamOfZone(EClass._zone))));
+        Msg.Say("emp_team_belongs".Loc(owner != 0 ? PlayerName(owner) : LandOwnerName(EClass._zone)));
     }
 
     /// <summary>
@@ -763,6 +792,7 @@ internal static class Teams
         EmpLog.Information("Team {TeamId} {TeamName} founded by {CharaUid}", id, name, chara.uid);
         TeamKnowledge.Moved(chara, from, id);
         TeamOwnStory.Moved(chara, from, id);
+        MoveLands(-chara.uid, id);
         GiveDeed(chara, id);
         Tell();
         return id;
@@ -825,12 +855,29 @@ internal static class Teams
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
         TeamKnowledge.Moved(chara, from, teamId);
         TeamOwnStory.Moved(chara, from, teamId);
+        MoveLands(-chara.uid, teamId);
         Tell();
         return true;
     }
 
     /// <summary>
-    ///     That player is a Wanderer again. Its team and the team's lands stay, even without members
+    ///     The lands of one owner become another's (<see cref="LandOwnerOf" />): a player in no team who joins or founds
+    ///     a team brings its own lands to it, a returning character takes its former one's. Their rules stay
+    /// </summary>
+    internal static void MoveLands(int from, int to)
+    {
+        if (!KeepsBook || from == to || from == 0 || to == 0) {
+            return;
+        }
+
+        foreach (var land in Zones.Where(z => z.Value == from).Select(z => z.Key).ToArray()) {
+            Zones[land] = to;
+            EmpLog.Information("Land {ZoneUid}: owner {From} -> {To}", land, from, to);
+        }
+    }
+
+    /// <summary>
+    ///     That player is in no team again. Its team and the team's lands stay, even without members
     /// </summary>
     internal static bool Leave(Chara chara)
     {
@@ -908,7 +955,9 @@ internal static class Teams
             case TeamAsk.Invite when LedBy(chara.uid) is var inviter and not Wanderers:
                 Invite(chara, inviter, id);
                 break;
-            case TeamAsk.LandRule when LandRulesOn && Zones.TryGetValue(zoneUid, out var landTeam) && LeaderOf(landTeam) == chara.uid &&
+            // (the leader of the land's team, or the player in no team whose own land it is)
+            case TeamAsk.LandRule when LandRulesOn && Zones.TryGetValue(zoneUid, out var landTeam) &&
+                                       (landTeam > 0 ? LeaderOf(landTeam) == chara.uid : landTeam == -chara.uid) &&
                                        id is >= 0 and < 32 && MineLevel(id) != Closed:
                 if (id == DefaultRule) {
                     ZoneRules.Remove(zoneUid);
@@ -1004,7 +1053,8 @@ internal static class Teams
     internal static Chara? Claimer { get; set; }
 
     /// <summary>
-    ///     A land was claimed in the game that keeps the book: it is the claimer's team's, a Wanderer's is nobody's
+    ///     A land was claimed in the game that keeps the book: it is the claimer's team's, or the claimer's own when it
+    ///     is in no team
     /// </summary>
     internal static void OnClaimed(Zone zone)
     {
@@ -1014,7 +1064,8 @@ internal static class Teams
             zone.SetInt(BaseIncome.ClaimerKey, claimer.uid);
         }
 
-        // teams off: a claim is nobody's, as before (it stays so when the box is ticked later)
+        // teams off: a claim is nobody's, as before (when the box is ticked later, a claimer in no team gets it, see
+        // AdoptSoloLands)
         if (!KeepsBook || !NetSession.Instance.Rules.UseTeams) {
             return;
         }
@@ -1023,11 +1074,13 @@ internal static class Teams
         // (a new claim starts with the default rule)
         ZoneRules.Remove(zone.uid);
         // (the commons is everyone's: no team takes it)
-        if (team == Wanderers || Commons.Is(zone)) {
+        if (Commons.Is(zone)) {
             Zones.Remove(zone.uid);
         } else {
-            Zones[zone.uid] = team;
+            Zones[zone.uid] = StoryOwner.Of(team, claimer.uid);
         }
+
+        zone.SetInt(SoloCheckedKey, 1);
 
         EmpLog.Information("Land {ZoneUid} claimed by {CharaUid}, team {TeamId}", zone.uid, claimer.uid, team);
         Tell();
@@ -1062,14 +1115,14 @@ internal static class Teams
             return;
         }
 
+        AdoptSoloLands();
         var (today, days, seen) = (Today(), System.Math.Max(1, EmpConfig.Server.AbandonDays.Value), ElinNetHost.TeamSeen);
         foreach (var id in TeamList.Keys.ToArray()) {
             if (AnyOnline(id) || !seen.ContainsKey(id)) {
                 seen[id] = today;
             } else if (AbandonOn && today - seen[id] >= days && LandsOf(id).ToArray() is { Length: > 0 } lands) {
                 foreach (var land in lands) {
-                    Zones.Remove(land);
-                    ZoneRules.Remove(land);
+                    Release(land);
                 }
 
                 EmpLog.Information("Team {TeamId} {TeamName} was away for {Days} days: its {Count} lands are nobody's", id, NameOf(id), today - seen[id],
@@ -1079,13 +1132,57 @@ internal static class Teams
         }
     }
 
+    // a land of the player faction whose owner was settled (claimed with teams on, adopted once, or released by its
+    // team): AdoptSoloLands leaves it as it is
+    internal const int SoloCheckedKey = 47110002;
+
     /// <summary>
-    ///     That player's team already holds as many lands as the host allows (box "Lands per team"): a deed is not read
+    ///     A land is nobody's again (its team disbanded, or away too long): it stays so, never handed to its claimer
+    /// </summary>
+    private static void Release(int zoneUid)
+    {
+        Zones.Remove(zoneUid);
+        ZoneRules.Remove(zoneUid);
+        EClass.game.spatials.Find(zoneUid)?.SetInt(SoloCheckedKey, 1);
+    }
+
+    /// <summary>
+    ///     User 2026-10-30, "a solo player is not in the same team as the other solo players": a land of no team that
+    ///     its claimer (BaseIncome.ClaimerKey) holds while in no team, from before this rule (an old world, or claimed
+    ///     while teams were off), becomes that player's own, once. A claimer now in a team, a land of no known claimer,
+    ///     the commons and a land a team released stay nobody's
+    /// </summary>
+    private static void AdoptSoloLands()
+    {
+        var changed = false;
+        foreach (var zone in EClass.pc.faction.GetChildren().Select(b => b.owner).ToArray()) {
+            if (zone is null || zone.GetInt(SoloCheckedKey) != 0 || Commons.Is(zone)) {
+                continue;
+            }
+
+            zone.SetInt(SoloCheckedKey, 1);
+            if (Zones.ContainsKey(zone.uid) || zone.GetInt(BaseIncome.ClaimerKey) is not (> 0 and var claimer) ||
+                !ElinNetHost.PlayerCharaUids().Contains(claimer) || TeamOf(claimer) != Wanderers) {
+                continue;
+            }
+
+            Zones[zone.uid] = -claimer;
+            changed = true;
+            EmpLog.Information("Land {ZoneUid} of no team is its claimer {CharaUid}'s own", zone.uid, claimer);
+        }
+
+        if (changed) {
+            Tell();
+        }
+    }
+
+    /// <summary>
+    ///     That player's team (or the player itself, in no team) already holds as many lands as the host allows (box
+    ///     "Lands per team"): a deed is not read
     /// </summary>
     internal static bool LandCapReached(Chara chara)
     {
-        return BasesOwned && EmpConfig.Server.LandsPerTeam.Value is > 0 and var cap && TeamOf(chara.uid) is var team and not Wanderers &&
-               LandsOf(team).Count() >= cap;
+        return BasesOwned && EmpConfig.Server.LandsPerTeam.Value is > 0 and var cap && LandsOf(StoryOwner.Of(chara.uid)).Count() >= cap;
     }
 
     /// <summary>
@@ -1132,8 +1229,7 @@ internal static class Teams
         Names.Remove(teamId);
         TeamBanner.Remove(teamId);
         foreach (var zone in Zones.Where(z => z.Value == teamId).Select(z => z.Key).ToArray()) {
-            Zones.Remove(zone);
-            ZoneRules.Remove(zone);
+            Release(zone);
         }
         foreach (var uid in Requests.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
             Requests.Remove(uid);

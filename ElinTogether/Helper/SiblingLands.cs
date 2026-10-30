@@ -178,7 +178,7 @@ internal static class SiblingLands
 
     private static string Label(Zone zone)
     {
-        var whose = Commons.Is(zone) ? "emp_land_commons".lang() : Teams.NameOf(Teams.TeamOfZone(zone));
+        var whose = Commons.Is(zone) ? "emp_land_commons".lang() : Teams.LandOwnerName(zone);
         return $"{whose} - {zone.Name} ({$"emp_ui_team_rule_{Teams.LevelOn(EClass.pc, zone)}".lang()})";
     }
 

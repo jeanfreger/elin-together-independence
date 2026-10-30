@@ -32,7 +32,9 @@ internal class TabLands : TabEmpBase
 
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
-        if (mine == Teams.Wanderers) {
+        // (a player in no team: its own lands, its own rules)
+        var lands = Teams.LandsOf(StoryOwner.Of(me)).ToList();
+        if (mine == Teams.Wanderers && lands.Count == 0) {
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
             BuildBoxes(this, mine);
@@ -40,7 +42,6 @@ internal class TabLands : TabEmpBase
             return;
         }
 
-        var lands = Teams.LandsOf(mine).ToList();
         if (lands.Count == 0) {
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
             BuildBoxes(this, mine);
@@ -54,7 +55,7 @@ internal class TabLands : TabEmpBase
         var picked = lands.Contains(_picked) ? _picked : lands[0];
         var card = left.Card("emp_ui_tab_lands".lang());
         // (whose lands: the team's emblem and name over them)
-        if (TeamBanner.On) {
+        if (TeamBanner.On && mine != Teams.Wanderers) {
             var head = card.Row();
             head.Layout.spacing = 10f;
             TeamBanner.Draw(head, mine, 32f);
@@ -72,7 +73,7 @@ internal class TabLands : TabEmpBase
 
         BuildBoxes(left, mine);
         BuildCommons(left);
-        BuildLand(right, picked, Teams.LeaderOf(mine) == me);
+        BuildLand(right, picked, mine == Teams.Wanderers || Teams.LeaderOf(mine) == me);
     }
 
     // the land whose rules are open on the right, kept over reopenings

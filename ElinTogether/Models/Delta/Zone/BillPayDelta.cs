@@ -201,7 +201,7 @@ public class BillPayDelta : ElinDelta
         }
 
         sender.ModCurrency(-amount);
-        LowerCounters(tax, amount, bill.GetInt(35) / 1000, TeamBills.TeamOf(bill), sender.uid);
+        LowerCounters(tax, amount, bill.GetInt(35) / 1000, TeamBills.OwnerOf(bill), sender.uid);
 
         bill.Destroy();
         Tell(host, sender.NameSimple, bill.id, amount);
@@ -214,7 +214,8 @@ public class BillPayDelta : ElinDelta
         if (tax) {
             player.stats.taxBillsPaid += amount;
             player.taxBills = Math.Max(0, player.taxBills - 1);
-            TeamBills.OnPaid(team);
+            // (a bill of no team told without its claimer: the payer's own)
+            TeamBills.OnPaid(team, payer);
             // what the game gives back for the extra tax
             if (gift > 0) {
                 TeamMail.Send(payer, ThingGen.CreateParcel("parcel_mysiliaGift", ThingGen.Create("money2", "copper").SetNum(gift)));

@@ -42,11 +42,12 @@ internal static class TeamStory
     }
 
     /// <summary>
-    ///     The furthest chapter of that team, as the team card says it
+    ///     The furthest chapter of that owner (a team, or minus a player in no team: its own, user 2026-10-30), as the
+    ///     team card says it. A player in no team never noted alone yet: what was noted for all of them before
     /// </summary>
     internal static string ChapterOf(int team)
     {
-        if (!Book.TryGetValue(team, out var phase)) {
+        if (!Book.TryGetValue(team, out var phase) && (team >= 0 || !Book.TryGetValue(Teams.Wanderers, out phase))) {
             return "emp_team_chapter_none".lang();
         }
 
@@ -98,7 +99,7 @@ internal static class TeamStory
         }
 
         var changed = false;
-        foreach (var team in players.Where(p => p is { IsPlayer: true } || p == EClass.pc).Select(p => Teams.TeamOf(p.uid)).Distinct()) {
+        foreach (var team in players.Where(p => p is { IsPlayer: true } || p == EClass.pc).Select(p => StoryOwner.Of(p.uid)).Distinct()) {
             if (Book.TryGetValue(team, out var was) && was >= phase) {
                 continue;
             }

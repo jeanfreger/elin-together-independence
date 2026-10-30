@@ -187,7 +187,8 @@ internal static class ActivityJournal
     private static void OnClaimed(Zone zone)
     {
         var claimer = Teams.Claimer ?? EClass.pc;
-        if (ElinNetHost.ZoneTeams.TryGetValue(zone.uid, out var team) && team != Teams.Wanderers) {
+        // (a team's land; one of a player in no team is noted under minus its uid, read by no team)
+        if (ElinNetHost.ZoneTeams.TryGetValue(zone.uid, out var team) && team > 0) {
             Record(LandClaimed, claimer.uid, team, zone.Name, true);
         }
     }
