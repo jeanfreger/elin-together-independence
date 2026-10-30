@@ -61,6 +61,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         WorldHandover.Watch();
         TileStateDelta.Flush();
         PlayerTrade.Update();
+        Mailbox.Update();
         PlayerDuel.Update();
         AdventurerBout.Update();
         CardCache.Update();

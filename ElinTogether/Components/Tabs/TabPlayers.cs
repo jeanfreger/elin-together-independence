@@ -29,14 +29,31 @@ internal class TabPlayers : TabEmpBase
             return;
         }
 
-        // sub-tabs: who is here, then for the host the characters of this world and the bans
-        var pages = new List<(string, Action<YKVertical>)> { ("emp_ui_sub_online".lang(), BuildPlayerList) };
+        // sub-tabs: who is here, the letters (host box "Mailbox"), then for the host the characters of this world and the bans
+        var pages = new List<(string, Action<YKVertical>)> {
+            ("emp_ui_sub_online".lang(), BuildPlayerList),
+            ("emp_ui_sub_mail".lang(), page => TabMail.Build(page, Relayout)),
+        };
         if (HostLists) {
             pages.Add(("emp_ui_sub_characters".lang(), BuildSavedCharacters));
             pages.Add(("emp_ui_sub_banned".lang(), BuildBannedList));
         }
 
         SubTabs("players", pages);
+    }
+
+    internal const int MailSubTab = 1;
+
+    protected override void OnSubTabShown(int index)
+    {
+        if (index == MailSubTab && Mailbox.On) {
+            Mailbox.AskList();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        TabMail.Release(this);
     }
 
     // the player whose page is open on the right (by account), kept over reopenings
@@ -391,6 +408,15 @@ internal class TabPlayers : TabEmpBase
             }
             if (PlayerDuel.Enabled && here && !PlayerDuel.InDuel) {
                 actions.Add(("emp_act_duel".lang(), () => PlayerDuel.Challenge(chara.uid)));
+            }
+            // a letter, also kept for a player who leaves before reading it (host box "Mailbox")
+            if (Mailbox.On) {
+                var to = chara.uid;
+                actions.Add(("emp_ui_mail_write_to".lang(), () => {
+                    TabMail.WriteTo(to);
+                    SetSubTab("players", MailSubTab);
+                    LayerElinTogether.Instance?.Reopen();
+                }));
             }
 
             actions.Add(((PlayerSocial.IsFriend(other) ? "emp_ui_unfriend" : "emp_ui_friend").lang(), () => {

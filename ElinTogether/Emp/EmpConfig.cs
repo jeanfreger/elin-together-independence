@@ -859,6 +859,12 @@ internal partial class EmpConfig
             false,
             "The host ranks players and teams (level, deepest floor, duels won, team wealth), shown on the Leaderboards page\nOtherwise no rankings\n房主为玩家和队伍排名（等级、最深楼层、决斗获胜、队伍财富），显示在排行榜页面。关闭时没有排名");
 
+        Server.Mailbox = config.Bind(
+            "Server",
+            "Mailbox",
+            false,
+            "Players send each other letters (a text, up to 5 stacks of items and gold), also to a player who is offline. The host keeps the letters and what they hold in the world save; a letter left unclaimed for 30 days goes back to its sender\nOtherwise no letters\n玩家可以互相寄信（文字、最多5组物品和金币），也可以寄给不在线的玩家。房主把信件及其中的物品保存在世界存档中；30天无人领取的信件会退回寄件人。关闭时没有信件");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1142,6 +1148,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> ActivityJournal { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBanner { get; set; } = null!;
         internal static ConfigEntry<bool> Leaderboards { get; set; } = null!;
+        internal static ConfigEntry<bool> Mailbox { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;

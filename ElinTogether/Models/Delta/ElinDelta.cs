@@ -210,6 +210,9 @@ namespace ElinTogether.Models;
 [Union(1230, typeof(CharaSheetDelta))]
 [Union(1231, typeof(JournalDelta))]
 [Union(1232, typeof(LeaderboardDelta))]
+// Mailbox: letters between players, kept by the host
+[Union(1240, typeof(MailRequestDelta))]
+[Union(1241, typeof(MailStateDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

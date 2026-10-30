@@ -388,6 +388,7 @@ internal static class SettingsTable
         yield return new("activity_journal", "together", true, EmpConfig.Server.ActivityJournal);
         yield return new("team_banner", "together", true, EmpConfig.Server.TeamBanner, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("leaderboards", "together", true, EmpConfig.Server.Leaderboards);
+        yield return new("mailbox", "together", true, EmpConfig.Server.Mailbox);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
         yield return new("team_own_guilds", "together", true, EmpConfig.Server.TeamOwnGuilds, Requires: () => Helper.TeamOwnStory.Wanted);
 
@@ -527,6 +528,7 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.TeamSheets, true);
         yield return (EmpConfig.Server.ActivityJournal, true);
         yield return (EmpConfig.Server.Leaderboards, true);
+        yield return (EmpConfig.Server.Mailbox, true);
         // who joins: both checks; characters: pick one of the account's, 3 at most, may be deleted, revive after permadeath
         yield return (EmpConfig.Server.SourceValidationSet, "sources,plugins");
         yield return (EmpConfig.Server.ChooseCharacter, true);
@@ -726,6 +728,7 @@ internal static class SettingsTable
             [EmpConfig.Server.ActivityJournal] = r.ActivityJournal,
             [EmpConfig.Server.TeamBanner] = r.TeamBanner,
             [EmpConfig.Server.Leaderboards] = r.Leaderboards,
+            [EmpConfig.Server.Mailbox] = r.Mailbox,
             [EmpConfig.Server.TeamOwnGuilds] = r.TeamOwnGuilds,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
