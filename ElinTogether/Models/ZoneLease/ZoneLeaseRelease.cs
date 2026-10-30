@@ -135,4 +135,11 @@ public class ZoneLeaseRelease
     /// </summary>
     [Key(20)]
     public int[]? Income { get; init; }
+
+    /// <summary>
+    ///     The fortune drum of the zone (Zone.fortuneRoll: prizes of the month, prizes won, next refresh), as this
+    ///     player's game rolled it alone, see ZoneLeaseState.GetFortuneRoll. Null: none there
+    /// </summary>
+    [Key(21)]
+    public string? FortuneRoll { get; init; }
 }
