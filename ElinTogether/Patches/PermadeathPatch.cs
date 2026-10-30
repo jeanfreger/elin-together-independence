@@ -56,6 +56,9 @@ internal static class PermadeathPatch
     /// </summary>
     private static bool _uiWasIdle;
 
+    // the system menu was open as the frame began: Escape closes it (the action mode that would is not run)
+    private static bool _menuWasOpen;
+
     /// <summary>
     ///     A dead player waiting for its revive: the game reads only the windows' input for a dead character
     ///     (Scene.OnUpdate calls UI.UpdateInput, not ActionMode.UpdateInput), because its death dialog came at once.
@@ -70,12 +73,19 @@ internal static class PermadeathPatch
     internal static void BeforeSceneUpdate()
     {
         _uiWasIdle = EClass.core.IsGameStarted && EClass.ui is { } ui && ui.layers.Count == 0 && !ui.contextMenu.isActive;
+        _menuWasOpen = EClass.core.IsGameStarted && EClass.ui is { } open && open.layers.Count == 0 && open.contextMenu.isActive;
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Scene), nameof(Scene.OnUpdate))]
     internal static void AfterSceneUpdate(Scene __instance)
     {
+        if (_menuWasOpen && EInput.action == EAction.Cancel && EClass.ui.contextMenu.isActive && IsWaitingForRevive(__instance)) {
+            EClass.ui.contextMenu.currentMenu?.Hide();
+            EInput.Consume();
+            return;
+        }
+
         if (!_uiWasIdle || !IsWaitingForRevive(__instance) || EClass.ui.layers.Count != 0 || EClass.ui.contextMenu.isActive ||
             EClass.ui.BlockInput || EInput.waitReleaseAnyKey) {
             return;
