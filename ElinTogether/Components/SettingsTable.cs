@@ -301,6 +301,32 @@ internal static class SettingsTable
     /// <summary>
     ///     The table, with the rows the official server fixes greyed out while this game hosts it
     /// </summary>
+    /// <summary>
+    ///     The world's rules in one line for a bug report (user 2026-10-30): the ones that differ from the defaults,
+    ///     "id=on/off" or "id=option". A guest reads what its host told; the host its own config
+    /// </summary>
+    internal static string ReportSummary()
+    {
+        try {
+            var src = Net.NetSession.Instance.Transport is Net.ElinNetClient ? FromRules(Net.NetSession.Instance.Rules) : RuleSource.Current;
+            var parts = new List<string>();
+            foreach (var row in RowsRaw()) {
+                if (row.Choice is { } c) {
+                    var now = c.Read(src);
+                    if (now >= 0 && now != c.Read(RuleSource.Defaults)) {
+                        parts.Add($"{row.Id}={(now < c.Options.Length ? c.Options[now] : now.ToString())}");
+                    }
+                } else if (row.Entry is { } e && src.Get(e) is { } on && on != (bool)e.DefaultValue) {
+                    parts.Add($"{row.Id}={(on ? "on" : "off")}");
+                }
+            }
+
+            return parts.Count == 0 ? "all at their defaults" : string.Join(", ", parts);
+        } catch (System.Exception ex) {
+            return "unreadable (" + ex.GetType().Name + ")";
+        }
+    }
+
     internal static IEnumerable<SettingRow> Rows()
     {
         var fixedEntries = OfficialFixedEntries();

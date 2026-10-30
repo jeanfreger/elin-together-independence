@@ -420,6 +420,9 @@ internal static class BugReport
             ? "**Host's log:** attached in report.zip as host-Session.log (its last 10 minutes) and host-Player.log (Steam ids, IP addresses and user names removed)"
             : $"**Host's log:** {host.Note}").AppendLine();
 
+        // the world's rules that differ from the defaults (user 2026-10-30), as the game the report comes from knows them
+        head.AppendLine($"**World rules (differ from the defaults):** {Cut(Components.SettingsTable.ReportSummary(), 1200)}").AppendLine();
+
         // the context takes what room is left (the player's words are never cut for it)
         var room = MaxText - head.Length - 60;
         var context = "#### Context (automatic)\n\n```\n" + Cut(ReportContext.Text(), Math.Max(room, 200)).Replace("```", "'''") + "\n```\n";
