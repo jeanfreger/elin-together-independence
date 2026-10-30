@@ -418,6 +418,7 @@ internal partial class ElinNetHost
             Story = TeamStory.Told(),
             Banners = TeamBanner.Told(),
             Things = TeamBanner.ToldThings(),
+            QuestSharers = TeamQuests.Told(),
         });
     }
 }

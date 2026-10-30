@@ -70,6 +70,7 @@ internal class TabServerConfiguration : TabEmpBase
         ["team_pvp"] = ["teams"],
         ["team_bills"] = ["teams"],
         ["team_story"] = ["teams"],
+        ["team_quest_sharing"] = ["teams", "personal_quests"],
         ["team_boxes"] = ["teams"],
         ["land_rules"] = ["teams", "team_bases"],
         ["sibling_lands"] = ["teams", "team_bases"],

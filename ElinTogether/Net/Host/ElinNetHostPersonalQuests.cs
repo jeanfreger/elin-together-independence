@@ -244,14 +244,27 @@ internal partial class ElinNetHost
             return;
         }
 
-        // the host of the world gives a reward once, for a quest it knows that player holds
+        // the host of the world gives a reward once, for a quest it knows that player holds, or a quest a teammate
+        // shares with the team it is in (TeamQuests)
+        var owner = taker.uid;
         if (!IsZoneSession && !PersonalLogOf(taker.uid).ContainsKey(quest.uid)) {
-            EmpLog.Warning("Player {CharaUid} turns in quest {QuestUid} {QuestId} it does not hold", taker.uid, quest.uid, quest.id);
-            return;
+            if (!MayUseTeamQuest(taker.uid, quest.uid, out owner)) {
+                EmpLog.Warning("Player {CharaUid} turns in quest {QuestUid} {QuestId} it does not hold", taker.uid, quest.uid, quest.id);
+                return;
+            }
+
+            if (owner == pc.uid) {
+                // the host's own: the quest of its journal is the one completed, as the host took it
+                if (game.quests.list.Find(q => q.uid == quest.uid && !TeamQuests.IsCopy(q)) is not { } held) {
+                    return;
+                }
+
+                quest = held;
+            }
         }
 
         // its reward is the one the host drew, not the one its player's copy says (a forged copy asked any sum)
-        if (ElinDelta.TrustEnforced && !IsZoneSession && !HoldToTerms(taker, quest)) {
+        if (ElinDelta.TrustEnforced && !IsZoneSession && owner != pc.uid && !HoldToTerms(taker, quest)) {
             return;
         }
 
@@ -280,8 +293,13 @@ internal partial class ElinNetHost
         }
 
         if (!IsZoneSession) {
-            PersonalLogOf(taker.uid).Remove(quest.uid);
+            if (owner != pc.uid) {
+                PersonalLogOf(owner).Remove(quest.uid);
+            }
+
             PersonalTerms.Remove(quest.uid);
+            // a shared quest: the teammates get their share, every journal drops it
+            CloseTeamQuest(quest, owner, taker.uid);
         }
 
         EmpLog.Debug("Player {CharaUid} completed quest {QuestUid} {QuestId}", taker.uid, quest.uid, quest.id);
@@ -347,6 +365,7 @@ internal partial class ElinNetHost
         }
 
         PersonalLogOf(uid)[questUid] = data.Bytes;
+        NoteOwnerTold(uid, questUid, data.Bytes);
     }
 
     /// <summary>
@@ -471,6 +490,7 @@ internal partial class ElinNetHost
     private void SendPersonalState(ISteamNetPeer peer, int charaUid)
     {
         ResumeAfterAbsence(charaUid);
+        ForgetTeamQuestsOf(charaUid);
 
         if (IsZoneSession || !Session.Rules.UsePersonalQuests) {
             return;

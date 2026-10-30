@@ -247,6 +247,12 @@ internal class TabTeam : TabEmpBase
             }
         }
 
+        // host box "Teammates share quests": each player's own choice, kept by the host
+        if (TeamQuests.On) {
+            card2.ToggleRow("emp_ui_team_share_quests".lang(), "emp_ui_team_share_quests_desc".lang(), TeamQuests.Shares(me),
+                TeamQuests.Ask, ownLines: true);
+        }
+
         card2.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
 
         // the leader answers who asks (the choices of the player list moved here), at the top of the right page

@@ -132,6 +132,8 @@ internal static class PersonalQuests
 
     internal static void Tick()
     {
+        TeamQuests.Tick();
+
         var session = NetSession.Instance;
         if (session.Transport is null || !Enabled) {
             _mine = [];
@@ -150,6 +152,7 @@ internal static class PersonalQuests
 
         if (session.Transport is ElinNetHost host) {
             host.SweepTakenOffers();
+            host.TickTeamQuests();
             return;
         }
 
@@ -167,13 +170,13 @@ internal static class PersonalQuests
             }
         }
 
-        // nobody else holds these: they expire on this player's clock
-        foreach (var expired in quests.list.Where(q => IsPersonal(q) && q.IsExpired).ToArray()) {
+        // nobody else holds these: they expire on this player's clock (a teammate's shared quest on its owner's)
+        foreach (var expired in quests.list.Where(q => IsPersonal(q) && !TeamQuests.IsCopy(q) && q.IsExpired).ToArray()) {
             Msg.Say("questExpired", expired.GetTitle());
             expired.Fail();
         }
 
-        _mine = quests.list.Where(IsPersonal).ToList();
+        _mine = quests.list.Where(q => IsPersonal(q) && !TeamQuests.IsCopy(q)).ToList();
         _now = EClass.world.date.GetRaw();
 
         // not before the host said what this player's standing is: until then it shows the host's own
@@ -442,6 +445,29 @@ internal static class PlayerStandIn
                 EClass.player.chara = self;
                 IsActive = false;
 
+                if (_fame != 0 || _karma != 0) {
+                    host.SendDeltaTo(peerId, new PlayerStandingDelta {
+                        Fame = _fame,
+                        Karma = _karma,
+                        Relative = true,
+                    });
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    ///     While the host makes a teammate's share of a shared quest (TeamQuests): the fame it gives is that player's,
+    ///     wherever it is
+    /// </summary>
+    internal static ScopeExit Share(ElinNetHost host, int peerId)
+    {
+        IsActive = true;
+        _fame = _karma = 0;
+
+        return new() {
+            OnExit = () => {
+                IsActive = false;
                 if (_fame != 0 || _karma != 0) {
                     host.SendDeltaTo(peerId, new PlayerStandingDelta {
                         Fame = _fame,

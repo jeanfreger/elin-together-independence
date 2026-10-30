@@ -90,6 +90,12 @@ public enum TeamAsk : byte
     ///     The leader sets its team's banner (host box "Team banners"). Id is the emblem, ZoneUid the colour
     /// </summary>
     Banner,
+
+    /// <summary>
+    ///     The player shares (Id 1) or stops sharing (Id 0) its own quests with its team (host box "Teammates share
+    ///     quests", <see cref="TeamQuests" />)
+    /// </summary>
+    ShareQuests,
 }
 
 /// <summary>

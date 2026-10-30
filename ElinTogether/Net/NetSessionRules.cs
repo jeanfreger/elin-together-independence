@@ -507,6 +507,13 @@ public class NetSessionRules
     [Key(153)]
     public bool Mailbox { get; set; }
 
+    /// <summary>
+    ///     Host box "Teammates share quests": a player in a team may share its own quests with its team (TeamQuests).
+    ///     Also needs teams and personal quests. An older host sends none: no sharing
+    /// </summary>
+    [Key(155)]
+    public bool TeamQuestSharing { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -544,6 +551,7 @@ public class NetSessionRules
         Leaderboards = EmpConfig.Server.Leaderboards.Value,
         Market = EmpConfig.Server.Market.Value,
         Mailbox = EmpConfig.Server.Mailbox.Value,
+        TeamQuestSharing = EmpConfig.Server.TeamQuestSharing.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

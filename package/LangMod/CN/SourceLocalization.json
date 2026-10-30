@@ -1220,5 +1220,12 @@
     "LangGeneral.emp_mail_bag_full.text": "背包空间不足。",
     "LangGeneral.emp_mail_broken.text": "无法读取这封信的物品，信件保留不动。",
     "LangGeneral.emp_mail_not_empty.text": "请先领取信中的物品。",
-    "LangGeneral.emp_mail_waiting.text": "你有 {0} 封信待领取（玩家 > 信件）。"
+    "LangGeneral.emp_mail_waiting.text": "你有 {0} 封信待领取（玩家 > 信件）。",
+    "LangGeneral.emp_ui_sv_cfg_team_quest_sharing.text": "队友共享任务",
+    "LangGeneral.emp_ui_sv_desc_team_quest_sharing.text": "队伍中的玩家可以在队伍页面勾选，把自己的任务分享给队伍：任务会出现在队友的日志中，任何队友都可以推进并交付，所有在线队友都能获得奖励。需要开启队伍和个人任务。关闭：每名玩家的任务只属于自己。",
+    "LangGeneral.emp_ui_team_share_quests.text": "与队伍分享我的任务",
+    "LangGeneral.emp_ui_team_share_quests_desc.text": "任务会出现在队友的日志中，任何队友都可以交付，所有在线队友都能获得奖励。取消勾选后，已分享的任务在完成前仍保持分享。",
+    "LangGeneral.emp_team_quest_share_got.text": "队友交付了“{0}”：你获得了属于你的一份奖励。",
+    "LangGeneral.emp_team_quest_share_mail.text": "队友交付了“{0}”：属于你的一份奖励已寄到据点的邮箱。",
+    "LangGeneral.emp_team_quest_share_done.text": "队友交付了“{0}”。"
 }

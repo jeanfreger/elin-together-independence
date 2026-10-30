@@ -385,6 +385,8 @@ internal static class SettingsTable
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_sheets", "together", true, EmpConfig.Server.TeamSheets, Requires: () => EmpConfig.Server.Teams.Value);
+        yield return new("team_quest_sharing", "together", true, EmpConfig.Server.TeamQuestSharing,
+            Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.PersonalQuests.Value);
         yield return new("activity_journal", "together", true, EmpConfig.Server.ActivityJournal);
         yield return new("team_banner", "together", true, EmpConfig.Server.TeamBanner, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("leaderboards", "together", true, EmpConfig.Server.Leaderboards);
@@ -531,6 +533,7 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.Leaderboards, true);
         yield return (EmpConfig.Server.Market, true);
         yield return (EmpConfig.Server.Mailbox, true);
+        yield return (EmpConfig.Server.TeamQuestSharing, true);
         // who joins: both checks; characters: pick one of the account's, 3 at most, may be deleted, revive after permadeath
         yield return (EmpConfig.Server.SourceValidationSet, "sources,plugins");
         yield return (EmpConfig.Server.ChooseCharacter, true);
@@ -732,6 +735,7 @@ internal static class SettingsTable
             [EmpConfig.Server.Leaderboards] = r.Leaderboards,
             [EmpConfig.Server.Market] = r.Market,
             [EmpConfig.Server.Mailbox] = r.Mailbox,
+            [EmpConfig.Server.TeamQuestSharing] = r.TeamQuestSharing,
             [EmpConfig.Server.TeamOwnGuilds] = r.TeamOwnGuilds,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,

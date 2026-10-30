@@ -871,6 +871,12 @@ internal partial class EmpConfig
             false,
             "Players send each other letters (a text, up to 5 stacks of items and gold), also to a player who is offline. The host keeps the letters and what they hold in the world save; a letter left unclaimed for 30 days goes back to its sender\nOtherwise no letters\n玩家可以互相寄信（文字、最多5组物品和金币），也可以寄给不在线的玩家。房主把信件及其中的物品保存在世界存档中；30天无人领取的信件会退回寄件人。关闭时没有信件");
 
+        Server.TeamQuestSharing = config.Bind(
+            "Server",
+            "TeamQuestSharing",
+            false,
+            "A player in a team can share its own quests with its team (a box on the Team page): its teammates see them in their journal, any of them can advance and turn them in, and every teammate in the game gets the reward. Needs teams and personal quests\nOtherwise each player's quests stay its own\n队伍中的玩家可以把自己的任务分享给队伍（队伍页面上的勾选框）：队友在日志中看到这些任务，任何队友都可以推进并交付，所有在线队友都能获得奖励。需要开启队伍和个人任务。关闭时每名玩家的任务只属于自己");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1156,6 +1162,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> Leaderboards { get; set; } = null!;
         internal static ConfigEntry<bool> Market { get; set; } = null!;
         internal static ConfigEntry<bool> Mailbox { get; set; } = null!;
+        internal static ConfigEntry<bool> TeamQuestSharing { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
