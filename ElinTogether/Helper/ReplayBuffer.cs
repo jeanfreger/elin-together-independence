@@ -25,6 +25,20 @@ internal static class ReplayBuffer
     private const int Quality = 60;
 
     private static readonly Queue<(DateTime At, byte[] Jpg)> _frames = new();
+
+    /// <summary>
+    ///     How many open pages hold the recording (the bug report page: user 2026-10-30, "the last 30 seconds only showed
+    ///     the player writing the report"); the frames before it are kept as they are
+    /// </summary>
+    internal static int PausedBy;
+
+    /// <summary>Put on a page: the recording stops while it is shown, and goes on when it is closed</summary>
+    internal sealed class Hold : MonoBehaviour
+    {
+        private void OnEnable() => PausedBy++;
+
+        private void OnDisable() => PausedBy = Math.Max(0, PausedBy - 1);
+    }
     private static RenderTexture? _small;
     private static Texture2D? _read;
 
@@ -34,7 +48,8 @@ internal static class ReplayBuffer
         var wait = new WaitForSecondsRealtime(Every);
         while (true) {
             yield return wait;
-            if (!EmpConfig.Client.RecordReplay.Value || !EClass.core.IsGameStarted) {
+            // (paused while the bug report page is open: the video shows what happened, not the report being typed)
+            if (!EmpConfig.Client.RecordReplay.Value || !EClass.core.IsGameStarted || PausedBy > 0) {
                 continue;
             }
 

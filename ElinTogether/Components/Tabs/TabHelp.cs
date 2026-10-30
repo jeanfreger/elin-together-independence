@@ -105,6 +105,8 @@ internal static class TabHelp
     private static void BuildReport(YKVertical page)
     {
         var card = page.Card("emp_help_report".lang());
+        // (the video stops while this page is shown: it keeps the 30 seconds before the report was opened)
+        card.gameObject.AddComponent<ReplayBuffer.Hold>();
         card.Text("emp_ui_report_what".lang());
         card.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
 
