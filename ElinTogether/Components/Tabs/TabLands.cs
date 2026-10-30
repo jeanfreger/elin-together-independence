@@ -136,7 +136,7 @@ internal class TabLands : TabEmpBase
         var header = bank is not null && delivery is not null ? "emp_ui_land_boxes" : bank is not null ? "emp_ui_land_team_bank" : "emp_ui_land_delivery";
         var card = page.Card(header.lang(), EmpUi.Icon("icon_container"));
         if (bank is not null) {
-            BoxRow(card, bank, "emp_ui_land_team_bank".lang(), "emp_ui_land_bank_line".Loc(bank.GetCurrency(), bank.things.Count));
+            BoxRow(card, bank, "icon_stash3", "emp_ui_land_team_bank".lang(), "emp_ui_land_bank_line".Loc(bank.GetCurrency(), bank.things.Count));
         }
 
         if (delivery is not null) {
@@ -144,14 +144,18 @@ internal class TabLands : TabEmpBase
                 card.Divider();
             }
 
-            BoxRow(card, delivery, "emp_ui_land_delivery".lang(), "emp_ui_land_items".Loc(delivery.things.Count));
+            BoxRow(card, delivery, "icon_hotAutoDump", "emp_ui_land_delivery".lang(), "emp_ui_land_items".Loc(delivery.things.Count));
         }
     }
 
-    private static void BoxRow(YKLayout card, Thing box, string title, string detail)
+    private static void BoxRow(YKLayout card, Thing box, string icon, string title, string detail)
     {
         var row = card.Row();
-        row.CardIcon(box);
+        // (the game's own icon for it: the box itself is a hidden container, drawn as a black square)
+        if (!row.SpriteIcon(44f, icon)) {
+            row.CardIcon(box);
+        }
+
         row.TextColumn(title, detail);
     }
 }
