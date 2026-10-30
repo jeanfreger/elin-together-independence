@@ -865,6 +865,12 @@ internal partial class EmpConfig
             false,
             "Players post classified ads (selling or looking for an item, a quantity, a price, a short note) on the Market page, kept by the host with the world: 5 ads per player, 7 days each\nOtherwise no market\n玩家在市场页面发布分类广告（出售或求购物品、数量、价格、简短备注），由房主随世界保存：每名玩家 5 条，每条 7 天。关闭时没有市场");
 
+        Server.Mailbox = config.Bind(
+            "Server",
+            "Mailbox",
+            false,
+            "Players send each other letters (a text, up to 5 stacks of items and gold), also to a player who is offline. The host keeps the letters and what they hold in the world save; a letter left unclaimed for 30 days goes back to its sender\nOtherwise no letters\n玩家可以互相寄信（文字、最多5组物品和金币），也可以寄给不在线的玩家。房主把信件及其中的物品保存在世界存档中；30天无人领取的信件会退回寄件人。关闭时没有信件");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1149,6 +1155,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamBanner { get; set; } = null!;
         internal static ConfigEntry<bool> Leaderboards { get; set; } = null!;
         internal static ConfigEntry<bool> Market { get; set; } = null!;
+        internal static ConfigEntry<bool> Mailbox { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;

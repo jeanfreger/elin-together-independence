@@ -501,6 +501,12 @@ public class NetSessionRules
     [Key(154)]
     public bool Market { get; set; }
 
+    /// <summary>
+    ///     Host box "Mailbox": letters between players, kept by the host. An older host sends none: no letters
+    /// </summary>
+    [Key(153)]
+    public bool Mailbox { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -537,6 +543,7 @@ public class NetSessionRules
         TeamBanner = EmpConfig.Server.TeamBanner.Value,
         Leaderboards = EmpConfig.Server.Leaderboards.Value,
         Market = EmpConfig.Server.Market.Value,
+        Mailbox = EmpConfig.Server.Mailbox.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

@@ -213,6 +213,9 @@ namespace ElinTogether.Models;
 // Market: classified ads (user 2026-10-30)
 [Union(1245, typeof(MarketAskDelta))]
 [Union(1246, typeof(MarketBoardDelta))]
+// Mailbox: letters between players, kept by the host
+[Union(1240, typeof(MailRequestDelta))]
+[Union(1241, typeof(MailStateDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
