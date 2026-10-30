@@ -34,6 +34,14 @@ internal static class ClaimZonePatch
             Teams.OnClaimed(__instance);
         }
 
+        // claimed for this game's own player (a guest's yes on the host's map is the host's claim, for that guest:
+        // Teams.Claimer): one with no respawn point of its own (a guest, OwnSettings.Carry) wakes up on the first
+        // land it claims, as the game makes the start site the respawn point of the one who claims it
+        if (__runOriginal && Teams.Claimer is null && EClass.player.spawnZone is null) {
+            EClass.player.spawnZone = __instance;
+            EmpLog.Information("Respawn point set to the land claimed, {ZoneFullName}", __instance.ZoneFullName);
+        }
+
         if (__runOriginal && NetSession.Instance.Connection is ElinNetHost { IsZoneSession: false } host) {
             CoroutineHelper.Deferred(() => host.PropagateZoneChangeState(__instance), 2);
         }

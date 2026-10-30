@@ -67,6 +67,7 @@ internal partial class ElinNetClient : ElinNetBase
         UpdateSoftRejoinWait();
         UpdateTravelWatchdog();
         UpdateHostLeft();
+        Helper.OwnSettings.WatchRespawn();
 
         if (IsConnected) {
             _lastTimeout = DateTime.Now;
