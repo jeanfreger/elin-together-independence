@@ -91,7 +91,9 @@ internal static class BaseIncome
 
         var zone = __instance.owner;
         var team = Teams.TeamOfZone(zone);
-        var owners = (team != Teams.Wanderers ? Teams.MembersOfTeam(team) : [zone.GetInt(ClaimerKey)]).Where(uid => uid != 0).ToArray();
+        // (the commons has no owner: what it earns goes to the shared bank)
+        var owners = (team != Teams.Wanderers ? Teams.MembersOfTeam(team) : Commons.Is(zone) ? [] : [zone.GetInt(ClaimerKey)])
+            .Where(uid => uid != 0).ToArray();
         if (owners.Length == 0 && ElinNetHost.SavedRemoteCharas.Count == 0 || owners.Length > 0 && owners.All(uid => uid == EClass.pc.uid)) {
             return true;
         }

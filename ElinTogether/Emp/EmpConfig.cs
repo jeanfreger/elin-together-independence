@@ -736,6 +736,15 @@ internal partial class EmpConfig
             "Otherwise a land is as before: its team builds, others visit\n" +
             "队长可为队伍的每块土地设置本队与其他人的权限：封闭（不能进入）、参观、参观并使用、建造；需要开启“据点归队伍所有”；关闭时土地如前：本队可建造，其他人只能参观");
 
+        Server.CommonsStartLand = config.Bind(
+            "Server",
+            "CommonsStartLand",
+            false,
+            "The start land (the home meadow) belongs to everyone, like a town: nobody owns it, no team can take it, it has no tax bill, and every player builds, digs, places and picks up furniture there whatever the other building rules say. " +
+            "It stays the world's base (the host's home), and the container log still records it\n" +
+            "Otherwise the start land is the host's base, as before\n" +
+            "起始土地（家园草原）像城镇一样属于所有人：没有主人，任何队伍都不能占有，没有税单，每名玩家都可以在那里建造、挖掘、摆放和拿起家具，不受其他建造规则限制。它仍是世界的据点（房主的家），容器记录照常记录。关闭时起始土地如前，是房主的据点");
+
         Server.SiblingLands = config.Bind(
             "Server",
             "SiblingLands",
@@ -1149,6 +1158,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamDeed { get; set; } = null!;
         internal static ConfigEntry<bool> TeamLeaders { get; set; } = null!;
         internal static ConfigEntry<bool> LandRules { get; set; } = null!;
+        internal static ConfigEntry<bool> CommonsStartLand { get; set; } = null!;
         internal static ConfigEntry<bool> SiblingLands { get; set; } = null!;
         internal static ConfigEntry<bool> LargeCrowds { get; set; } = null!;
         internal static ConfigEntry<bool> LandAbandon { get; set; } = null!;

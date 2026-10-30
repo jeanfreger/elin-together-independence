@@ -27,7 +27,7 @@ internal static class RemoteBuildModePatch
         // machine that does the task: refused here, before the click pays
         var mode = __instance.mode;
         var asked = mode is AM_Build or AM_Mine or AM_Dig or AM_Cut or AM_Terrain or AM_CreateArea or AM_ExpandArea or AM_EditArea or AM_FlagCell;
-        if (asked && NetSession.Instance.Rules.GuestsBuild && !mode.IsRoofEditMode()) {
+        if (asked && NetSession.Instance.Rules.GuestsBuildIn(EClass._zone) && !mode.IsRoofEditMode()) {
             return true;
         }
 

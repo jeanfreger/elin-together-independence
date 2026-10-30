@@ -30,7 +30,7 @@ public class TerrainHeightDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net is not ElinNetHost host || !NetSession.Instance.Rules.GuestsBuild ||
+        if (net is not ElinNetHost host || !NetSession.Instance.Rules.GuestsBuildIn(_zone) ||
             !host.ActiveRemoteCharas.ContainsKey(OriginPeer) || Teams.RefusesPeer(host, OriginPeer, _zone) || Cells.Length > Width * MaxCells || _zone?.uid != ZoneUid ||
             _map is not { } map) {
             return;
