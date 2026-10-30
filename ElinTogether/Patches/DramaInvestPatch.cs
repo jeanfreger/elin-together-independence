@@ -19,7 +19,7 @@ internal static class DramaInvestPatch
 {
     private static List<MethodBase>? _targets;
 
-    internal readonly record struct InvestState(bool Active, int Money, int Investment, int MerchantInvest);
+    internal readonly record struct InvestState(bool Active, int Money, int Investment, int MerchantInvest, int ShopPrice = 0);
 
     private static List<MethodBase> FindTargets()
     {
@@ -59,7 +59,11 @@ internal static class DramaInvestPatch
             return;
         }
 
-        __state = new(true, EClass.pc.GetCurrency(), EClass._zone.investment, DramaManager.TG?.c_invest ?? 0);
+        // (a merchant's price as the game asks it, read before the count goes up: a guest's purse only goes down when
+        // the host answers, so the money it held said nothing and the host refused "1" on a checking server)
+        var tg = DramaManager.TG;
+        __state = new(true, EClass.pc.GetCurrency(), EClass._zone.investment, tg?.c_invest ?? 0,
+            tg is { } shop && shop.trait.CanInvest ? CalcMoney.InvestShop(EClass.pc, shop) : 0);
     }
 
     [HarmonyPostfix]
@@ -93,7 +97,7 @@ internal static class DramaInvestPatch
         } else if (DramaManager.TG is { } merchant && merchant.c_invest > __state.MerchantInvest) {
             // the merchant of the dialog (Build(tg.chara)): its own count went up, it is the one invested in
             client.Delta.AddRemote(new ZoneInvestDelta {
-                Cost = System.Math.Max(price, 1),
+                Cost = System.Math.Max(System.Math.Max(price, __state.ShopPrice), 1),
                 Merchant = merchant,
             });
         }
