@@ -19,7 +19,7 @@ internal class TabChat : TabEmpBase
     public const string TabName = "emp_tab_chat";
 
     // kept over reopenings while the game runs, never stored
-    private static int _filter;
+    private static int _filter = -1;
     private static string _draft = "";
     private static int _target;
 
@@ -198,7 +198,13 @@ internal class TabChat : TabEmpBase
     // a line that arrived while the tab is open: added under the others (the newest at the bottom, scrolled to)
     private void Update()
     {
-        if (_list == null || _shown == ChatLog.Version) {
+        if (_list == null) {
+            return;
+        }
+
+        // (shown: every line is read)
+        ChatLog.MarkSeen();
+        if (_shown == ChatLog.Version) {
             return;
         }
 

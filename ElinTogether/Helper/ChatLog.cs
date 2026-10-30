@@ -31,7 +31,14 @@ internal static class ChatLog
 
     internal static IReadOnlyList<Line> Entries => Lines;
 
-    internal static void Add(int channel, string who, string text)
+    // the Version the Chat tab last showed: the lines after it are unread (the tab's badge)
+    private static int _seen;
+
+    internal static int Unread => Mathf.Min(Version - _seen, Lines.Count);
+
+    internal static void MarkSeen() => _seen = Version;
+
+    internal static void Add(int channel, string who, string text, bool mine = false)
     {
         Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text));
         if (Lines.Count > Capacity) {
@@ -39,6 +46,10 @@ internal static class ChatLog
         }
 
         Version++;
+        // (a line of this player's own is never unread)
+        if (mine) {
+            _seen = Version;
+        }
     }
 
     /// <summary>A new session starts with no line of the previous one</summary>
@@ -73,7 +84,7 @@ internal static class ChatLog
             Chat = true,
             ChatId = UnityEngine.Random.Range(1, int.MaxValue),
             SpeakerUid = EClass.pc.uid,
-            Name = EClass.pc.RemoteState?.User.Name ?? EClass.pc.Name,
+            Name = EClass.pc.RemoteState?.User.Name is { Length: > 0 } me ? me : EClass.pc.Name,
             Team = team,
         };
         MsgSayDelta.Remember(delta.ChatId);
@@ -89,7 +100,7 @@ internal static class ChatLog
             return false;
         }
 
-        Add(Team, delta.Name ?? "?", text);
+        Add(Team, delta.Name ?? "?", text, true);
         ChatBubbleEvent.PopChat("emp_ui_chat_team_tag".Loc(delta.Name ?? "?"), text);
         return true;
     }

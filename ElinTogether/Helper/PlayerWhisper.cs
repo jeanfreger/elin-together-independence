@@ -80,7 +80,7 @@ internal static class PlayerWhisper
         }
 
         ChatBubbleEvent.PopChat("emp_whisper_to".lang(name), text);
-        ChatLog.Add(ChatLog.Private, "emp_whisper_to".lang(name), text);
+        ChatLog.Add(ChatLog.Private, "emp_whisper_to".lang(name), text, true);
     }
 
     internal static void Relay(ElinNetHost host, WhisperDelta delta)

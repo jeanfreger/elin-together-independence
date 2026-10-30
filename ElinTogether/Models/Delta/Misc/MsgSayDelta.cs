@@ -69,7 +69,10 @@ public class MsgSayDelta : ElinDelta
     private string SpeakerName()
     {
         var state = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid);
-        return state is null ? Name ?? "?" : state.User.Name.TagColor(PeerColorizer.GetColor(state.Index));
+        // (an account without a name, as the bench's: the name the line carries, else the speaker's character)
+        var name = state?.User.Name is { Length: > 0 } own ? own : Name is { Length: > 0 } told ? told
+            : EClass.game?.cards.globalCharas.Find(SpeakerUid)?.Name ?? "?";
+        return state is null ? name : name.TagColor(PeerColorizer.GetColor(state.Index));
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
@@ -403,6 +404,56 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         text.offsetMin = new(8f, 0f);
         text.offsetMax = new(-TabLabelLeft, 0f);
         label.alignment = TextAnchor.MiddleLeft;
+    }
+
+    // ---------------------------------------------------------------- badges
+
+    // each tab's own label, read once its button exists (the badge is written after it)
+    private readonly Dictionary<string, string> _labels = [];
+    private float _nextBadges;
+
+    /// <summary>
+    ///     What waits on a tab, as a count after its label (user 2026-10-30): unread chat lines, the players asking
+    ///     to join the team this player leads, or the invitation it was sent
+    /// </summary>
+    private static int BadgeOf(string tab)
+    {
+        switch (tab) {
+            case TabChat.TabName:
+                return ChatLog.Unread;
+            case "emp_tab_team" when NetSession.Instance.Rules.UseTeams && EClass.pc != null:
+                var me = EClass.pc.uid;
+                var team = Teams.TeamOf(me);
+                return team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
+                    : Teams.LeaderOf(team) == me ? Teams.Asking(team).Count() : 0;
+            default:
+                return 0;
+        }
+    }
+
+    private void Update()
+    {
+        if (Time.unscaledTime < _nextBadges) {
+            return;
+        }
+
+        _nextBadges = Time.unscaledTime + 0.5f;
+        foreach (var tab in Window.setting.tabs) {
+            if (tab.button?.mainText is not { } text || tab.content == null) {
+                continue;
+            }
+
+            var id = tab.content.name;
+            if (!_labels.TryGetValue(id, out var label)) {
+                _labels[id] = label = text.text;
+            }
+
+            var count = BadgeOf(id);
+            var want = count > 0 ? $"{label} {$"({count})".TagColor(new Color(0.85f, 0.2f, 0.15f))}" : label;
+            if (text.text != want) {
+                text.text = want;
+            }
+        }
     }
 
     /// <summary>One game sprite and a tooltip for the tab CreateTab just added (it takes neither).</summary>

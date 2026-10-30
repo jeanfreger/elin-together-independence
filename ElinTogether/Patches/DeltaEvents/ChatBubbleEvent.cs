@@ -83,10 +83,10 @@ internal class ChatBubbleEvent
             Chat = true,
             ChatId = Random.Range(1, int.MaxValue),
             SpeakerUid = EClass.pc.uid,
-            Name = EClass.pc.RemoteState?.User.Name ?? EClass.pc.Name,
+            Name = EClass.pc.RemoteState?.User.Name is { Length: > 0 } me ? me : EClass.pc.Name,
         };
         MsgSayDelta.Remember(delta.ChatId);
-        ChatLog.Add(ChatLog.All, delta.Name ?? "?", text);
+        ChatLog.Add(ChatLog.All, delta.Name ?? "?", text, true);
 
         if (!NetSession.Instance.Rules.GlobalChat) {
             // map-local: the players of the map we are on (an away player without a map session has none)
