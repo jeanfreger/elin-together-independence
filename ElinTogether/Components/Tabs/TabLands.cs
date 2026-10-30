@@ -36,6 +36,7 @@ internal class TabLands : TabEmpBase
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
                 () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
             BuildBoxes(this, mine);
+            BuildCommons(this);
             return;
         }
 
@@ -43,6 +44,7 @@ internal class TabLands : TabEmpBase
         if (lands.Count == 0) {
             TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
             BuildBoxes(this, mine);
+            BuildCommons(this);
             return;
         }
 
@@ -69,6 +71,7 @@ internal class TabLands : TabEmpBase
         }
 
         BuildBoxes(left, mine);
+        BuildCommons(left);
         BuildLand(right, picked, Teams.LeaderOf(mine) == me);
     }
 
@@ -119,6 +122,19 @@ internal class TabLands : TabEmpBase
         if (ContainerLog.On) {
             card.ButtonRow().RowButton("emp_ui_container_logs".lang(), () => ContainerLog.Ask(0));
         }
+    }
+
+    /// <summary>
+    ///     The commons (host box "The start land belongs to everyone"): every player's, nobody's
+    /// </summary>
+    private static void BuildCommons(YKLayout page)
+    {
+        if (Commons.Zone is not { } zone) {
+            return;
+        }
+
+        var card = page.Card("emp_land_commons".lang(), EmpUi.Icon("icon_influence"));
+        card.TextSmall("emp_ui_land_commons_line".Loc(zone.Name), FontColor.Gray);
     }
 
     /// <summary>

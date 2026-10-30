@@ -178,7 +178,8 @@ internal static class SiblingLands
 
     private static string Label(Zone zone)
     {
-        return $"{Teams.NameOf(Teams.TeamOfZone(zone))} - {zone.Name} ({$"emp_ui_team_rule_{Teams.LevelOn(EClass.pc, zone)}".lang()})";
+        var whose = Commons.Is(zone) ? "emp_land_commons".lang() : Teams.NameOf(Teams.TeamOfZone(zone));
+        return $"{whose} - {zone.Name} ({$"emp_ui_team_rule_{Teams.LevelOn(EClass.pc, zone)}".lang()})";
     }
 
     /// <summary>

@@ -109,6 +109,16 @@ public class NetSessionRules
     internal bool GuestsBuild => AllowGuestBuild && !HostManagesBase;
 
     /// <summary>
+    ///     The players who do not keep that map may build there: the host's rule, or the commons (every player builds)
+    /// </summary>
+    internal bool GuestsBuildIn(Zone? zone) => GuestsBuild || Helper.Commons.Is(zone);
+
+    /// <summary>
+    ///     Only the host manages the base of that map: never the commons' building
+    /// </summary>
+    internal bool HostManagesBaseIn(Zone? zone) => HostManagesBase && !Helper.Commons.Is(zone);
+
+    /// <summary>
     ///     A player can challenge another to a duel nobody dies of (see PlayerDuel). Off: no such entry in the menu
     /// </summary>
     [Key(15)]
@@ -521,6 +531,13 @@ public class NetSessionRules
     [Key(156)]
     public bool ShareLogForReports { get; set; }
 
+    /// <summary>
+    ///     Host box "The start land belongs to everyone" (Helper.Commons): the start meadow is nobody's, every player
+    ///     builds there. An older host sends none: the start land is the host's base as before
+    /// </summary>
+    [Key(157)]
+    public bool CommonsStartLand { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -560,6 +577,7 @@ public class NetSessionRules
         Mailbox = EmpConfig.Server.Mailbox.Value,
         TeamQuestSharing = EmpConfig.Server.TeamQuestSharing.Value,
         ShareLogForReports = EmpConfig.Server.ShareLogForReports.Value,
+        CommonsStartLand = EmpConfig.Server.CommonsStartLand.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

@@ -37,7 +37,7 @@ public class CharaBuildDelta : ElinDelta
     {
         // only the host manages the base: a player's held object is not put down on it. Nothing to undo: the client does
         // not put it down itself, it waits for what the host sends back, and the object stays in its bag
-        if (net is ElinNetHost { IsZoneSession: false } && NetSession.Instance.Rules.HostManagesBase && _zone.IsPCFaction) {
+        if (net is ElinNetHost { IsZoneSession: false } && NetSession.Instance.Rules.HostManagesBaseIn(_zone) && _zone.IsPCFaction) {
             return;
         }
 

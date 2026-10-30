@@ -132,16 +132,29 @@ internal static class TeamBills
     [HarmonyPatch(typeof(Faction), nameof(Faction.OnAdvanceMonth))]
     private static bool OnMonth(Faction __instance, bool __runOriginal)
     {
-        if (!__runOriginal || !KeepsBook || !On || __instance != EClass.pc.faction) {
+        if (!__runOriginal || !KeepsBook || __instance != EClass.pc.faction) {
             return __runOriginal;
         }
 
         var branches = __instance.GetChildren();
+        // the commons pays no tax (host box "The start land belongs to everyone"): box off, the game's own bill
+        // unless the commons is the only land
+        var taxed = branches.Where(b => !Commons.Is(b.owner)).ToList();
+        if (!On) {
+            if (branches.Count == 0 || taxed.Count > 0) {
+                return true;
+            }
+
+            VanillaSalary(__instance);
+            return false;
+        }
+
         if (branches.Count == 0) {
             return false;
         }
 
         PaySalary(__instance, branches);
+        branches = taxed;
 
         // the extra tax a player chose to give is the world's: on the first bill only (each story its own: on its
         // team's bill, see TeamOwnStory)
@@ -169,6 +182,23 @@ internal static class TeamBills
 
         Tell();
         return false;
+    }
+
+    // the income part of Faction.OnAdvanceMonth alone (the world's only land is the commons: no bill)
+    private static void VanillaSalary(Faction faction)
+    {
+        var num = faction.GetResidentTax() + faction.GetRankIncome() + faction.GetFactionSalary();
+        if (num <= 0) {
+            return;
+        }
+
+        var bank = EClass.game.cards.container_deposit;
+        if (EClass.pc.homeBranch.policies.IsActive(2711) && (bank.GetCurrency() > 0 || !bank.things.IsFull())) {
+            bank.ModCurrency(num);
+            Msg.Say("bankIncome", Lang._currency(num, "money"));
+        } else {
+            EClass.world.SendPackage(ThingGen.CreateParcel("parcel_salary", ThingGen.Create("money").SetNum(num)));
+        }
     }
 
     // as Faction.OnAdvanceMonth gives the month's income

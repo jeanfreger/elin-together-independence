@@ -21,7 +21,7 @@ internal static class RemoteTerrainPatch
         // the game's own pace: the brush acts at most once a tenth of a second
         var connection = NetSession.Instance.Connection;
         if (__instance.timer < 0.1f || ElinDelta.IsApplying || connection is null ||
-            (connection is ElinNetClient && !NetSession.Instance.Rules.GuestsBuild)) {
+            (connection is ElinNetClient && !NetSession.Instance.Rules.GuestsBuildIn(EClass._zone))) {
             return;
         }
 

@@ -44,7 +44,7 @@ public class AgentTaskDelta : ElinDelta
         }
 
         // refused before the click (RemoteBuildModePatch): nothing was paid, nothing is done
-        if (scene.actionMode.IsRoofEditMode() || !NetSession.Instance.Rules.GuestsBuild) {
+        if (scene.actionMode.IsRoofEditMode() || !NetSession.Instance.Rules.GuestsBuildIn(_zone)) {
             return true;
         }
 
@@ -70,7 +70,7 @@ public class AgentTaskDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net is not ElinNetHost host || !NetSession.Instance.Rules.GuestsBuild ||
+        if (net is not ElinNetHost host || !NetSession.Instance.Rules.GuestsBuildIn(_zone) ||
             !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) || !Teams.CanTouch(sender, _zone) ||
             Args.CreateSubAct() is not TaskDesignation task || !task.pos.IsValid) {
             return;

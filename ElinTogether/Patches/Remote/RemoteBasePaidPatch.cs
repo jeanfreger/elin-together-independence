@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -87,7 +89,7 @@ internal static class RemoteBasePaidPatch
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(TraitDeed), nameof(TraitDeed.OnRead))]
-    private static bool OnReadDeed()
+    private static bool OnReadDeed(TraitDeed __instance, Chara c, bool __runOriginal)
     {
         // a deed read on a world-map tile that holds a land is SiblingLands' (it asks the host itself)
         if (Helper.SiblingLands.ReadsOnLand(out _, out _)) {
@@ -99,8 +101,76 @@ internal static class RemoteBasePaidPatch
             return true;
         }
 
+        // away on the field this game holds alone: the same question, the yes asks the host (ClaimZoneDelta). (Not
+        // when another prefix already answered, the cap of lands)
+        if (IsLeaseHolder && !NetSession.Instance.Rules.HostManagesBase && c.IsPC) {
+            if (__runOriginal) {
+                AskHeldLand(__instance.owner);
+            }
+
+            return false;
+        }
+
         Refuse(true);
         return false;
+    }
+
+    // a player away, on the map its own game holds (zone lease), alone or with visitors
+    private static bool IsLeaseHolder =>
+        NetSession.Instance is { IsZoneAuthority: true, Transport: ElinNetClient } session && EClass._zone is { } zone &&
+        session.AwayZone == zone && !ElinDelta.IsApplying;
+
+    // the deed read away, spent once the host made the land
+    private static int _heldDeed;
+
+    /// <summary>
+    ///     The checks and the question of TraitDeed.OnRead; the yes sends a checkpoint (the host sees this game's bag
+    ///     and map as they are now) and the request
+    /// </summary>
+    private static void AskHeldLand(Card deed)
+    {
+        var zone = EClass._zone;
+        if (zone.mainFaction == EClass.pc.faction || !zone.isClaimable || zone.instance is not null) {
+            Msg.Say("invalidClaimZone");
+            return;
+        }
+
+        if (Helper.Teams.LandCapReached(EClass.pc)) {
+            Msg.Say("emp_team_land_cap".Loc(EmpConfig.Server.LandsPerTeam.Value));
+            return;
+        }
+
+        Dialog.YesNo("dialog_claimLand", () => {
+            if (!IsLeaseHolder || NetSession.Instance.Transport is not ElinNetClient main) {
+                return;
+            }
+
+            _heldDeed = deed.uid;
+            main.SendTravelCheckpoint();
+            main.SendWhileAway(new ClaimZoneDelta { ZoneUid = zone.uid });
+        });
+    }
+
+    /// <summary>
+    ///     The host made the land this game holds: its copy is claimed as TraitDeed.OnRead claims it (the hearth
+    ///     stone, the deed spent), and a checkpoint brings the map and the base to the host
+    /// </summary>
+    internal static void ClaimHeldLand(int zoneUid)
+    {
+        var zone = EClass._zone;
+        if (NetSession.Instance is not { IsZoneAuthority: true, Transport: ElinNetClient main } session || zone is null ||
+            session.AwayZone != zone || zone.uid != zoneUid || zone.mainFaction == EClass.pc.faction) {
+            EmpLog.Warning("The host made land {ZoneUid}, but this game no longer holds it", zoneUid);
+            return;
+        }
+
+        var deed = EClass.pc.things.List(t => t.uid == _heldDeed && t.trait is TraitDeed, true).FirstOrDefault() ??
+                   EClass.pc.things.List(t => t.trait is TraitDeed, true).FirstOrDefault();
+        _heldDeed = 0;
+        zone.ClaimZone();
+        deed?.ModNum(-1);
+        WidgetMenuPanel.OnChangeMode();
+        main.SendTravelCheckpoint();
     }
 
     /// <summary>

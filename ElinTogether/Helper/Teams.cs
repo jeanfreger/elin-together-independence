@@ -163,7 +163,9 @@ internal static class Teams
     /// <summary>
     ///     The lands that team holds
     /// </summary>
-    internal static IEnumerable<int> LandsOf(int teamId) => Zones.Where(z => z.Value == teamId).Select(z => z.Key).OrderBy(uid => uid);
+    // (the commons is no team's, whatever the book says from before the box)
+    internal static IEnumerable<int> LandsOf(int teamId) =>
+        Zones.Where(z => z.Value == teamId && !Commons.Is(z.Key)).Select(z => z.Key).OrderBy(uid => uid);
 
     internal static string ZoneName(int zoneUid) => EClass.game.spatials.Find(zoneUid)?.Name ?? zoneUid.ToString();
 
@@ -256,7 +258,7 @@ internal static class Teams
 
     internal static int TeamOfZone(Zone? zone)
     {
-        return zone is null ? Wanderers : Zones.GetValueOrDefault(zone.uid);
+        return zone is null || Commons.Is(zone) ? Wanderers : Zones.GetValueOrDefault(zone.uid);
     }
 
     /// <summary>
@@ -264,7 +266,7 @@ internal static class Teams
     /// </summary>
     internal static bool HasBase(int teamId)
     {
-        return teamId != Wanderers && Zones.ContainsValue(teamId);
+        return teamId != Wanderers && LandsOf(teamId).Any();
     }
 
     /// <summary>
@@ -292,7 +294,7 @@ internal static class Teams
             return null;
         }
 
-        var uids = Zones.Where(pair => pair.Value == team).Select(pair => pair.Key).OrderBy(uid => uid).ToList();
+        var uids = LandsOf(team).ToList();
         var uid = uids.Contains(preferredUid) ? preferredUid : uids.FirstOrDefault(u => EClass.game.spatials.Find(u)?.branch is not null);
         return uid == 0 ? null : EClass.game.spatials.Find(uid) is { branch: not null } zone ? zone : null;
     }
@@ -1015,7 +1017,8 @@ internal static class Teams
         var team = TeamOf(claimer.uid);
         // (a new claim starts with the default rule)
         ZoneRules.Remove(zone.uid);
-        if (team == Wanderers) {
+        // (the commons is everyone's: no team takes it)
+        if (team == Wanderers || Commons.Is(zone)) {
             Zones.Remove(zone.uid);
         } else {
             Zones[zone.uid] = team;

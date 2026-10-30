@@ -396,6 +396,7 @@ internal static class SettingsTable
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_deed", "together", true, EmpConfig.Server.TeamDeed, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("land_rules", "together", true, EmpConfig.Server.LandRules, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
+        yield return new("commons_start_land", "together", true, EmpConfig.Server.CommonsStartLand);
         yield return new("sibling_lands", "together", true, EmpConfig.Server.SiblingLands, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("land_abandon", "together", true, EmpConfig.Server.LandAbandon, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value);
         yield return new("abandon_days", "together", true, Choice: AbandonDays, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.TeamBases.Value && EmpConfig.Server.LandAbandon.Value);
@@ -614,6 +615,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.TeamFoundCooldown, 30);
         yield return (EmpConfig.Server.TeamPersonal, true);
         yield return (EmpConfig.Server.LandRules, true);
+        // the start meadow is everyone's, like a town (user 2026-10-30: a joining player builds there at once)
+        yield return (EmpConfig.Server.CommonsStartLand, true);
         yield return (EmpConfig.Server.LandAbandon, true);
         yield return (EmpConfig.Server.AbandonDays, 30);
         yield return (EmpConfig.Server.LandsPerTeam, 2);
@@ -783,6 +786,7 @@ internal static class SettingsTable
             [EmpConfig.Server.AdminExtras] = r.AdminExtras,
             [EmpConfig.Server.TeamLeaders] = r.TeamLeaders,
             [EmpConfig.Server.LandRules] = r.LandRules,
+            [EmpConfig.Server.CommonsStartLand] = r.CommonsStartLand,
             [EmpConfig.Server.SiblingLands] = r.SiblingLands,
             [EmpConfig.Server.LargeCrowds] = r.LargeCrowds,
             [EmpConfig.Server.TeamMaxSize] = r.TeamMaxSize,
