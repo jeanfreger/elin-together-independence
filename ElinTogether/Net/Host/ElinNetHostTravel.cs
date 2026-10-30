@@ -1647,6 +1647,12 @@ internal partial class ElinNetHost
         }
 
         uploaded.SetBool(CINT.IsPC, false);
+        // its own game's copy of the party is led by whoever was the host's character there: the one here leads it,
+        // so that a later swap of the local character moves it along (PartyRepair.Repoint)
+        if (uploaded.party is { } copy && copy != pc.party && copy.uidLeader != pc.uid) {
+            copy.leader = pc;
+        }
+
         // not in any host map until it rejoins, the zone it left must not pull it back in
         uploaded.currentZone = null;
         game.cards.globalCharas.Add(uploaded);

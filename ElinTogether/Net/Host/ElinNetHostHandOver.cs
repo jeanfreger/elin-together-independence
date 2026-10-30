@@ -385,5 +385,9 @@ internal partial class ElinNetHost
         }
 
         SetPcOwner(me);
+
+        // the players' characters uploaded from their games carry their own copy of the party, led by the local
+        // character of that time: they follow the one that takes the seat (PartyRepair)
+        PartyRepair.Repoint(former.uid, mine);
     }
 }

@@ -272,6 +272,11 @@ internal partial class ElinNetHost
 
         PcOrphans.Remove(uid);
         PlayerStandings.Remove(uid);
+
+        // no party may be led by it once it is gone: the next load threw on the leader (2026-10-30, PartyRepair)
+        if (pc is { } local && local != standIn) {
+            PartyRepair.Repoint(uid, local);
+        }
         PersonalQuestLogs.Remove(uid);
 
         // (a character of the home faction is not destroyed: it leaves the faction first)
