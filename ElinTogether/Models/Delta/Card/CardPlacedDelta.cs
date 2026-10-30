@@ -26,6 +26,19 @@ public class CardPlacedDelta : ElinDelta
             return;
         }
 
+        // nothing installed nor taken up on the way to Vernis's mine (MineWay): the sender is told the thing as it is
+        if (net is ElinNetHost wayHost && FromPeer && card is Thing && card.parent == _zone &&
+            (PlaceState == PlaceState.installed || card.IsInstalled) && PlaceState != card.placeState &&
+            MineWay.Protects(card.pos, System.Math.Max(card.W, card.H) - 1)) {
+            wayHost.Delta.AddRemote(new CardPlacedDelta {
+                Owner = Owner,
+                PlaceState = card.placeState,
+                Dir = card.dir,
+                ByPlayer = false,
+            });
+            return;
+        }
+
         if (net.IsHost) {
             net.Delta.AddRemote(this);
         }

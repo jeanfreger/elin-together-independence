@@ -46,6 +46,11 @@ public class CharaBuildDelta : ElinDelta
             return;
         }
 
+        // nor on the way to Vernis's mine (MineWay)
+        if (net is ElinNetHost && FromPeer && MineWay.Protects(Pos.X, Pos.Z)) {
+            return;
+        }
+
         try {
             if (Owner.Find() is not Chara chara || Held.Find() is not { } held) {
                 return;

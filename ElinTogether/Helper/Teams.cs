@@ -630,16 +630,17 @@ internal static class Teams
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Zone), nameof(Zone.CanEnterBuildMode), MethodType.Getter)]
+    // (...and offered in Vernis as a commons while it is the town's own: the game only opens it on the player's land)
     private static void OnCanEnterBuildMode(Zone __instance, ref bool __result)
     {
-        __result = __result && CanTouch(EClass.pc, __instance);
+        __result = (__result || Commons.IsOpenTown(__instance)) && CanTouch(EClass.pc, __instance);
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Zone), nameof(Zone.CanEnterBuildModeAnywhere), MethodType.Getter)]
     private static void OnCanEnterBuildModeAnywhere(Zone __instance, ref bool __result)
     {
-        __result = __result && CanTouch(EClass.pc, __instance);
+        __result = (__result || Commons.IsOpenTown(__instance)) && CanTouch(EClass.pc, __instance);
     }
 
     /// <summary>

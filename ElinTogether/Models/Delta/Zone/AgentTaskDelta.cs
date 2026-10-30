@@ -80,7 +80,9 @@ public class AgentTaskDelta : ElinDelta
         // as this game's own gesture: what it makes and changes must reach everyone; "the player" is the sender
         using var simulate = Simulate();
         using var asSender = RemoteCraft.AsCrafter(sender);
-        var can = task switch {
+        // never on the way to Vernis's mine (MineWay), whatever the sender's game let through; cutting stays (it clears)
+        var blocked = task is not TaskCut && MineWay.Protects(task.pos, task is TaskBuild { recipe: { } r } ? System.Math.Max(r.W, r.H) - 1 : 0);
+        var can = !blocked && task switch {
             // a second click on the tile the first one already built: nothing to do, nothing to take
             TaskBuild build => build.recipe?.source is not null &&
                                !build.recipe.HasSameTile(build.pos, build.recipe._dir, build.altitude, build.bridgeHeight) &&
