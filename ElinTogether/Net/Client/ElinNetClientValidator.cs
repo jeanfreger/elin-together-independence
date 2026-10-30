@@ -97,27 +97,33 @@ internal partial class ElinNetClient
 
             // which mods differ, by name (the log has their Workshop pages)
             if (_mods is { } mods) {
-                // nothing to download, mods of ours the host does not have: Elin restarts without them, once
-                if (mods.Missing.Count == 0 && mods.Extra.Count > 0 &&
-                    rejected.Reason == NetIntegrityRejected.NetIntegrityRejectReason.ActMappingMismatch &&
-                    ModFetch.Begin(_modsText, mods, ReturnTo, (ulong)Host.User, Host.User.Name)) {
-                    Socket.Disconnect(Host, EmpDisconnectInfo.ActMappingMismatch);
-                    return;
-                }
-
                 sb.AppendLine();
                 sb.Append(ModList.Lines(mods));
             }
 
             detail = sb.ToString();
         }
-        Dialog.Ok(detail);
 
-        Socket.Disconnect(Host, rejected.Reason switch {
+        var reason = rejected.Reason switch {
             NetIntegrityRejected.NetIntegrityRejectReason.ActMappingMismatch => EmpDisconnectInfo.ActMappingMismatch,
             NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch => EmpDisconnectInfo.InvalidSource,
             _ => EmpDisconnectInfo.VersionMismatch,
-        });
+        };
+
+        // nothing to download, mods of ours the host does not have (its acts, or a strict host's check of the
+        // plugins and the game's data): the player is asked to restart Elin once without them (user 2026-10-30),
+        // "no" shows this refusal as before
+        if (_mods is { Missing.Count: 0, Extra.Count: > 0 } extra &&
+            rejected.Reason is NetIntegrityRejected.NetIntegrityRejectReason.ActMappingMismatch
+                or NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch &&
+            ModFetch.BeginWithout(_modsText, extra, ReturnTo, detail)) {
+            Socket.Disconnect(Host, reason);
+            return;
+        }
+
+        Dialog.Ok(detail);
+
+        Socket.Disconnect(Host, reason);
     }
 
     private static string VersionMismatchText(string mod, string version)

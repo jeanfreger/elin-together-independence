@@ -76,8 +76,20 @@ internal static class ModFetch
     /// </summary>
     internal static bool Session { get; private set; }
 
+#if DEBUG
+    /// <summary>
+    ///     The bench points the lists at a copy of its own (loadorder.txt in a temporary folder): the backup and the
+    ///     ticket go beside it, the real files are never touched
+    /// </summary>
+    internal static string? BenchLoadOrder { get; set; }
+
+    private static string LoadOrder => BenchLoadOrder ?? CorePath.PathLoadOrder;
+    private static string Ticket => BenchLoadOrder is null ? _ticket : Path.Combine(Path.GetDirectoryName(BenchLoadOrder)!, "modsession.txt");
+#else
     private static string LoadOrder => CorePath.PathLoadOrder;
-    private static string PlayerList => CorePath.rootExe + "loadorder.elintogether-player.txt";
+    private static string Ticket => _ticket;
+#endif
+    private static string PlayerList => Path.Combine(Path.GetDirectoryName(LoadOrder)!, "loadorder.elintogether-player.txt");
 
     /// <summary>
     ///     As Core.StartCase and ModManager.RefreshMods decide it: the game only loads the Workshop folders the
@@ -94,11 +106,7 @@ internal static class ModFetch
     internal static void Boot()
     {
         try {
-            Session = File.Exists(LoadOrder) && File.ReadAllLines(LoadOrder).FirstOrDefault() == Marker;
-            if (!Restore() && Session) {
-                // the player's copy is gone: no list at all is every mod on, the game's own default
-                File.Delete(LoadOrder);
-            }
+            Session = PutPlayerListBack();
 
             if (Session) {
                 // closing its mod viewer writes the list of this run, the session's, over the player's
@@ -109,10 +117,10 @@ internal static class ModFetch
                 RemoveLinks();
             }
 
-            if (File.Exists(_ticket)) {
-                var lines = File.ReadAllLines(_ticket);
+            if (File.Exists(Ticket)) {
+                var lines = File.ReadAllLines(Ticket);
                 // read once, whatever it says: a restart is never followed by another
-                File.Delete(_ticket);
+                File.Delete(Ticket);
                 var fresh = lines.Length > 1 && long.TryParse(lines[0], out var ticks) &&
                             Math.Abs((DateTime.UtcNow - new DateTime(ticks, DateTimeKind.Utc)).TotalMinutes) < TicketMinutes;
                 EmpLog.Information("Elin was restarted for the mods of a game: back to {Where} ({State}, session list {Session})",
@@ -210,6 +218,92 @@ internal static class ModFetch
             diff.Missing.Count, returnTo);
         EmpMod.Instance.StartCoroutine(Fetch(reference, diff, returnTo, host, hostName));
         return true;
+    }
+
+    /// <summary>
+    ///     The host refused this game for mods of ours it does not have, and nothing is missing here (user
+    ///     2026-10-30: the official server plays with this mod and YK Framework only). The player is asked in the
+    ///     game's own box: yes, Elin restarts once with the mods of the host (its own look-only mods and what this
+    ///     mod runs on stay), joins again by itself, and the player's own list is back for the next start; no,
+    ///     <paramref name="refusal" /> is shown as without this. False: nothing is done here (as Begin)
+    /// </summary>
+    internal static bool BeginWithout(string reference, ModList.Diff diff, string returnTo, string refusal)
+    {
+        if (!EmpConfig.Client.FetchMods.Value || _done || _busy || returnTo.Length == 0 || diff.Missing.Count > 0 ||
+            diff.Extra.Count == 0 || ModManager.disableMod || EmpServer.Requested || reference.Length > MaxReferenceChars) {
+            return false;
+        }
+
+        _busy = true;
+        EmpLog.Information("The game was refused for mods it does not have here: {Mods}. Asking to restart without them, then come back to {Where}",
+            diff.Extra.Select(ModList.Name).ToList(), returnTo);
+        var names = ModListFile.Parse(reference).Select(ModList.Name).Where(n => n.Length > 0).Prepend("Elin Together").ToList();
+        var text = "emp_ui_mods_only_server".Loc(string.Join(", ", names.Take(6)) + (names.Count > 6 ? ", ..." : ""));
+        EmpMod.Instance.StartCoroutine(AskWithout(text, reference, returnTo, refusal));
+        return true;
+    }
+
+    private static IEnumerator AskWithout(string text, string reference, string returnTo, string refusal)
+    {
+        // the caller closes its link with the host first
+        yield return null;
+
+        var choice = Choice.None;
+        var box = Dialog.Choice(text, d => {
+            d.AddButton("yes".lang(), () => choice = Choice.Accept);
+            d.AddButton("no".lang(), () => choice = Choice.Cancel);
+        });
+        // (closed any other way, Escape or a click outside: no)
+        box.SetOnKill(() => choice = choice == Choice.None ? Choice.Cancel : choice);
+        while (choice == Choice.None) {
+            yield return null;
+        }
+
+        EmpLog.Information("Restart without the mods the host does not have: the player chose {Choice}", choice);
+        if (choice != Choice.Accept) {
+            _busy = false;
+            Dialog.Ok(refusal);
+            yield break;
+        }
+
+        var failure = EClass.core.IsGameStarted ? "the player started a game" : Apply(reference, returnTo, [], false, []);
+        if (failure is not null) {
+            _busy = false;
+            _done = true;
+            EmpLog.Warning("Elin was not restarted without the mods the host does not have: {Why}", failure);
+            Dialog.Ok(refusal);
+            yield break;
+        }
+
+        yield return EmpMod.Instance.StartCoroutine(Restart());
+    }
+
+#if DEBUG
+    /// <summary>
+    ///     The list of the bench's session, without a restart: what Apply writes for these mods (the bench, with
+    ///     BenchLoadOrder set)
+    /// </summary>
+    internal static string? WriteSessionOnly(string reference)
+    {
+        var failure = Apply(reference, "", [], false, []);
+        _applied = false;
+        return failure;
+    }
+#endif
+
+    /// <summary>
+    ///     What Boot does with the lists: a session's list on the disk is replaced by the player's own copy (or
+    ///     goes, when the copy is gone). True: the list the game read was a session's
+    /// </summary>
+    internal static bool PutPlayerListBack()
+    {
+        var session = File.Exists(LoadOrder) && File.ReadAllLines(LoadOrder).FirstOrDefault() == Marker;
+        if (!Restore() && session) {
+            // the player's copy is gone: no list at all is every mod on, the game's own default
+            File.Delete(LoadOrder);
+        }
+
+        return session;
     }
 
     private static IEnumerator Fetch(string reference, ModList.Diff diff, string returnTo, ulong host, string hostName)
@@ -507,11 +601,18 @@ internal static class ModFetch
             kill();
         }
 
+        yield return EmpMod.Instance.StartCoroutine(Restart());
+    }
+
+    /// <summary>
+    ///     The list of the session is written: Elin closes, and starts again by itself where it can
+    /// </summary>
+    private static IEnumerator Restart()
+    {
         if (!_applied) {
             yield break;
         }
 
-        // the list of the session is written: Elin closes, and starts again by itself where it can
         var restarts = Relaunch();
         EmpPop.Block((restarts ? "emp_ui_mods_restart" : "emp_ui_mods_restart_manual").lang());
         yield return new WaitForSecondsRealtime(restarts ? 3f : 8f);
@@ -519,7 +620,7 @@ internal static class ModFetch
             // the player started a game meanwhile: it goes on, and its own list is back
             _applied = false;
             try {
-                File.Delete(_ticket);
+                File.Delete(Ticket);
                 Restore();
                 RemoveLinks();
             } catch (Exception ex) {
@@ -733,14 +834,14 @@ internal static class ModFetch
 
             Write(LoadOrder, SessionList(ModListFile.Parse(reference), reference.Contains(ModList.LookOwn)));
             // last: a ticket without the list of the session would bring the player back without its mods
-            Directory.CreateDirectory(Path.GetDirectoryName(_ticket)!);
-            File.WriteAllText(_ticket, $"{DateTime.UtcNow.Ticks}\n{returnTo}\n{reference}");
+            Directory.CreateDirectory(Path.GetDirectoryName(Ticket)!);
+            File.WriteAllText(Ticket, $"{DateTime.UtcNow.Ticks}\n{returnTo}\n{reference}");
             _applied = true;
             return null;
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Could not write the mod list of the session");
             try {
-                File.Delete(_ticket);
+                File.Delete(Ticket);
                 Restore();
                 RemoveLinks();
             } catch (Exception undo) {
