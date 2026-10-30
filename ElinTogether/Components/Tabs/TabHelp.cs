@@ -101,9 +101,8 @@ internal static class TabHelp
         var input = card.InputText("");
         input.field.characterLimit = 3000;
         input.AllowAnyText();
-        input.field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
-        input.LayoutElement().minHeight = 120f;
-        input.LayoutElement().preferredHeight = 120f;
+        // a real text box (user 2026-10-30): eight lines high, the text from the top left, wrapped, Enter a new line
+        TextBox(input, 200f);
 
         var buttons = card.ButtonRow();
         buttons.RowButton("emp_ui_report_send".lang(), () => {
@@ -137,5 +136,40 @@ internal static class TabHelp
         var replay = EmpConfig.Client.RecordReplay;
         card.ToggleRow("emp_ui_cl_record_replay".lang(), null, replay.Value, v => replay.Value = v)
             .SetTooltipLang(replay.Description.Description);
+    }
+
+    /// <summary>
+    ///     The game's one-line input field made a box of several lines: its height, its text wrapped from the top left
+    ///     (it showed one centred line that ran out sideways, whatever was typed)
+    /// </summary>
+    internal static void TextBox(UIInputText input, float height)
+    {
+        var field = input.field;
+        field.lineType = UnityEngine.UI.InputField.LineType.MultiLineNewline;
+        var element = input.LayoutElement();
+        element.minHeight = element.preferredHeight = height;
+        element.flexibleWidth = 1f;
+        ((RectTransform)input.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+        if (field.transform != input.transform) {
+            var rect = (RectTransform)field.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+        }
+
+        foreach (var text in new[] { field.textComponent, field.placeholder as UnityEngine.UI.Text }) {
+            if (text is null) {
+                continue;
+            }
+
+            text.alignment = TextAnchor.UpperLeft;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            var rt = text.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new(10, 8);
+            rt.offsetMax = new(-10, -8);
+        }
     }
 }
