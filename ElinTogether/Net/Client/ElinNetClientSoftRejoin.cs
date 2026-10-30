@@ -488,11 +488,14 @@ internal partial class ElinNetClient
     {
         var adopted = new List<Chara>();
         var party = pc.party;
+        // ours by our own world too: a host's copy of our mount that it did not count as ours replaced it here, our
+        // character went on riding a copy no longer of the world and the mount left our party bar (issue #43)
+        var ours = CompanionHelper.CompanionsOf(pc).Select(c => c.uid).ToHashSet();
 
         foreach (var data in charas ?? []) {
             var fresh = data.Decompress<Chara>();
             // ours are the ones we play and just handed over
-            if (fresh.uid == pc.uid || fresh.CompanionOwnerUid == pc.uid) {
+            if (fresh.uid == pc.uid || fresh.CompanionOwnerUid == pc.uid || ours.Contains(fresh.uid)) {
                 continue;
             }
 

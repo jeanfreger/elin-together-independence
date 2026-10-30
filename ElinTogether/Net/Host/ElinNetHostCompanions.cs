@@ -132,11 +132,17 @@ internal partial class ElinNetHost
             var uploaded = data.Decompress<Chara>();
             var old = game.cards.globalCharas.Find(uploaded.uid);
 
+            // what our own game says that player rides or carries is its own, whatever its tag says here: a mount is
+            // its rider's companion, as the game puts it in the party of whoever rides it (issue #43: a mount and a
+            // parasite tagged as nobody's here stayed behind, frozen on the tile their rider left from, and came back
+            // to the rider's game as the host's, out of its party)
+            var carried = old is { IsPlayer: false, isDead: false } && old.host?.uid == ownerUid;
+
             // only that player's own companions, or a new one met on its map: never a player, nor a character of
             // someone else or of the world (security audit 2026-10-27)
             // (a resident of nobody, or the world's: recruited on the way by a friend; refused only on a public server)
             if (SavedRemoteCharas.ContainsValue(uploaded.uid) || uploaded.uid == pc.uid ||
-                (old is not null && old.CompanionOwnerUid != ownerUid &&
+                (old is not null && !carried && old.CompanionOwnerUid != ownerUid &&
                  (old.CompanionOwnerUid != 0 || (ElinDelta.TrustEnforced && (old.IsPCFaction || old.IsGlobal))))) {
                 EmpLog.Warning("Companion {Uid} uploaded for player {OwnerUid} is not its own: refused", uploaded.uid, ownerUid);
                 continue;
@@ -148,6 +154,10 @@ internal partial class ElinNetHost
                 // never left this map with its owner, the host copy is the live one
                 EmpLog.Warning("Companion {Uid} of player {OwnerUid} is on the host map, keeping host copy",
                     uploaded.uid, ownerUid);
+                if (carried) {
+                    ClaimCarried(old, ownerUid, party);
+                }
+
                 continue;
             }
 
@@ -216,6 +226,34 @@ internal partial class ElinNetHost
         }
 
         RebindRide(ownerUid);
+    }
+
+    /// <summary>
+    ///     The host's copy of what a player carries, left on this map: that player's companion again, in the party,
+    ///     told to everyone (its tag is what the party bar of each game and the next trip go by)
+    /// </summary>
+    private void ClaimCarried(Chara carried, int ownerUid, Party party)
+    {
+        if (carried.CompanionOwnerUid == ownerUid && carried.party == party && party.uidMembers.Contains(carried.uid)) {
+            return;
+        }
+
+        EmpLog.Information("Companion {Uid} carried by player {OwnerUid} was tagged {Tag} here: that player's again",
+            carried.uid, ownerUid, carried.CompanionOwnerUid);
+        carried.SetInt(CompanionHelper.OwnerKey, ownerUid);
+        carried.party = party;
+        if (!party.uidMembers.Contains(carried.uid)) {
+            party.uidMembers.Add(carried.uid);
+        }
+
+        party.SetMembers();
+        Delta.AddRemote(new CharaMakeAllyDelta {
+            Owner = carried,
+            ShowMsg = false,
+            TemporaryAllyName = carried.c_altName,
+            OwnerUid = ownerUid,
+            JoinOnly = true,
+        });
     }
 
     // recruited while its player was alone: a member of the base in that player's copy of the world only
