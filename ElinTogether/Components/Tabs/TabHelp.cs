@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using UnityEngine;
@@ -91,29 +92,70 @@ internal static class TabHelp
         card.ButtonRow().RowButton("emp_help_github".lang(), () => Application.OpenURL(Repo));
     }
 
-    // something went wrong: one zip to send with the game's own log in it, or a GitHub issue with the player's words
+    // the report's draft, kept while the window is closed and opened again, cleared once sent
+    private static string _doing = "";
+    private static string _happened = "";
+    private static string _expected = "";
+    private static int _again = 2;
+
+    internal static ReportAnswers Draft => new(_doing, _happened, _expected, _again);
+
+    // something went wrong: one zip to send with the game's own log in it, or a GitHub issue with the player's answers
+    // (a guided form, user 2026-10-30: reports came as one title, "fortune drum never changes", nothing else)
     private static void BuildReport(YKVertical page)
     {
         var card = page.Card("emp_help_report".lang());
         card.Text("emp_ui_report_what".lang());
         card.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
 
-        var input = card.InputText("");
-        input.field.characterLimit = 3000;
-        input.AllowAnyText();
-        // a real text box (user 2026-10-30): eight lines high, the text from the top left, wrapped, Enter a new line
-        TextBox(input, 200f);
+        UIButton? send = null;
+        UIText? hint = null;
+        var boxes = new List<UIInputText>();
+
+        void Refresh()
+        {
+            var missing = Draft.Missing();
+            send?.interactable = missing is null;
+            hint?.SetText(missing is null ? "" : "emp_ui_report_need".Loc(ReportAnswers.MinLength, string.Join(", ", missing.Select(id => id.lang()))));
+        }
+
+        void Box(string label, string value, System.Action<string> keep)
+        {
+            card.Text(label.lang());
+            var input = card.InputText(value);
+            boxes.Add(input);
+            input.field.characterLimit = ReportAnswers.MaxLength;
+            input.AllowAnyText();
+            // three or four lines each, the text from the top left, wrapped, Enter a new line
+            TextBox(input, 96f);
+            input.field.onValueChanged.AddListener(text => {
+                keep(text);
+                Refresh();
+            });
+        }
+
+        Box("emp_ui_report_doing", _doing, t => _doing = t);
+        Box("emp_ui_report_happened", _happened, t => _happened = t);
+        Box("emp_ui_report_expected", _expected, t => _expected = t);
+        card.DropdownRow("emp_ui_report_again".lang(),
+            [.."yes,no,untried".Split(',').Select(o => $"emp_ui_report_again_{o}".lang())], i => _again = i, _again);
 
         var buttons = card.ButtonRow();
-        buttons.RowButton("emp_ui_report_send".lang(), () => {
-            var words = input.Text.Trim();
-            if (words.Length < 3) {
+        send = buttons.RowButton("emp_ui_report_send".lang(), () => {
+            var answers = Draft;
+            if (answers.Missing() is not null) {
                 return;
             }
 
-            input.Text = "";
+            // (each box's change clears its part of the draft)
+            foreach (var box in boxes) {
+                box.Text = "";
+            }
+
+            _doing = _happened = _expected = "";
+            _again = 2;
             EmpPop.Information("emp_ui_report_sending".lang());
-            BugReport.Send(words, url => {
+            BugReport.Send(answers, url => {
                 if (url is null) {
                     EmpPop.Information("emp_ui_report_page".lang());
                     return;
@@ -123,13 +165,18 @@ internal static class TabHelp
             });
         });
         buttons.RowButton("emp_ui_report".lang(), () => {
-            if (BugReport.Make() is { } path) {
-                EmpPop.Information("emp_ui_report_done".Loc(path));
-                Util.ShowExplorer(path);
-            } else {
-                EmpPop.Information("emp_ui_report_failed".lang());
-            }
+            EmpPop.Information("emp_ui_report_preparing".lang());
+            BugReport.Prepare(Draft, path => {
+                if (path is not null) {
+                    EmpPop.Information("emp_ui_report_done".Loc(path));
+                    Util.ShowExplorer(path);
+                } else {
+                    EmpPop.Information("emp_ui_report_failed".lang());
+                }
+            });
         });
+        hint = card.TextSmall("", FontColor.Gray);
+        Refresh();
         card.TextSmall("emp_ui_report_desc".lang(), FontColor.Gray);
 
         // the last seconds of the screen sent with the report (ReplayBuffer)

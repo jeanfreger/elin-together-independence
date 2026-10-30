@@ -514,6 +514,13 @@ public class NetSessionRules
     [Key(155)]
     public bool TeamQuestSharing { get; set; }
 
+    /// <summary>
+    ///     Host box "Share the host's log with bug reports": a guest's report asks the host for the end of its logs
+    ///     (HostLogRequest). An older host sends none: the guest does not ask
+    /// </summary>
+    [Key(156)]
+    public bool ShareLogForReports { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -552,6 +559,7 @@ public class NetSessionRules
         Market = EmpConfig.Server.Market.Value,
         Mailbox = EmpConfig.Server.Mailbox.Value,
         TeamQuestSharing = EmpConfig.Server.TeamQuestSharing.Value,
+        ShareLogForReports = EmpConfig.Server.ShareLogForReports.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

@@ -220,6 +220,9 @@ namespace ElinTogether.Models;
 [Union(1250, typeof(TeamQuestListDelta))]
 [Union(1251, typeof(TeamQuestUpdateDelta))]
 [Union(1252, typeof(TeamQuestDoneDelta))]
+// Bug reports: a guest's report asks for the host's log (user 2026-10-30)
+[Union(1255, typeof(HostLogRequest))]
+[Union(1256, typeof(HostLogAnswer))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

@@ -448,6 +448,7 @@ internal static class SettingsTable
         yield return new("fast_joins", "repair", true, EmpConfig.Server.FastJoinsAndSaves);
         yield return new("server_avatar", "repair", true, EmpConfig.Server.ServerAvatar, Apply: "restart");
         yield return new("enforce_ownership", "repair", true, EmpConfig.Server.EnforceOwnership);
+        yield return new("share_log_reports", "repair", true, EmpConfig.Server.ShareLogForReports);
         yield return new("bills", "repair", true);
     }
 
@@ -534,6 +535,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.Market, true);
         yield return (EmpConfig.Server.Mailbox, true);
         yield return (EmpConfig.Server.TeamQuestSharing, true);
+        // a guest's bug report carries the host's log too (user 2026-10-30: several causes were on the host)
+        yield return (EmpConfig.Server.ShareLogForReports, true);
         // who joins: both checks; characters: pick one of the account's, 3 at most, may be deleted, revive after permadeath
         yield return (EmpConfig.Server.SourceValidationSet, "sources,plugins");
         yield return (EmpConfig.Server.ChooseCharacter, true);
@@ -736,6 +739,7 @@ internal static class SettingsTable
             [EmpConfig.Server.Market] = r.Market,
             [EmpConfig.Server.Mailbox] = r.Mailbox,
             [EmpConfig.Server.TeamQuestSharing] = r.TeamQuestSharing,
+            [EmpConfig.Server.ShareLogForReports] = r.ShareLogForReports,
             [EmpConfig.Server.TeamOwnGuilds] = r.TeamOwnGuilds,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,

@@ -877,6 +877,15 @@ internal partial class EmpConfig
             false,
             "A player in a team can share its own quests with its team (a box on the Team page): its teammates see them in their journal, any of them can advance and turn them in, and every teammate in the game gets the reward. Needs teams and personal quests\nOtherwise each player's quests stay its own\n队伍中的玩家可以把自己的任务分享给队伍（队伍页面上的勾选框）：队友在日志中看到这些任务，任何队友都可以推进并交付，所有在线队友都能获得奖励。需要开启队伍和个人任务。关闭时每名玩家的任务只属于自己");
 
+        Server.ShareLogForReports = config.Bind(
+            "Server",
+            "ShareLogForReports",
+            false,
+            "When a guest sends a bug report, the host's game adds the end of its own logs (the last 10 minutes of the mod's log and the end of Player.log, 300 KB at most, once a minute per guest). " +
+            "Steam ids, IP addresses and Windows user names are removed first: the report becomes a public GitHub issue\n" +
+            "Otherwise a guest's report holds only its own logs\n" +
+            "客机发送问题报告时，房主的游戏会附上自己的日志末尾（模组日志最近 10 分钟和 Player.log 末尾，最多 300 KB，每名客机每分钟一次）。先删除 Steam ID、IP 地址和 Windows 用户名：报告会成为公开的 GitHub 问题。关闭时客机的报告只包含自己的日志");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1163,6 +1172,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> Market { get; set; } = null!;
         internal static ConfigEntry<bool> Mailbox { get; set; } = null!;
         internal static ConfigEntry<bool> TeamQuestSharing { get; set; } = null!;
+        internal static ConfigEntry<bool> ShareLogForReports { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
