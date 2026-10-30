@@ -210,6 +210,9 @@ namespace ElinTogether.Models;
 [Union(1230, typeof(CharaSheetDelta))]
 [Union(1231, typeof(JournalDelta))]
 [Union(1232, typeof(LeaderboardDelta))]
+// Market: classified ads (user 2026-10-30)
+[Union(1245, typeof(MarketAskDelta))]
+[Union(1246, typeof(MarketBoardDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

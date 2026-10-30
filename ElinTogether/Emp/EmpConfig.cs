@@ -859,6 +859,12 @@ internal partial class EmpConfig
             false,
             "The host ranks players and teams (level, deepest floor, duels won, team wealth), shown on the Leaderboards page\nOtherwise no rankings\n房主为玩家和队伍排名（等级、最深楼层、决斗获胜、队伍财富），显示在排行榜页面。关闭时没有排名");
 
+        Server.Market = config.Bind(
+            "Server",
+            "Market",
+            false,
+            "Players post classified ads (selling or looking for an item, a quantity, a price, a short note) on the Market page, kept by the host with the world: 5 ads per player, 7 days each\nOtherwise no market\n玩家在市场页面发布分类广告（出售或求购物品、数量、价格、简短备注），由房主随世界保存：每名玩家 5 条，每条 7 天。关闭时没有市场");
+
         Server.TeamOwnStory = config.Bind(
             "Server",
             "TeamOwnStory",
@@ -1142,6 +1148,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> ActivityJournal { get; set; } = null!;
         internal static ConfigEntry<bool> TeamBanner { get; set; } = null!;
         internal static ConfigEntry<bool> Leaderboards { get; set; } = null!;
+        internal static ConfigEntry<bool> Market { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;

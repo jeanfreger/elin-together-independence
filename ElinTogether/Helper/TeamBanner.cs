@@ -378,16 +378,21 @@ internal static class TeamBanner
     ///     Two pills (Items / Monsters) over a search field over every thing or monster of the game (name in the
     ///     player's language, or id), results paged; a click gives the typed id to <paramref name="onPick" />
     /// </summary>
-    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick)
+    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false)
     {
         var list = card.Vertical();
         list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         list.Layout.spacing = 4f;
-        Pills(card, ["emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang()], _kind, i => {
-            _kind = i;
-            _page = 0;
-            FillThings(list, colour, onPick);
-        });
+        if (itemsOnly) {
+            // (the Market: things only, no Items / Monsters pills)
+            _kind = 0;
+        } else {
+            Pills(card, ["emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang()], _kind, i => {
+                _kind = i;
+                _page = 0;
+                FillThings(list, colour, onPick);
+            });
+        }
 
         var search = card.InputText(_query);
         search.field.characterLimit = 40;

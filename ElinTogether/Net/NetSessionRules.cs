@@ -495,6 +495,12 @@ public class NetSessionRules
     [Key(152)]
     public bool Leaderboards { get; set; }
 
+    /// <summary>
+    ///     Host box "Market" (classified ads, user 2026-10-30). An older host sends none: no market
+    /// </summary>
+    [Key(154)]
+    public bool Market { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -530,6 +536,7 @@ public class NetSessionRules
         ActivityJournal = EmpConfig.Server.ActivityJournal.Value,
         TeamBanner = EmpConfig.Server.TeamBanner.Value,
         Leaderboards = EmpConfig.Server.Leaderboards.Value,
+        Market = EmpConfig.Server.Market.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
