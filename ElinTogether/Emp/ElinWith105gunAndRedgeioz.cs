@@ -92,6 +92,8 @@ internal sealed class EmpMod : BaseUnityPlugin
         Components.SettingsTable.Update();
         // (from the patches during a session; a server has to load its world before any session)
         EmpServer.Update();
+        // (-empnewworld: a new world made at the title, before any session)
+        Helper.OfficialWorld.Update();
     }
 
     private void OnDestroy()

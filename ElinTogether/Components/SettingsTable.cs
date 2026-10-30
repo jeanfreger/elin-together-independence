@@ -628,6 +628,36 @@ internal static class SettingsTable
         }
     }
 
+    /// <summary>
+    ///     The official server started headless (-empserver with the key and the account): the whole "Public server
+    ///     (official)" preset is written at each start, the fixed rules and the chosen values, plus StrictValidationMode
+    ///     (council 2026-10-28, Q3: on from stage 1). The operator never ticks anything. A file ElinMP/official_members_only
+    ///     (empty is fine) keeps MembersOnly on, for the closed test of stage 1. What changed is logged
+    /// </summary>
+    internal static void ApplyOfficialPreset(bool membersOnly)
+    {
+        // (every host rule as preset 3 writes it, and every value of the official lists even when no page shows it)
+        var entries = HostRules().Concat(OfficialFixedValues().Concat(OfficialChosenValues()).Select(v => v.Entry)).Distinct();
+        var changes = entries.Where(e => e != EmpConfig.Server.MembersOnly).Select(e => (Entry: e, Value: Official.Raw(e)!))
+            .Append((EmpConfig.Server.StrictValidationMode, (object)true))
+            .Append((EmpConfig.Server.MembersOnly, (object)membersOnly))
+            .Where(c => c.Value is not null).ToArray();
+        var changed = changes.Where(c => !Equals(c.Entry.BoxedValue, c.Value))
+            .Select(c => $"{c.Entry.Definition.Key}={c.Value}").ToArray();
+
+        var forcing = _forcing;
+        _forcing = true;
+        try {
+            Write(changes);
+        } finally {
+            _forcing = forcing;
+        }
+
+        EmpLog.Information("Official server: the official preset was applied ({Count} rules checked, {Changed} changed{List}), " +
+                           "StrictValidationMode on, MembersOnly {MembersOnly}",
+            changes.Length, changed.Length, changed.Length == 0 ? "" : ": " + string.Join(", ", changed), membersOnly ? "on" : "off");
+    }
+
     private static bool _forcing;
 
     /// <summary>
