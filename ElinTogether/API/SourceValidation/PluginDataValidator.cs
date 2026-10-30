@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ElinTogether.Models;
 using EModding.Helper.Runtime;
 
@@ -17,7 +18,13 @@ internal class PluginDataValidator : ISourceValidator
         out Dictionary<string, SourceValidationMismatch> mismatches)
     {
         mismatches = [];
-        var hostHashes = GetValidation();
+        // the mods the host accepts on a player's side only: neither side's DLL of them counts. A guest of an older
+        // version reports them all, matched here by their plugin GUID when the list names it
+        var list = Helper.ClientOnlyMods.Hosted;
+        var hostHashes = GetValidation(list);
+        var skipped = list.Count > 0 ? Helper.ClientOnlyMods.PluginGuids(list) : [];
+        clientHashes = clientHashes.Where(kv => !list.Contains(kv.Key.ToLowerInvariant()) && !skipped.Contains(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
         var hasMismatch = false;
 
         foreach (var (modId, hostHash) in hostHashes) {
@@ -49,13 +56,20 @@ internal class PluginDataValidator : ISourceValidator
         return !hasMismatch;
     }
 
-    public Dictionary<string, string> GetValidation()
+    public Dictionary<string, string> GetValidation() => GetValidation(null);
+
+    /// <param name="clientOnly">the host's mods a player may have or not (ClientOnlyMods): their plugins are left out</param>
+    public Dictionary<string, string> GetValidation(HashSet<string>? clientOnly)
     {
         var result = new Dictionary<string, string>();
+        var skipped = clientOnly is { Count: > 0 } ? Helper.ClientOnlyMods.PluginGuids(clientOnly) : [];
+        if (skipped.Count > 0) {
+            EmpLog.Debug("Plugins of client-side mods left out of the plugin check: {Plugins}", skipped.ToList());
+        }
 
         foreach (var plugin in TypeQualifier.Plugins) {
             var modId = plugin.Info.Metadata.GUID;
-            if (ValidationConfig.ExcludedPlugins.Contains(modId)) {
+            if (ValidationConfig.ExcludedPlugins.Contains(modId) || skipped.Contains(modId)) {
                 continue;
             }
 

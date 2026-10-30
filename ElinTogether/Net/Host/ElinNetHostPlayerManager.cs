@@ -135,10 +135,11 @@ internal partial class ElinNetHost
                     game.cards.globalCharas.Find(played) is { } last && !CharaExport.IsAway(last);
         // no question at every connection: a player who comes back gets the character it played last. Asked only
         // when nothing says which one (several characters, none of them played last), when it has nobody here
-        // and may bring someone, or when the host wants every joining player asked
-        var ask = EmpConfig.Server.ChooseCharacter.Value
-            ? roster.Count > 0 || import
-            : !known && (roster.Count > 1 || (roster.Count == 0 && import));
+        // and may bring someone, or when the host wants every joining player asked. That last one asks a first-time
+        // player too, its list holding only "new character" (user 2026-10-30: on the public server, where nobody
+        // may bring a character, a first join went straight to the creation screen and the rule looked dead)
+        var ask = EmpConfig.Server.ChooseCharacter.Value ||
+                  !known && (roster.Count > 1 || (roster.Count == 0 && import));
         // one of them is in a solo save: the list is where it comes back, or is brought back unchanged
         if (roster.Any(CharaExport.IsAway)) {
             ask = true;
@@ -160,6 +161,7 @@ internal partial class ElinNetHost
                 AllowImport = import,
                 AllowDelete = EmpConfig.Server.DeleteCharacter.Value,
                 AllowExport = ExportAllowed && ImportTrusted(peer.User),
+                AtLimit = AtCharacterLimit(peer.User),
                 Notice = notice,
                 Charas = roster
                     .Select(c => new SessionCharaEntry {
@@ -167,6 +169,7 @@ internal partial class ElinNetHost
                         Label = $"{c.Name} - {c.race.GetName()} {c.job.GetName()}, Lv {c.LV}",
                         Dead = PlayerRevive.Active && c.isDead,
                         Away = CharaExport.IsAway(c) ? c.GetStr(CharaExport.AwaySaveKey) ?? "" : null,
+                        Portrait = PortraitOf(c),
                     })
                     .ToList(),
             });
@@ -323,6 +326,20 @@ internal partial class ElinNetHost
 
         RosterOf(user);
         return PlayerRosters[user].Count(uid => game.cards.globalCharas.Find(uid) is not null) >= max;
+    }
+
+    /// <summary>
+    ///     The portrait the game shows for a character (its own picture, or the one of its kind), for the player's
+    ///     list of characters. Empty when it has none
+    /// </summary>
+    private static string PortraitOf(Chara chara)
+    {
+        try {
+            return chara.GetIdPortrait() ?? "";
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "No portrait for chara {Uid}", chara.uid);
+            return "";
+        }
     }
 
     /// <summary>

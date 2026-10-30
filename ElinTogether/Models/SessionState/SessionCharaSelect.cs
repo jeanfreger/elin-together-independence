@@ -32,6 +32,13 @@ public class SessionCharaSelectRequest
     /// </summary>
     [Key(4)]
     public bool AllowExport { get; init; }
+
+    /// <summary>
+    ///     The player has as many characters here as the host allows (MaxCharacters): no "new character" line. An
+    ///     older host sends none: the line is there and the host turns the click down as before
+    /// </summary>
+    [Key(5)]
+    public bool AtLimit { get; init; }
 }
 
 [MessagePackObject]
@@ -58,6 +65,12 @@ public class SessionCharaEntry
     /// </summary>
     [Key(3)]
     public string? Away { get; set; }
+
+    /// <summary>
+    ///     The id of its portrait (Chara.GetIdPortrait), shown beside its name when this game has that picture
+    /// </summary>
+    [Key(4)]
+    public string? Portrait { get; set; }
 }
 
 /// <summary>

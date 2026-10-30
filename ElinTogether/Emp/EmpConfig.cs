@@ -226,6 +226,15 @@ internal partial class EmpConfig
             "Off: the players who join need every mod of the host\n" +
             "只改变外观的模组（图片、肖像、声音、翻译：没有代码、物品或地图）不要求加入的玩家安装：不会为此重启，每位玩家保留自己的");
 
+        Server.ClientOnlyMods = config.Bind(
+            "Server",
+            "ClientOnlyMods",
+            "",
+            "Mods each player may have or not (comma-separated Elin mod ids, or Workshop numbers), e.g. display mods with code:\n" +
+            "they never get a player refused, are never asked of anyone, and their DLLs are left out of the plugin check.\n" +
+            "Only for mods that add no game data (items, characters, maps): the game data check still counts what they add\n" +
+            "每位玩家可自行决定是否安装的模组（逗号分隔的 Elin 模组 id 或创意工坊编号），例如带代码的显示类模组：不会因此拒绝玩家，也不要求任何人安装，插件校验不计其DLL。仅适用于不添加游戏数据（物品、角色、地图）的模组");
+
         Server.PublishMods = config.Bind(
             "Server",
             "PublishMods",
@@ -1103,6 +1112,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> PublishMods { get; set; } = null!;
         internal static ConfigEntry<bool> PublicGame { get; set; } = null!;
         internal static ConfigEntry<bool> LookModsOwn { get; set; } = null!;
+        internal static ConfigEntry<string> ClientOnlyMods { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerShipping { get; set; } = null!;
         internal static ConfigEntry<bool> GuestBuild { get; set; } = null!;
         internal static ConfigEntry<bool> PlayerKill { get; set; } = null!;

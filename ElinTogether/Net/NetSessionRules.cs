@@ -538,6 +538,13 @@ public class NetSessionRules
     [Key(157)]
     public bool CommonsStartLand { get; set; }
 
+    /// <summary>
+    ///     Host setting "Mods each player may have or not" (ClientOnlyMods, comma separated): shown on the World rules
+    ///     page. The handshake carries the list it applies (SourceValidationRequest). An older host sends none
+    /// </summary>
+    [Key(158)]
+    public string? ClientOnlyMods { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -579,6 +586,7 @@ public class NetSessionRules
         ShareLogForReports = EmpConfig.Server.ShareLogForReports.Value,
         CommonsStartLand = EmpConfig.Server.CommonsStartLand.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
+        ClientOnlyMods = EmpConfig.Server.ClientOnlyMods.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,
         NearestSpawns = EmpConfig.Server.NearestSpawns.Value,
