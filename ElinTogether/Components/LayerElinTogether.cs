@@ -60,7 +60,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         // journal and rankings (PLAN_hub_features): one tab with two sub-tabs, so the strip keeps the game's own label size
         _tabs.Add(CreateTab<TabCommunity>("emp_ui_tab_community", TabCommunity.TabName));
-        DecorateLastTab("icon_menu_16", "emp_tip_tab_community");
+        DecorateLastTab("icon_medal", "emp_tip_tab_community");
+        _tabs.Add(CreateTab<TabChat>("emp_ui_tab_chat", TabChat.TabName));
+        DecorateLastTab("icon_menu_16", "emp_tip_tab_chat");
 
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
         // reads the host's (the tab's own guest view)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using ElinTogether.Patches;
 using ElinTogether.Net;
 using MessagePack;
@@ -55,7 +56,21 @@ public class MsgSayDelta : ElinDelta
     [Key(10)]
     public bool Notice { get; init; }
 
+    /// <summary>
+    ///     A line for one team only (the Chat tab, 2026-10-30): the host gives it to that team's members, never to the
+    ///     others, and only from a member of it. 0: not a team line
+    /// </summary>
+    [Key(11)]
+    public int Team { get; init; }
+
     private static readonly Queue<int> RecentIds = new();
+
+    /// <summary>The speaker's player name in its colour, else the name the line carries</summary>
+    private string SpeakerName()
+    {
+        var state = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid);
+        return state is null ? Name ?? "?" : state.User.Name.TagColor(PeerColorizer.GetColor(state.Index));
+    }
 
     /// <summary>
     ///     False when this chat id was already seen
@@ -87,6 +102,7 @@ public class MsgSayDelta : ElinDelta
     /// </summary>
     internal static void ShowNotice(string text)
     {
+        ChatLog.Add(ChatLog.Server, "[Server]", text);
         ChatBubbleEvent.PopChat("[Server]", text);
         Msg.SetColor(new Color(1f, 0.85f, 0.4f, 1f));
         Msg.SayRaw("[Server] " + text);
@@ -106,6 +122,25 @@ public class MsgSayDelta : ElinDelta
              // are someone else's)
              (Chat && SpeakerUid != 0 && (SpeakerUid == pc.uid ||
                                          from.ActiveRemoteCharas.Any(p => p.Key != OriginPeer && p.Value.uid == SpeakerUid))))) {
+            return;
+        }
+
+        if (Team != 0) {
+            // (the host checks the speaker is in that team, and hands the line to that team's members only)
+            if (net is ElinNetHost relay && FromPeer) {
+                if (relay.PlayerChara(OriginPeer) is not { } speaker || Teams.TeamOf(speaker.uid) != Team) {
+                    return;
+                }
+
+                ChatLog.RelayTeam(relay, this, OriginPeer);
+            }
+
+            if (Teams.TeamOf(pc.uid) == Team && !PlayerSocial.IsIgnoredUid(SpeakerUid)) {
+                var who = SpeakerName();
+                ChatLog.Add(ChatLog.Team, who, Text);
+                ChatBubbleEvent.PopChat("emp_ui_chat_team_tag".Loc(who), Text);
+            }
+
             return;
         }
 
@@ -141,11 +176,14 @@ public class MsgSayDelta : ElinDelta
         // A speaker on this map already showed it with its bubble, see CardRendererTalkDelta
         if (Chat) {
             // (box unticked: a player elsewhere is not heard, the host's lines reach away players all the same)
-            if ((SpeakerUid == 0 || EClass._map?.charas.Exists(c => c.uid == SpeakerUid) != true) &&
-                NetSession.Instance.Rules.GlobalChat) {
-                var state = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid);
-                ChatBubbleEvent.PopChat(state is null ? Name ?? "?" : state.User.Name.TagColor(PeerColorizer.GetColor(state.Index)),
-                    Text);
+            var here = SpeakerUid != 0 && EClass._map?.charas.Exists(c => c.uid == SpeakerUid) == true;
+            if (!here && NetSession.Instance.Rules.GlobalChat) {
+                ChatBubbleEvent.PopChat(SpeakerName(), Text);
+            }
+
+            // (the Chat tab keeps every line this player was shown, its bubble or its pop text)
+            if (here || NetSession.Instance.Rules.GlobalChat) {
+                ChatLog.Add(ChatLog.All, SpeakerName(), Text);
             }
 
             return;

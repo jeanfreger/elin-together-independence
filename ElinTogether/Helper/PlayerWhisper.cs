@@ -80,6 +80,7 @@ internal static class PlayerWhisper
         }
 
         ChatBubbleEvent.PopChat("emp_whisper_to".lang(name), text);
+        ChatLog.Add(ChatLog.Private, "emp_whisper_to".lang(name), text);
     }
 
     internal static void Relay(ElinNetHost host, WhisperDelta delta)
@@ -100,6 +101,7 @@ internal static class PlayerWhisper
 
         var name = NameOf(delta.FromUid, delta.Name);
         ChatBubbleEvent.PopChat("emp_whisper_from".lang(name), delta.Text);
+        ChatLog.Add(ChatLog.Private, "emp_whisper_from".lang(name), delta.Text);
     }
 
     /// <summary>

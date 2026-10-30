@@ -192,6 +192,9 @@ internal static class EmblemEditor
 
             if (_draft.Layers.Count > 0) {
                 LayerTools(right);
+            } else {
+                // (an empty list said nothing: how to start, user 2026-10-30 "on peut faire beaucoup mieux")
+                right.EmptyText("emp_ui_emblem_start".lang());
             }
         }
 

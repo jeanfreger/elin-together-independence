@@ -269,10 +269,13 @@ internal class TabPlayers : TabEmpBase
 
         var list = body.ListArea(saved.Count, 8, 40f);
         foreach (var (user, chara, playing) in saved.OrderBy(s => s.User)) {
-            var account = UserData.Get(user).Name is { Length: > 0 } name ? name : user.ToString();
+            // (a Steam account this game knows no name for showed as its raw number: the character alone then)
+            var account = UserData.Get(user).Name is { Length: > 0 } name ? name : null;
             var row = list.Row();
-            row.TextColumn("emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV) + (chara.isDead ? " †" : ""),
-                playing ? "emp_ui_saved_chars_playing".lang() : null);
+            row.Portrait(chara, 36f);
+            var line = account is null ? "emp_ui_saved_chars_line_alone".Loc(chara.Name, chara.LV)
+                : "emp_ui_saved_chars_line".Loc(account, chara.Name, chara.LV);
+            row.TextColumn(line + (chara.isDead ? " †" : ""), playing ? "emp_ui_saved_chars_playing".lang() : null);
             if (playing) {
                 continue;
             }
@@ -280,7 +283,7 @@ internal class TabPlayers : TabEmpBase
             var target = chara;
             // the game's trash icon, its word as the hover text
             row.IconButton(EmpUi.GameIcons?.trash, "x", () => {
-                Dialog.YesNo("emp_ui_saved_chars_confirm".Loc(target.Name, account), () => {
+                Dialog.YesNo("emp_ui_saved_chars_confirm".Loc(target.Name, account ?? "?"), () => {
                     host.HostDeletes(user, target.uid);
                     LayerElinTogether.Instance?.Reopen();
                 });
