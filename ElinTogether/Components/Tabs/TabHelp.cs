@@ -154,7 +154,18 @@ internal static class TabHelp
         card.ToggleRow("emp_ui_report_att_picture".lang(), recording, _picture, v => _picture = v);
         card.ToggleRow("emp_ui_report_att_logs".lang(), "emp_ui_report_att_logs_desc".lang(), true, _ => { }, readOnly: true);
 
-        var buttons = card.ButtonRow();
+        // the right page: thanks and short tips, as the game's window has them
+        var tips = right.Card("emp_ui_report_thanks".lang());
+        foreach (var tip in new[] { "before", "one", "lang", "private", "host" }) {
+            tips.Text(("emp_ui_report_tip_" + tip).lang());
+        }
+
+        tips.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
+        tips.TextSmall("emp_ui_report_desc".lang(), FontColor.Gray);
+
+        // Send and Save on the right page, under the words that explain them: at the bottom of the left page the form
+        // pushed them under the window's edge at 1280x720 (a guest on the public server, 0.26.1576)
+        var buttons = tips.ButtonRow();
         send = buttons.RowButton("emp_ui_report_send".lang(), () => {
             var answers = Draft;
             if (answers.Missing() is not null) {
@@ -191,17 +202,8 @@ internal static class TabHelp
                 }
             });
         });
-        hint = card.TextSmall("", FontColor.Gray);
+        hint = tips.TextSmall("", FontColor.Gray);
         Refresh();
-
-        // the right page: thanks and short tips, as the game's window has them
-        var tips = right.Card("emp_ui_report_thanks".lang());
-        foreach (var tip in new[] { "before", "one", "lang", "private", "host" }) {
-            tips.Text(("emp_ui_report_tip_" + tip).lang());
-        }
-
-        tips.TextSmall("emp_ui_report_send_desc".lang(), FontColor.Gray);
-        tips.TextSmall("emp_ui_report_desc".lang(), FontColor.Gray);
 
         // the recording the video and the picture come from (ReplayBuffer)
         var replay = EmpConfig.Client.RecordReplay;

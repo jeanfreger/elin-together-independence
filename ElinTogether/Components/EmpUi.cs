@@ -266,6 +266,9 @@ internal static class EmpUi
         spread.LayoutElement().flexibleWidth = 1f;
         // (a page as tall as the window: the fold runs down the whole book even when a page is short)
         spread.LayoutElement().minHeight = 420f;
+        // (and as tall as its longer page: YKHorizontal's fitter is MinSize, which held the spread at 420 and the window's
+        // scroll never saw a page taller than that; the Report tab's Send button sat clipped under the edge, 2026-10-30)
+        spread.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         YKVertical Page(int padLeft, int padRight)
         {
