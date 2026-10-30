@@ -74,6 +74,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
         DecorateLastTab("icon_menu_7", "emp_tip_tab_info");
+        _tabs.Add(CreateTab<TabReport>("emp_help_report", TabReport.TabName));
+        DecorateLastTab("icon_Memo", "emp_tip_tab_report");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
         DecorateLastTab("icon_menu_82", "emp_tip_tab_client");
 

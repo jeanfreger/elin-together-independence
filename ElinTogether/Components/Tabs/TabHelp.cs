@@ -31,7 +31,6 @@ internal static class TabHelp
         return [
             ("emp_ui_sub_how".lang(), BuildHow),
             ("emp_help_about".lang(), BuildAbout),
-            ("emp_help_report".lang(), BuildReport),
         ];
     }
 
@@ -105,7 +104,7 @@ internal static class TabHelp
     // something went wrong: a GitHub issue with the player's words and logs, or one zip on the desktop. Laid out as the
     // game's own "Report Bugs" window (LayerFeedback, user 2026-10-30): the form on the left page, thanks and tips on
     // the right one
-    private static void BuildReport(YKVertical page)
+    internal static void BuildReport(YKVertical page)
     {
         var (left, right) = page.Book();
         var card = left.Card("emp_help_report".lang());

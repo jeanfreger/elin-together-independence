@@ -1260,5 +1260,6 @@
     "LangGeneral.emp_ui_report_tip_one.text": "每份报告只写一个问题。",
     "LangGeneral.emp_ui_report_tip_lang.text": "如果可以，请用英文或中文书写。",
     "LangGeneral.emp_ui_report_tip_private.text": "Steam ID、IP 地址和用户名会被删除。",
-    "LangGeneral.emp_ui_report_tip_host.text": "如果房主允许，客机的报告会附上房主的日志。"
+    "LangGeneral.emp_ui_report_tip_host.text": "如果房主允许，客机的报告会附上房主的日志。",
+    "LangGeneral.emp_tip_tab_report.text": "向开发者报告问题"
 }
