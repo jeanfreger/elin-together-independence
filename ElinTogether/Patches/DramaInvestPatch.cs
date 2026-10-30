@@ -55,7 +55,7 @@ internal static class DramaInvestPatch
     private static void OnInvest(out InvestState __state)
     {
         __state = default;
-        if (NetSession.Instance.Connection is not ElinNetClient || EClass.pc is null || EClass._zone is null) {
+        if (NetSession.Instance.Connection is null || EClass.pc is null || EClass._zone is null) {
             return;
         }
 
@@ -67,7 +67,20 @@ internal static class DramaInvestPatch
     {
         // what was invested in went up: it was paid, otherwise "no money" was said and nothing changed. Not the
         // purse: a client's payment is a request, its money goes down when the host answers
-        if (!__state.Active || NetSession.Instance.Connection is not ElinNetClient client) {
+        if (!__state.Active) {
+            return;
+        }
+
+        if (NetSession.Instance.Connection is ElinNetHost host) {
+            // the host's own investment in a merchant: the clients' copies of it take the count (issue #41)
+            if (DramaManager.TG is { } invested && invested.c_invest > __state.MerchantInvest) {
+                ZoneInvestDelta.Tell(host, invested);
+            }
+
+            return;
+        }
+
+        if (NetSession.Instance.Connection is not ElinNetClient client) {
             return;
         }
 

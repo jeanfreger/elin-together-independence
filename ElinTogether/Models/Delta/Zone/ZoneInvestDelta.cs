@@ -27,6 +27,13 @@ public class ZoneInvestDelta : ElinDelta
     public RemoteCard? Merchant { get; init; }
 
     /// <summary>
+    ///     Host to clients: the merchant's invested count after it (issue #41). Their copies of a resident merchant
+    ///     (Kettle) stayed behind, and the copy a player hands back with the base it held alone replaced the host's
+    /// </summary>
+    [Key(2)]
+    public int? Count { get; init; }
+
+    /// <summary>
     ///     Security audit 2026-10-27 (item 6): each investment raises the town's development and influence whatever
     ///     it cost; the sender must have just paid that gold (its own currency request, CardModCurrencyDelta)
     /// </summary>
@@ -70,6 +77,15 @@ public class ZoneInvestDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
+        if (net is not ElinNetHost) {
+            // never lower: what the client's own dialog just counted stays
+            if (Count is { } count && Merchant?.Find() is Chara known && count > known.c_invest) {
+                known.c_invest = count;
+            }
+
+            return;
+        }
+
         // a cost from the network: no more than the game's own counter can take, and only from a player standing here
         if (net is not ElinNetHost host || Cost <= 0 || Cost > int.MaxValue - System.Math.Max(_zone.investment, 0) ||
             !host.ActiveRemoteCharas.ContainsKey(OriginPeer) || host.IsAwayPeer(OriginPeer)) {
@@ -92,5 +108,18 @@ public class ZoneInvestDelta : ElinDelta
 
         merchant.c_invest++;
         _zone.ModInfluence(1);
+        Tell(host, merchant);
+    }
+
+    /// <summary>
+    ///     Every client's copy of that merchant takes the host's count
+    /// </summary>
+    internal static void Tell(ElinNetHost host, Chara merchant)
+    {
+        host.Delta.AddRemote(new ZoneInvestDelta {
+            Cost = 1,
+            Merchant = merchant,
+            Count = merchant.c_invest,
+        });
     }
 }

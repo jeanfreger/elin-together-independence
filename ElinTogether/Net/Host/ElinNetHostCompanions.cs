@@ -153,6 +153,11 @@ internal partial class ElinNetHost
 
             ForgetCachedCard(uploaded);
             if (old is not null) {
+                // an investment in its shop only ever goes up: a copy that missed the host's keeps it (issue #41)
+                if (old.c_invest > uploaded.c_invest) {
+                    uploaded.c_invest = old.c_invest;
+                }
+
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
 
@@ -253,6 +258,11 @@ internal partial class ElinNetHost
 
             ForgetCachedCard(uploaded);
             if (old is not null) {
+                // an investment in its shop only ever goes up: a copy that missed the host's keeps it (issue #41)
+                if (old.c_invest > uploaded.c_invest) {
+                    uploaded.c_invest = old.c_invest;
+                }
+
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
                 if (old.homeBranch is { } branch && branch.members.IndexOf(old) is var index and >= 0) {
