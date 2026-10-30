@@ -73,6 +73,9 @@ internal static class EmblemEditor
         Fill();
     }
 
+    // the draft differs from what the team has (the Save button and its note)
+    private static bool Unsaved => TeamEmblem.Format(_draft) != TeamEmblem.Format(Saved(_team));
+
     private static Emblem Saved(int teamId) =>
         TeamBanner.EmblemOf(teamId) ?? new(TeamBanner.Of(teamId)?.Color ?? 0, 0, []);
 
@@ -106,6 +109,14 @@ internal static class EmblemEditor
         view.LayoutElement().minHeight = view.LayoutElement().preferredHeight = PreviewSize + 16f;
         view.LayoutElement().flexibleWidth = 1f;
         _preview = TeamEmblemBaker.Place(view.transform, TeamEmblemBaker.Get(_draft), PreviewSize);
+        // (as the emblem shows elsewhere: in the players' list and in a team's line, user 2026-10-30)
+        var small = view.Vertical();
+        small.Layout.childAlignment = TextAnchor.MiddleCenter;
+        small.Layout.spacing = 8f;
+        small.Layout.padding = new(16, 0, 0, 0);
+        foreach (var size in new[] { 48f, 28f }) {
+            TeamEmblemBaker.Place(small.transform, TeamEmblemBaker.Get(_draft), size);
+        }
 
         if (!_leads) {
             right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
@@ -147,7 +158,10 @@ internal static class EmblemEditor
             // (the team's colour: one of the twelve team colours; the host keeps the emblem's own background)
             var colour = _draft.Background < TeamBanner.ColorCount ? _draft.Background : TeamBanner.Of(_team)?.Color ?? 0;
             Teams.Ask(TeamAsk.Banner, 0, colour, TeamEmblem.Format(_draft));
-        }), 3).interactable = _draft.Layers.Count > 0;
+        }), 3).interactable = _draft.Layers.Count > 0 && Unsaved;
+        if (Unsaved && _draft.Layers.Count > 0) {
+            left.TextSmall("emp_ui_emblem_unsaved".lang(), FontColor.Warning);
+        }
 
         var more = left.ButtonRow();
         more.Layout.childAlignment = TextAnchor.MiddleCenter;
@@ -372,12 +386,15 @@ internal static class EmblemEditor
         Stepper(root, "emp_ui_emblem_opacity", layer.Opacity, TeamEmblem.MinOpacity, 100, 10,
             (l, v) => l with { Opacity = v }, l => l.Opacity);
 
-        // the outline and duplicate on one line
+        // the outline, then the copies
         var line = root.Row();
         var outline = line.Toggle("emp_ui_emblem_outline".lang(), layer.Outline != 0, on => Edit(l => l with { Outline = on ? 1 : 0 }));
         outline.LayoutElement().flexibleWidth = 1f;
         outline.AsRow();
-        line.RowButton("emp_ui_emblem_duplicate".lang(), Duplicate).interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
+        // (the copies on a line of their own: three on one line ran over the outline's label)
+        var copies = root.ButtonRow();
+        copies.RowButton("emp_ui_emblem_duplicate".lang(), Duplicate).interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
+        copies.RowButton("emp_ui_emblem_mirror".lang(), Mirror).interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
 
         // the tint: "None" on the title's line, the swatches under it
         var tintHead = root.Row();
@@ -420,6 +437,25 @@ internal static class EmblemEditor
             Edit(l => set(l, Mathf.Clamp(get(l) + step, min, max)));
             slider.SetValueWithoutNotify(get(_draft.Layers[_selected]));
         });
+    }
+
+    /// <summary>
+    ///     A copy of the selected layer on the other side of the emblem, turned the other way (a pair of wings, two
+    ///     crossed swords): the two halves of a symmetric emblem in one click (user 2026-10-30)
+    /// </summary>
+    private static void Mirror()
+    {
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers || _selected >= _draft.Layers.Count) {
+            return;
+        }
+
+        var layer = _draft.Layers[_selected];
+        var copy = layer with { X = TeamEmblem.Grid - layer.X, Flip = layer.Flip ^ 1, Rotation = (8 - layer.Rotation) % 8 };
+        var list = _draft.Layers.ToList();
+        list.Insert(_selected + 1, copy);
+        Change(_draft with { Layers = list });
+        _selected++;
+        Fill();
     }
 
     private static void Duplicate()

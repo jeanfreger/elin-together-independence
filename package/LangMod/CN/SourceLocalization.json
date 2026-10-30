@@ -1227,5 +1227,7 @@
     "LangGeneral.emp_ui_team_share_quests_desc.text": "任务会出现在队友的日志中，任何队友都可以交付，所有在线队友都能获得奖励。取消勾选后，已分享的任务在完成前仍保持分享。",
     "LangGeneral.emp_team_quest_share_got.text": "队友交付了“{0}”：你获得了属于你的一份奖励。",
     "LangGeneral.emp_team_quest_share_mail.text": "队友交付了“{0}”：属于你的一份奖励已寄到据点的邮箱。",
-    "LangGeneral.emp_team_quest_share_done.text": "队友交付了“{0}”。"
+    "LangGeneral.emp_team_quest_share_done.text": "队友交付了“{0}”。",
+    "LangGeneral.emp_ui_emblem_mirror.text": "镜像",
+    "LangGeneral.emp_ui_emblem_unsaved.text": "有未保存的更改。"
 }
