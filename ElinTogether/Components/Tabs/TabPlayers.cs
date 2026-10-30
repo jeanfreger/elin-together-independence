@@ -150,7 +150,7 @@ internal class TabPlayers : TabEmpBase
             Destroy(child.gameObject);
         }
 
-        var all = NetSession.Instance.CurrentPlayers.ToList();
+        var all = NetSession.Instance.VisiblePlayers.ToList();
         var players = Visible(all);
         var pages = Mathf.Max(1, (players.Count + PageSize - 1) / PageSize);
         _page = Mathf.Clamp(_page, 0, pages - 1);

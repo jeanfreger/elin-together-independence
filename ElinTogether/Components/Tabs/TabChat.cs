@@ -84,7 +84,7 @@ internal class TabChat : TabEmpBase
         }
 
         if (NetSession.Instance.Rules.PrivateChat) {
-            foreach (var p in NetSession.Instance.CurrentPlayers.Where(p => p.CharaUid != EClass.pc.uid).OrderBy(p => p.User.Name)) {
+            foreach (var p in NetSession.Instance.VisiblePlayers.Where(p => p.CharaUid != EClass.pc.uid).OrderBy(p => p.User.Name)) {
                 if (Teams.FindChara(p.CharaUid) is { } other) {
                     list.Add(("emp_ui_chat_to".Loc(p.User.Name.IsEmpty(other.Name)), other, false));
                 }

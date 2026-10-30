@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Net.Steam;
@@ -77,6 +78,13 @@ public class NetSession : EClass
     public NetSessionRules Rules { get; internal set; } = NetSessionRules.Default;
 
     public List<NetPeerState> CurrentPlayers => field ??= [];
+
+    /// <summary>
+    ///     The players a person sees in the menus: a dedicated server's own seat (its stand-in, Helper/ServerAvatar) is
+    ///     the server itself, not a player (user 2026-10-30: "Elin Together" listed among the players)
+    /// </summary>
+    internal IEnumerable<NetPeerState> VisiblePlayers =>
+        CurrentPlayers.Where(p => !(p.Index == 0 && Helper.ServerAvatar.IsUid(p.CharaUid)));
     public SteamNetLobbyManager Lobby => field ??= new();
     public NetPeerState? Self { get; internal set; }
 

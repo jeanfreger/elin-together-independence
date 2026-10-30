@@ -90,7 +90,7 @@ internal static class Leaderboards
     private static IEnumerable<int> Roster(ElinNetHost host)
     {
         var uids = new HashSet<int>(ElinNetHost.LeaderStats.Keys);
-        foreach (var player in NetSession.Instance.CurrentPlayers) {
+        foreach (var player in NetSession.Instance.VisiblePlayers) {
             uids.Add(player.CharaUid);
         }
 
