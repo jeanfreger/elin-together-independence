@@ -759,7 +759,6 @@ internal static class Teams
         TeamKnowledge.Moved(chara, from, id);
         TeamOwnStory.Moved(chara, from, id);
         GiveDeed(chara, id);
-        TeamBanner.Inherit(chara.uid, id);
         Tell();
         return id;
     }

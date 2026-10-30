@@ -99,12 +99,12 @@ internal class TabTeam : TabEmpBase
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_ui_team_tab_team".lang(), page => BuildTeamPage(page, me, mine)),
         };
-        // the emblem has its own page, laid out to fit the window (it sat under the team page, out of reach); a player
-        // in no team edits its own (TeamBanner.KeyOf), which the team it founds takes
-        if (TeamBanner.On) {
+        // the emblem has its own page, laid out to fit the window (it sat under the team page, out of reach). Teams
+        // only: a player alone founds a team of one for an emblem (user 2026-10-30)
+        if (mine != Teams.Wanderers && TeamBanner.On) {
             pages.Add(("emp_ui_team_tab_emblem".lang(), page => {
                 var (left, right) = page.Book();
-                EmblemEditor.Build(left, right, TeamBanner.KeyOf(me), mine == Teams.Wanderers || Teams.LeaderOf(mine) == me);
+                EmblemEditor.Build(left, right, mine, Teams.LeaderOf(mine) == me);
             }));
         }
 
