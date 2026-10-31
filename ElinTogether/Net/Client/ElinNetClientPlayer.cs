@@ -312,6 +312,10 @@ internal partial class ElinNetClient
     {
         EmpLog.Information("Received save data from host");
 
+        // the map this game stands on while the world is replaced under it (GitHub issue 46): when the copy places it
+        // on that same map, the cover goes away at once instead of the 4 s fade of a first join
+        _coverZone = core.IsGameStarted && _zone is { } standing ? standing.uid : 0;
+
         // on the host link: back from independent travel, the probe rebuilds the whole game
         // on a zone session: joining another player's zone, the probe is its world
         // also when refused as a guest right after leaving the host map: not away yet, but coming back all the same

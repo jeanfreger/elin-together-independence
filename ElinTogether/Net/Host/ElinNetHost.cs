@@ -73,6 +73,7 @@ internal partial class ElinNetHost : ElinNetBase
         OfficialServerStart.Run();
         RepairBillCount();
         Patches.QuestVernisRepair.Repair();
+        Patches.QuestPuppyGuard.Repair();
 
         // nobody asked for this session: never one a stranger can find, but the players of this world come in
         // without being Steam friends of whoever hosts it today

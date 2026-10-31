@@ -233,6 +233,13 @@ internal partial class ElinNetClient
     private const float ActivationWait = 10f;
 
     /// <summary>
+    ///     The map this game stood on when a copy of the world came (OnSaveDataProbe), 0 if none (GitHub issue 46)
+    /// </summary>
+    private int _coverZone;
+
+    private const float InPlaceCoverSeconds = 0.2f;
+
+    /// <summary>
     ///     The map whose state we loaded and told the host about, until the host says where we stand on it
     /// </summary>
     private int _awaitingActivation;
@@ -289,6 +296,16 @@ internal partial class ElinNetClient
             }
 
             BringRideAlong();
+
+            // GitHub issue 46: a player who stayed where it stood (the host left that map and another player keeps
+            // it, or the host walked onto it) only had its world replaced: Scene.Init would fade the cover out over
+            // 4 s (HideCover(4f), meant for a first join from the title), a black screen for a player who did not
+            // move. Started here, that call is ignored (UI.HideCover runs once while hiding)
+            if (_coverZone != 0 && _coverZone == currentZone.uid) {
+                ui.HideCover(InPlaceCoverSeconds);
+            }
+
+            _coverZone = 0;
 
             try {
                 scene.Init(Scene.Mode.Zone);
